@@ -10,6 +10,8 @@ const fmt = (d) => {
 }
 const ago = (days) => fmt(new Date(Date.now() - days * 86400000 - Math.floor(Math.random() * 6 * 3600000)))
 const like = (v, term) => String(v ?? '').toLowerCase().includes(term.toLowerCase())
+// Natürliche Reihenfolge für Lagerort-Codes: N4 vor N150, Plate2 vor Plate10
+const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de', { numeric: true })
 const round = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d
 
 export function seedData(seed) {
@@ -63,7 +65,7 @@ function inventory(db, f) {
     && (!f.category || r.category === f.category))
   const sorts = {
     qty: (a, b) => b.qty - a.qty,
-    location: (a, b) => String(a.location_code).localeCompare(b.location_code) || a.item_no.localeCompare(b.item_no),
+    location: (a, b) => natural(a.location_code, b.location_code) || a.item_no.localeCompare(b.item_no),
     updated: (a, b) => b.updated_at.localeCompare(a.updated_at),
     item: (a, b) => a.item_no.localeCompare(b.item_no) || a.color_name.localeCompare(b.color_name),
   }
@@ -77,7 +79,7 @@ function meta(db) {
     locations: db.locations.map((l) => {
       const lots = db.inventory.filter((i) => i.location_id === l.id)
       return { ...l, lots: lots.length, qty: lots.reduce((s, i) => s + i.qty, 0) }
-    }).sort((a, b) => a.code.localeCompare(b.code)),
+    }).sort((a, b) => natural(a.code, b.code)),
   }
 }
 
@@ -95,7 +97,7 @@ function order(db, id) {
   const items = o.items.map((x) => {
     const lot = db.inventory.find((i) => i.id === x.inventory_id)
     return { ...x, location_code: lot ? loc(db, lot.location_id)?.code ?? null : null, stock: lot?.qty ?? null }
-  }).sort((a, b) => String(a.location_code).localeCompare(String(b.location_code)) || a.item_no.localeCompare(b.item_no))
+  }).sort((a, b) => natural(a.location_code, b.location_code) || a.item_no.localeCompare(b.item_no))
   return { ...o, items }
 }
 
@@ -181,7 +183,7 @@ function location(db, code) {
       .map((x) => ({ id: o.id, order_no: o.order_no, status: o.status, item_no: x.item_no, color_name: x.color_name, name: x.name, qty: x.qty })))
   const transfers = db.transfers.filter((t) => t.from_code === l.code || t.to_code === l.code).reverse().slice(0, 15)
     .map((t) => ({ ...t, display_name: db.users.find((u) => u.id === t.user_id)?.display_name }))
-  const same = db.locations.filter((x) => x.kind === l.kind).map((x) => x.code).sort()
+  const same = db.locations.filter((x) => x.kind === l.kind).map((x) => x.code).sort(natural)
   const pos = same.indexOf(l.code)
   return {
     ...l, lots,

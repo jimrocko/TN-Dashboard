@@ -2,83 +2,83 @@
  "_hinweis": "Erfundene Beispieldaten für Demo und Tests. Keine echten Bestellungen oder Kunden.",
  "locations": [
   {
-   "code": "A-01",
-   "name": "Regal A, Fach 01",
+   "code": "G112",
+   "name": "Gebraucht, Kästchen 112",
    "kind": "regal"
   },
   {
-   "code": "A-02",
-   "name": "Regal A, Fach 02",
+   "code": "G245",
+   "name": "Gebraucht, Kästchen 245",
    "kind": "regal"
   },
   {
-   "code": "A-03",
-   "name": "Regal A, Fach 03",
+   "code": "G318",
+   "name": "Gebraucht, Kästchen 318",
    "kind": "regal"
   },
   {
-   "code": "A-04",
-   "name": "Regal A, Fach 04",
+   "code": "G407",
+   "name": "Gebraucht, Kästchen 407",
    "kind": "regal"
   },
   {
-   "code": "A-05",
-   "name": "Regal A, Fach 05",
+   "code": "G563",
+   "name": "Gebraucht, Kästchen 563",
    "kind": "regal"
   },
   {
-   "code": "A-06",
-   "name": "Regal A, Fach 06",
+   "code": "G781",
+   "name": "Gebraucht, Kästchen 781",
    "kind": "regal"
   },
   {
-   "code": "B-01",
-   "name": "Regal B, Fach 01",
+   "code": "H12",
+   "name": "Regal H, Kästchen 12",
    "kind": "regal"
   },
   {
-   "code": "B-02",
-   "name": "Regal B, Fach 02",
+   "code": "H58",
+   "name": "Regal H, Kästchen 58",
    "kind": "regal"
   },
   {
-   "code": "B-03",
-   "name": "Regal B, Fach 03",
+   "code": "H140",
+   "name": "Regal H, Kästchen 140",
    "kind": "regal"
   },
   {
-   "code": "B-04",
-   "name": "Regal B, Fach 04",
+   "code": "H233",
+   "name": "Regal H, Kästchen 233",
    "kind": "regal"
   },
   {
-   "code": "B-05",
-   "name": "Regal B, Fach 05",
+   "code": "H509",
+   "name": "Regal H, Kästchen 509",
    "kind": "regal"
   },
   {
-   "code": "B-06",
-   "name": "Regal B, Fach 06",
+   "code": "H870",
+   "name": "Regal H, Kästchen 870",
    "kind": "regal"
   },
   {
-   "code": "C-01",
-   "name": "Regal C, Fach 01",
+   "code": "N4",
+   "name": "Neu, Kästchen 4",
    "kind": "regal"
   },
   {
-   "code": "C-02",
-   "name": "Regal C, Fach 02",
+   "code": "N150",
+   "name": "Neu, Kästchen 150",
    "kind": "regal"
   },
   {
-   "code": "C-03",
-   "name": "Regal C, Fach 03",
+   "code": "N402",
+   "name": "Neu, Kästchen 402",
    "kind": "regal"
   },
   {
-   "code": "C-04",
-   "name": "Regal C, Fach 04",
+   "code": "N777",
+   "name": "Neu, Kästchen 777",
    "kind": "regal"
   },
   {
@@ -95,6 +95,61 @@
    "code": "MK-3",
    "name": "Mischkiste 3",
    "kind": "mischkiste"
+  },
+  {
+   "code": "Plate1",
+   "name": "Plates, Kästchen 1",
+   "kind": "regal"
+  },
+  {
+   "code": "Plate2",
+   "name": "Plates, Kästchen 2",
+   "kind": "regal"
+  },
+  {
+   "code": "Plate3",
+   "name": "Plates, Kästchen 3",
+   "kind": "regal"
+  },
+  {
+   "code": "Plate4",
+   "name": "Plates, Kästchen 4",
+   "kind": "regal"
+  },
+  {
+   "code": "FT1",
+   "name": "Figurenteile, Kästchen 1",
+   "kind": "regal"
+  },
+  {
+   "code": "FT2",
+   "name": "Figurenteile, Kästchen 2",
+   "kind": "regal"
+  },
+  {
+   "code": "FT3",
+   "name": "Figurenteile, Kästchen 3",
+   "kind": "regal"
+  },
+  {
+   "code": "FG1",
+   "name": "Figuren gebraucht, Kästchen 1",
+   "kind": "regal"
+  },
+  {
+   "code": "FG2",
+   "name": "Figuren gebraucht, Kästchen 2",
+   "kind": "regal"
+  },
+  {
+   "code": "FN1",
+   "name": "Figuren neu, Kästchen 1",
+   "kind": "regal"
+  },
+  {
+   "code": "FN2",
+   "name": "Figuren neu, Kästchen 2",
+   "kind": "regal"
   }
  ],
  "inventory": [
@@ -105,7 +160,7 @@
    "color_name": "White",
    "name": "Brick 2 x 4",
    "category": "Brick",
-   "location": "B-02",
+   "location": "H58",
    "qty": 756,
    "price": 0.159,
    "updated_days_ago": 1
@@ -117,7 +172,7 @@
    "color_name": "Black",
    "name": "Brick 2 x 4",
    "category": "Brick",
-   "location": "A-03",
+   "location": "G318",
    "qty": 2469,
    "price": 0.029,
    "updated_days_ago": 12
@@ -129,7 +184,7 @@
    "color_name": "Yellow",
    "name": "Brick 2 x 4",
    "category": "Brick",
-   "location": "C-02",
+   "location": "N150",
    "qty": 19,
    "price": 0.27,
    "updated_days_ago": 10
@@ -141,7 +196,7 @@
    "color_name": "Blue",
    "name": "Brick 2 x 4",
    "category": "Brick",
-   "location": "C-02",
+   "location": "N150",
    "qty": 26,
    "price": 0.336,
    "updated_days_ago": 21
@@ -153,7 +208,7 @@
    "color_name": "White",
    "name": "Brick 2 x 2",
    "category": "Brick",
-   "location": "A-04",
+   "location": "G407",
    "qty": 27,
    "price": 0.261,
    "updated_days_ago": 34
@@ -165,7 +220,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Brick 2 x 2",
    "category": "Brick",
-   "location": "A-04",
+   "location": "G407",
    "qty": 1600,
    "price": 0.224,
    "updated_days_ago": 23
@@ -177,7 +232,7 @@
    "color_name": "Blue",
    "name": "Brick 1 x 2",
    "category": "Brick",
-   "location": "B-04",
+   "location": "H233",
    "qty": 179,
    "price": 0.112,
    "updated_days_ago": 40
@@ -189,7 +244,7 @@
    "color_name": "White",
    "name": "Brick 1 x 2",
    "category": "Brick",
-   "location": "B-06",
+   "location": "H870",
    "qty": 15,
    "price": 0.241,
    "updated_days_ago": 4
@@ -201,7 +256,7 @@
    "color_name": "Black",
    "name": "Brick 1 x 2",
    "category": "Brick",
-   "location": "A-06",
+   "location": "G781",
    "qty": 185,
    "price": 0.145,
    "updated_days_ago": 40
@@ -213,7 +268,7 @@
    "color_name": "Orange",
    "name": "Brick 1 x 2",
    "category": "Brick",
-   "location": "B-02",
+   "location": "H58",
    "qty": 48,
    "price": 0.291,
    "updated_days_ago": 20
@@ -225,7 +280,7 @@
    "color_name": "Yellow",
    "name": "Brick 1 x 4",
    "category": "Brick",
-   "location": "B-05",
+   "location": "H509",
    "qty": 395,
    "price": 0.312,
    "updated_days_ago": 29
@@ -237,7 +292,7 @@
    "color_name": "White",
    "name": "Brick 1 x 4",
    "category": "Brick",
-   "location": "A-05",
+   "location": "G563",
    "qty": 1410,
    "price": 0.205,
    "updated_days_ago": 16
@@ -249,7 +304,7 @@
    "color_name": "Blue",
    "name": "Brick 1 x 4",
    "category": "Brick",
-   "location": "C-02",
+   "location": "N150",
    "qty": 42,
    "price": 0.349,
    "updated_days_ago": 8
@@ -261,7 +316,7 @@
    "color_name": "Reddish Brown",
    "name": "Brick 1 x 1",
    "category": "Brick",
-   "location": "A-05",
+   "location": "G563",
    "qty": 2129,
    "price": 0.041,
    "updated_days_ago": 24
@@ -273,7 +328,7 @@
    "color_name": "White",
    "name": "Brick 1 x 1",
    "category": "Brick",
-   "location": "C-03",
+   "location": "N402",
    "qty": 447,
    "price": 0.258,
    "updated_days_ago": 34
@@ -285,7 +340,7 @@
    "color_name": "Black",
    "name": "Brick 1 x 1",
    "category": "Brick",
-   "location": "B-03",
+   "location": "H140",
    "qty": 54,
    "price": 0.117,
    "updated_days_ago": 10
@@ -297,7 +352,7 @@
    "color_name": "Green",
    "name": "Brick 1 x 1",
    "category": "Brick",
-   "location": "C-03",
+   "location": "N402",
    "qty": 5,
    "price": 0.188,
    "updated_days_ago": 6
@@ -309,7 +364,7 @@
    "color_name": "Yellow",
    "name": "Brick, Round 1 x 1 Open Stud",
    "category": "Brick, Round",
-   "location": "B-06",
+   "location": "H870",
    "qty": 402,
    "price": 0.127,
    "updated_days_ago": 1
@@ -321,7 +376,7 @@
    "color_name": "Tan",
    "name": "Brick, Round 1 x 1 Open Stud",
    "category": "Brick, Round",
-   "location": "A-04",
+   "location": "G407",
    "qty": 28,
    "price": 0.099,
    "updated_days_ago": 36
@@ -333,7 +388,7 @@
    "color_name": "Blue",
    "name": "Brick, Round 1 x 1 Open Stud",
    "category": "Brick, Round",
-   "location": "A-03",
+   "location": "G318",
    "qty": 683,
    "price": 0.273,
    "updated_days_ago": 8
@@ -345,7 +400,7 @@
    "color_name": "Red",
    "name": "Brick, Round 1 x 1 Open Stud",
    "category": "Brick, Round",
-   "location": "C-04",
+   "location": "N777",
    "qty": 1485,
    "price": 0.308,
    "updated_days_ago": 27
@@ -357,7 +412,7 @@
    "color_name": "Tan",
    "name": "Plate 2 x 4",
    "category": "Plate",
-   "location": "B-04",
+   "location": "Plate1",
    "qty": 392,
    "price": 0.317,
    "updated_days_ago": 28
@@ -369,7 +424,7 @@
    "color_name": "Blue",
    "name": "Plate 2 x 4",
    "category": "Plate",
-   "location": "A-04",
+   "location": "Plate2",
    "qty": 175,
    "price": 0.027,
    "updated_days_ago": 35
@@ -381,7 +436,7 @@
    "color_name": "Green",
    "name": "Plate 2 x 2",
    "category": "Plate",
-   "location": "A-01",
+   "location": "Plate3",
    "qty": 9,
    "price": 0.042,
    "updated_days_ago": 2
@@ -393,7 +448,7 @@
    "color_name": "Blue",
    "name": "Plate 2 x 2",
    "category": "Plate",
-   "location": "B-05",
+   "location": "Plate4",
    "qty": 323,
    "price": 0.241,
    "updated_days_ago": 13
@@ -405,7 +460,7 @@
    "color_name": "Red",
    "name": "Plate 1 x 2",
    "category": "Plate",
-   "location": "C-04",
+   "location": "Plate1",
    "qty": 56,
    "price": 0.052,
    "updated_days_ago": 27
@@ -417,7 +472,7 @@
    "color_name": "Green",
    "name": "Plate 1 x 2",
    "category": "Plate",
-   "location": "B-06",
+   "location": "Plate2",
    "qty": 2312,
    "price": 0.038,
    "updated_days_ago": 6
@@ -429,7 +484,7 @@
    "color_name": "Reddish Brown",
    "name": "Plate 1 x 2",
    "category": "Plate",
-   "location": "A-02",
+   "location": "Plate3",
    "qty": 30,
    "price": 0.083,
    "updated_days_ago": 34
@@ -441,7 +496,7 @@
    "color_name": "Blue",
    "name": "Plate 1 x 2",
    "category": "Plate",
-   "location": "C-03",
+   "location": "Plate4",
    "qty": 276,
    "price": 0.173,
    "updated_days_ago": 4
@@ -453,7 +508,7 @@
    "color_name": "Tan",
    "name": "Plate 1 x 1",
    "category": "Plate",
-   "location": "A-01",
+   "location": "Plate1",
    "qty": 181,
    "price": 0.18,
    "updated_days_ago": 13
@@ -465,7 +520,7 @@
    "color_name": "White",
    "name": "Plate 1 x 1",
    "category": "Plate",
-   "location": "C-01",
+   "location": "Plate2",
    "qty": 8,
    "price": 0.345,
    "updated_days_ago": 16
@@ -477,7 +532,7 @@
    "color_name": "Black",
    "name": "Plate 1 x 1",
    "category": "Plate",
-   "location": "C-03",
+   "location": "Plate3",
    "qty": 23,
    "price": 0.083,
    "updated_days_ago": 13
@@ -489,7 +544,7 @@
    "color_name": "Green",
    "name": "Plate 1 x 4",
    "category": "Plate",
-   "location": "A-02",
+   "location": "Plate4",
    "qty": 52,
    "price": 0.213,
    "updated_days_ago": 32
@@ -501,7 +556,7 @@
    "color_name": "Tan",
    "name": "Plate 1 x 4",
    "category": "Plate",
-   "location": "A-06",
+   "location": "Plate1",
    "qty": 8,
    "price": 0.043,
    "updated_days_ago": 4
@@ -513,7 +568,7 @@
    "color_name": "Blue",
    "name": "Plate, Round 1 x 1 Straight Side",
    "category": "Plate, Round",
-   "location": "A-02",
+   "location": "Plate2",
    "qty": 2117,
    "price": 0.213,
    "updated_days_ago": 33
@@ -525,7 +580,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Plate, Round 1 x 1 Straight Side",
    "category": "Plate, Round",
-   "location": "B-05",
+   "location": "Plate3",
    "qty": 21,
    "price": 0.108,
    "updated_days_ago": 8
@@ -537,7 +592,7 @@
    "color_name": "White",
    "name": "Plate, Round 1 x 1 Straight Side",
    "category": "Plate, Round",
-   "location": "B-04",
+   "location": "Plate4",
    "qty": 34,
    "price": 0.171,
    "updated_days_ago": 36
@@ -549,7 +604,7 @@
    "color_name": "Orange",
    "name": "Plate, Round 1 x 1 Straight Side",
    "category": "Plate, Round",
-   "location": "A-04",
+   "location": "Plate1",
    "qty": 1273,
    "price": 0.108,
    "updated_days_ago": 22
@@ -561,7 +616,7 @@
    "color_name": "Blue",
    "name": "Tile 1 x 2 with Groove",
    "category": "Tile",
-   "location": "B-04",
+   "location": "H233",
    "qty": 1639,
    "price": 0.345,
    "updated_days_ago": 33
@@ -573,7 +628,7 @@
    "color_name": "Light Bluish Gray",
    "name": "Tile 1 x 2 with Groove",
    "category": "Tile",
-   "location": "A-01",
+   "location": "G112",
    "qty": 1626,
    "price": 0.054,
    "updated_days_ago": 8
@@ -585,7 +640,7 @@
    "color_name": "White",
    "name": "Tile 2 x 2 with Groove",
    "category": "Tile",
-   "location": "A-05",
+   "location": "G563",
    "qty": 1262,
    "price": 0.133,
    "updated_days_ago": 40
@@ -597,7 +652,7 @@
    "color_name": "Orange",
    "name": "Tile 2 x 2 with Groove",
    "category": "Tile",
-   "location": "B-03",
+   "location": "H140",
    "qty": 37,
    "price": 0.05,
    "updated_days_ago": 27
@@ -609,7 +664,7 @@
    "color_name": "Tan",
    "name": "Tile 2 x 2 with Groove",
    "category": "Tile",
-   "location": "B-03",
+   "location": "H140",
    "qty": 7,
    "price": 0.23,
    "updated_days_ago": 16
@@ -621,7 +676,7 @@
    "color_name": "Reddish Brown",
    "name": "Tile 1 x 1 with Groove",
    "category": "Tile",
-   "location": "C-02",
+   "location": "N150",
    "qty": 40,
    "price": 0.332,
    "updated_days_ago": 9
@@ -633,7 +688,7 @@
    "color_name": "Tan",
    "name": "Tile 1 x 1 with Groove",
    "category": "Tile",
-   "location": "A-02",
+   "location": "G245",
    "qty": 249,
    "price": 0.062,
    "updated_days_ago": 19
@@ -645,7 +700,7 @@
    "color_name": "Black",
    "name": "Slope 45 2 x 1",
    "category": "Slope",
-   "location": "B-02",
+   "location": "H58",
    "qty": 1848,
    "price": 0.312,
    "updated_days_ago": 26
@@ -657,7 +712,7 @@
    "color_name": "Light Bluish Gray",
    "name": "Slope 45 2 x 1",
    "category": "Slope",
-   "location": "A-05",
+   "location": "G563",
    "qty": 143,
    "price": 0.028,
    "updated_days_ago": 21
@@ -669,7 +724,7 @@
    "color_name": "Blue",
    "name": "Slope 45 2 x 1",
    "category": "Slope",
-   "location": "C-02",
+   "location": "N150",
    "qty": 56,
    "price": 0.28,
    "updated_days_ago": 6
@@ -681,7 +736,7 @@
    "color_name": "Black",
    "name": "Slope 45 2 x 2",
    "category": "Slope",
-   "location": "B-01",
+   "location": "H12",
    "qty": 295,
    "price": 0.291,
    "updated_days_ago": 14
@@ -693,7 +748,7 @@
    "color_name": "Reddish Brown",
    "name": "Slope 45 2 x 2",
    "category": "Slope",
-   "location": "B-02",
+   "location": "H58",
    "qty": 397,
    "price": 0.128,
    "updated_days_ago": 4
@@ -705,7 +760,7 @@
    "color_name": "Blue",
    "name": "Slope 45 2 x 2",
    "category": "Slope",
-   "location": "B-03",
+   "location": "H140",
    "qty": 388,
    "price": 0.244,
    "updated_days_ago": 34
@@ -717,7 +772,7 @@
    "color_name": "Black",
    "name": "Technic, Pin with Friction Ridges",
    "category": "Technic, Pin",
-   "location": "A-06",
+   "location": "G781",
    "qty": 42,
    "price": 0.217,
    "updated_days_ago": 22
@@ -729,7 +784,7 @@
    "color_name": "Light Bluish Gray",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "C-01",
+   "location": "N4",
    "qty": 41,
    "price": 0.254,
    "updated_days_ago": 0
@@ -741,7 +796,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "B-01",
+   "location": "H12",
    "qty": 686,
    "price": 0.324,
    "updated_days_ago": 39
@@ -753,7 +808,7 @@
    "color_name": "Tan",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "B-05",
+   "location": "H509",
    "qty": 1630,
    "price": 0.122,
    "updated_days_ago": 26
@@ -765,7 +820,7 @@
    "color_name": "White",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "B-05",
+   "location": "H509",
    "qty": 30,
    "price": 0.159,
    "updated_days_ago": 24
@@ -777,7 +832,7 @@
    "color_name": "Red",
    "name": "Technic, Brick 1 x 2 with Hole",
    "category": "Technic, Brick",
-   "location": "A-01",
+   "location": "G112",
    "qty": 206,
    "price": 0.279,
    "updated_days_ago": 38
@@ -789,7 +844,7 @@
    "color_name": "Green",
    "name": "Technic, Brick 1 x 2 with Hole",
    "category": "Technic, Brick",
-   "location": "B-05",
+   "location": "H509",
    "qty": 2211,
    "price": 0.091,
    "updated_days_ago": 30
@@ -801,7 +856,7 @@
    "color_name": "Yellow",
    "name": "Technic, Brick 1 x 2 with Hole",
    "category": "Technic, Brick",
-   "location": "A-06",
+   "location": "G781",
    "qty": 1562,
    "price": 0.239,
    "updated_days_ago": 39
@@ -813,7 +868,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Technic, Brick 1 x 2 with Hole",
    "category": "Technic, Brick",
-   "location": "B-05",
+   "location": "H509",
    "qty": 10,
    "price": 0.286,
    "updated_days_ago": 9
@@ -825,7 +880,7 @@
    "color_name": "Black",
    "name": "Panel 1 x 2 x 1 with Rounded Corners",
    "category": "Panel",
-   "location": "C-04",
+   "location": "N777",
    "qty": 97,
    "price": 0.312,
    "updated_days_ago": 36
@@ -837,7 +892,7 @@
    "color_name": "Blue",
    "name": "Panel 1 x 2 x 1 with Rounded Corners",
    "category": "Panel",
-   "location": "B-01",
+   "location": "H12",
    "qty": 256,
    "price": 0.101,
    "updated_days_ago": 0
@@ -849,7 +904,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Window 1 x 2 x 2 Flat Front",
    "category": "Window",
-   "location": "A-06",
+   "location": "G781",
    "qty": 56,
    "price": 0.204,
    "updated_days_ago": 7
@@ -861,7 +916,7 @@
    "color_name": "Blue",
    "name": "Window 1 x 2 x 2 Flat Front",
    "category": "Window",
-   "location": "C-03",
+   "location": "N402",
    "qty": 297,
    "price": 0.222,
    "updated_days_ago": 32
@@ -1045,6 +1100,246 @@
    "qty": 6,
    "price": 0.12,
    "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3626c",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Minifigure, Head",
+   "category": "Minifigure, Body Part",
+   "location": "FT1",
+   "qty": 24,
+   "price": 0.431,
+   "updated_days_ago": 12
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FT2",
+   "qty": 45,
+   "price": 0.098,
+   "updated_days_ago": 17
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FT2",
+   "qty": 10,
+   "price": 0.215,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FT2",
+   "qty": 36,
+   "price": 0.159,
+   "updated_days_ago": 2
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FT3",
+   "qty": 31,
+   "price": 0.235,
+   "updated_days_ago": 7
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FT3",
+   "qty": 9,
+   "price": 0.284,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3624",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Minifigure, Headgear Cap - Police Hat",
+   "category": "Minifigure, Headgear",
+   "location": "FT3",
+   "qty": 56,
+   "price": 0.289,
+   "updated_days_ago": 7
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3626c",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Minifigure, Head",
+   "category": "Minifigure, Body Part",
+   "location": "FG1",
+   "qty": 44,
+   "price": 0.312,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FG1",
+   "qty": 40,
+   "price": 0.297,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FG1",
+   "qty": 18,
+   "price": 0.097,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FG1",
+   "qty": 22,
+   "price": 0.235,
+   "updated_days_ago": 17
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FG2",
+   "qty": 11,
+   "price": 0.291,
+   "updated_days_ago": 17
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FG2",
+   "qty": 56,
+   "price": 0.332,
+   "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3626c",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Minifigure, Head",
+   "category": "Minifigure, Body Part",
+   "location": "FN1",
+   "qty": 41,
+   "price": 0.291,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FN1",
+   "qty": 27,
+   "price": 0.116,
+   "updated_days_ago": 2
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FN1",
+   "qty": 40,
+   "price": 0.102,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "973",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Minifigure, Torso",
+   "category": "Minifigure, Body Part",
+   "location": "FN1",
+   "qty": 35,
+   "price": 0.332,
+   "updated_days_ago": 13
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FN2",
+   "qty": 53,
+   "price": 0.196,
+   "updated_days_ago": 18
+  },
+  {
+   "item_type": "PART",
+   "item_no": "970c00",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Minifigure, Hips and Legs",
+   "category": "Minifigure, Body Part",
+   "location": "FN2",
+   "qty": 33,
+   "price": 0.214,
+   "updated_days_ago": 7
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3624",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Minifigure, Headgear Cap - Police Hat",
+   "category": "Minifigure, Headgear",
+   "location": "FN2",
+   "qty": 54,
+   "price": 0.147,
+   "updated_days_ago": 7
   }
  ],
  "orders": [
@@ -1407,10 +1702,10 @@
  ],
  "stocktakes": [
   {
-   "location": "A-02"
+   "location": "G245"
   },
   {
-   "location": "B-04"
+   "location": "H233"
   },
   {
    "location": "MK-2"

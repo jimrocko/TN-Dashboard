@@ -54,6 +54,12 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Neue Funktionen sparsam:** Der Inhaber möchte keine ungefragten Zusatzfunktionen. Lieber nachfragen.
 
 ## Wie Dinge funktionieren
+### Lagerzimmer und Kästchen-Codes (Skizze des Inhabers, Sitzung 4)
+- Ein Raum mit Regalen voller kleiner Kästchen. Jeder Lagerort ist **ein Kästchen**, Code = Bereich + Nummer ohne Bindestrich: `G245`, `H12`, `N800`, `FT3`, `Plate2`. Mischkisten bleiben `MK-1` usw. (nicht im Raum eingezeichnet).
+- Lage im Raum: **linke Wand G100–G999** (G = gebraucht), **rechte Wand oben H0–H999** (Bedeutung von H unbekannt, beim Inhaber nachfragen), **rechte Wand unten N0–N999** (N = neu), **unten links FG, FN, FT, Plate** mit Nummern (FT = Figurenteile; FG/FN als „Figuren gebraucht/neu“ angenommen, nicht bestätigt).
+- Zentral in `frontend/src/utils/areas.js` (`AREAS`, `parseCode`). Raumplan: `components/RoomPlan.vue` (in Umlagern): Bereich → Hunderter-Block → 10×10 Kästchen → `/lagerort/<code>`. Nicht angelegte Kästchen sind grau und nicht klickbar.
+- Codes immer **natürlich sortieren** (N4 vor N150): PHP `natcasesort`/`strnatcasecmp`, JS `localeCompare(…, 'de', { numeric: true })`. SQL `ORDER BY code` reicht nicht.
+- Beispieldaten (`demo-data.json`) nutzen diese Codes; alte A-/B-/C-Fächer wurden auf G/H/N umgeschrieben.
 ### Teile-Scanner (`/scanner`, `ScannerView.vue`)
 1. Foto per Live-Kamera („Erkennen“) oder Datei/Kamera-App („Foto wählen“, `capture="environment"`). Bild wird auf max. 1024 px JPEG verkleinert (`utils/camera.js`).
 2. Upload `POST api/?r=recognize` (multipart, Feld `image`) → `Brickognize::predict()` schickt es an `https://api.brickognize.com/predict/` (Feld `query_image`), Antwort wird normalisiert (`id, name, type, category, score, img_url, bricklink_url`) und mit eigenen Losen verknüpft (`Shop::lotsByItem`).
@@ -105,4 +111,4 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Sitzung 3, Teil 3**: Stil-Umschalter und Code-Feld aus den Dev-Einstellungen entfernt, versteckte Versionszeile (5× antippen) wiederhergestellt, XP-Stil aus README und Screenshots entfernt.
 - **Sitzung 3, Teil 4**: Dev-Bereich sperrt sich nach 15 Minuten ohne Aktivität und beim Abmelden; Lücke geschlossen (Anmelden ohne Abmelden übernahm die Entsperrung des Vorgängers).
 - **Sitzung 3, Teil 5**: Lagerort-Seite und überall anklickbare Lagerorte, Teile, Kategorien, Balken; XP mit „Ausschalten“, automatischem Zurückschalten nach 15 Minuten und bei An-/Abmeldung; CSV-Export auch in der Demo; Demo als `TN-Dashboard-Demo.html` im Hauptordner mit Ein-Klick-Link im README.
-- **Sitzung 4** (2026-10-15): Lagerplan in Umlagern (`TransferView.vue`): alle Fächer nach Regal gruppiert, Mischkisten mit Zähler offener Vorschläge, jede Kachel öffnet `/lagerort/<code>` (im XP-Stil als eigenes Fenster). Nutzt nur `inventory/meta` und `transfers/suggestions`, keine Backend-Änderung.
+- **Sitzung 4** (2026-10-15): Lagerplan in Umlagern (`TransferView.vue`): alle Fächer nach Regal gruppiert, Mischkisten mit Zähler offener Vorschläge, jede Kachel öffnet `/lagerort/<code>` (im XP-Stil als eigenes Fenster). Nutzt nur `inventory/meta` und `transfers/suggestions`, keine Backend-Änderung. Danach Raumplan nach der Skizze des Lagerzimmers (`RoomPlan.vue`, `utils/areas.js`), Beispieldaten auf echte Kästchen-Codes (G/H/N/FG/FN/FT/Plate) umgestellt, natürliche Sortierung für Nachbar-Kästchen und Laufweg in Aufträgen. KI-Gedächtnis: Regel „zuerst git pull“.

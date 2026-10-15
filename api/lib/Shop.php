@@ -120,6 +120,8 @@ final class Shop
                 l.code AS location_code, i.qty AS stock
             FROM {order_items} x LEFT JOIN {inventory} i ON i.id = x.inventory_id LEFT JOIN {locations} l ON l.id = i.location_id
             WHERE x.order_id = ? ORDER BY l.code, x.item_no', [$id])->fetchAll(), ['id', 'inventory_id', 'qty', 'stock'], ['price']);
+        // Laufweg: Kästchen in natürlicher Reihenfolge (N4 vor N150)
+        usort($o['items'], fn ($a, $b) => strnatcasecmp((string) $a['location_code'], (string) $b['location_code']) ?: strcmp($a['item_no'], $b['item_no']));
         return $o;
     }
 
@@ -297,7 +299,10 @@ final class Shop
             WHERE t.from_location_id = ? OR t.to_location_id = ? ORDER BY t.id DESC LIMIT 15', [$id, $id])->fetchAll(), ['id', 'qty']);
         $suggestions = array_values(array_filter(self::suggestions(),
             fn ($s) => $s['lot']['location_id'] === $id || $s['to_location_id'] === $id));
-        $neighbors = q('SELECT code FROM {locations} WHERE kind = ? ORDER BY code', [$loc['kind']])->fetchAll(PDO::FETCH_COLUMN);
+        // Natürliche Reihenfolge: N4 vor N150, Plate2 vor Plate10.
+        $neighbors = q('SELECT code FROM {locations} WHERE kind = ?', [$loc['kind']])->fetchAll(PDO::FETCH_COLUMN);
+        natcasesort($neighbors);
+        $neighbors = array_values($neighbors);
         $pos = array_search($loc['code'], $neighbors, true);
         return $loc + [
             'lots'        => $lots,

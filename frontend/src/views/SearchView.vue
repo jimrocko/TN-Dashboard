@@ -76,7 +76,7 @@ watch(() => route.query.q, async (q) => {
     </section>
 
     <div v-if="route.query.q && !loading && !r.parts.length && !r.locations.length && !r.orders.length" class="panel empty">
-      Nichts gefunden. Probiere eine Teil-Nr. wie „3001“, eine Farbe wie „Red“ oder einen Lagerort wie „MK-1“.
+      Nichts gefunden. Probiere eine Teil-Nr. wie „3001“, eine Farbe wie „Red“ oder ein Kästchen wie „G245“.
     </div>
   </div>
 </template>
