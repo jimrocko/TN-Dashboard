@@ -4,6 +4,14 @@ Diese Datei ist das gemeinsame Gedächtnis für alle Agents (Claude Code, Codex,
 Vor dem Start lesen, nach jeder Arbeitssitzung **„Verlauf“ und „Offene Punkte“ aktualisieren** und mit committen.
 `AGENTS.md` verweist hierher.
 
+**Ausführliches Gedächtnis in `docs/agents/`:**
+- [`wuensche.md`](docs/agents/wuensche.md): jeder Wunsch des Inhabers in Reihenfolge, mit Umsetzung (zeigt, wie er denkt)
+- [`entscheidungen.md`](docs/agents/entscheidungen.md): festgelegte Regeln, technische Entscheidungen mit Begründung, verworfene Ideen
+- [`arbeitsweise.md`](docs/agents/arbeitsweise.md): Kommunikation, Git/CI, Ablauf nach jeder Änderung, Test-Tricks, Grenzen der Cloud-Umgebung
+- [`smoke-test.mjs`](docs/agents/smoke-test.mjs): Browser-Schnelltest für Demo und Server (`node docs/agents/smoke-test.mjs [url]`)
+
+**Stand (15.10.2026):** Alles aus Sitzung 3 ist über PR #1 im Standard-Branch `claude/charming-einstein-8qzsen`. Das Repo ist öffentlich, der Knopf „Demo starten“ im README funktioniert. GitHub Pages ist noch nicht eingeschaltet.
+
 ## Worum es geht
 - Web-App (PWA) für den Lego-Shop einer Schule. Nutzer: **Teilnehmer** (Schüler) und **Lehrer**.
 - Bündelt Shop-Werkzeuge (Inventar, Umlagern, Inventur, Aufträge, Analyse, Teile-Scanner) und protokolliert jede Aktion pro Teilnehmer, damit der Lehrer sieht, wer was gemacht hat.
@@ -32,6 +40,7 @@ frontend/           Vue 3 + Vite + Pinia + vue-router (Hash-Routing)
   src/demo/dev.js   Dev-Bereich im Demo-Backend
   src/utils/devtools.js  Dev-Optionen (Debug-Anzeige, Verzögerung) und API-Protokoll
   src/styles/theme.css  Normales Design (Tokens), xp.css = XP-Stil (nur mit data-tn-style="xp")
+docs/agents/        Gedächtnis für Agents (siehe oben)
 TN-Dashboard-Demo.html  Komplette App als eine HTML-Datei mit Fake-Daten (npm run build:demo erzeugt sie, wird eingecheckt)
 .github/workflows/ build.yml = Build-Prüfung (PHP-Lint, Build, Demo, install.php), demo-pages.yml = Demo auf GitHub Pages
 start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
@@ -91,7 +100,8 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 
 ## Offene Punkte
 - **Integration in den Schul-Webserver** macht der Inhaber später gemeinsam mit einem Agent (Hochladen von `dist/`, `.env`, HTTPS, Firewall für Brickognize).
-- Repo öffentlich machen (Inhaber) und unter Settings → Pages „GitHub Actions“ wählen, damit der Demo-Link funktioniert.
+- **GitHub Pages einschalten** (Inhaber bzw. Repo-Admin `jimrocko`): Settings → Pages → Source „GitHub Actions“, dann Workflow „Demo auf GitHub Pages“ einmal starten. Bis dahin schlägt `demo-pages.yml` auf dem Standard-Branch fehl (erwartet). Repo ist bereits öffentlich.
+- Optional: versteckte Codes in `cheats.js` nur als Prüfsumme speichern, falls sie auch im öffentlichen Quellcode nicht lesbar sein sollen (Inhaber noch nicht gefragt; Hinweis wurde gegeben).
 - Minifig-Finder und Pickliste einbinden (Status `extern`). Braucht Zugang zu den bestehenden Programmen.
 - Teileerkennung im echten Schulnetz testen (Firewall für `api.brickognize.com`, HTTPS für Kamera).
 - Optional: Brickognize-Ergebnisse cachen (gleiche Fotos), Lizenz/Fair-Use von Brickognize beachten.
@@ -104,3 +114,4 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Sitzung 3, Teil 3**: Stil-Umschalter und Code-Feld aus den Dev-Einstellungen entfernt, versteckte Versionszeile (5× antippen) wiederhergestellt, XP-Stil aus README und Screenshots entfernt.
 - **Sitzung 3, Teil 4**: Dev-Bereich sperrt sich nach 15 Minuten ohne Aktivität und beim Abmelden; Lücke geschlossen (Anmelden ohne Abmelden übernahm die Entsperrung des Vorgängers).
 - **Sitzung 3, Teil 5**: Lagerort-Seite und überall anklickbare Lagerorte, Teile, Kategorien, Balken; XP mit „Ausschalten“, automatischem Zurückschalten nach 15 Minuten und bei An-/Abmeldung; CSV-Export auch in der Demo; Demo als `TN-Dashboard-Demo.html` im Hauptordner mit Ein-Klick-Link im README.
+- **Sitzung 3, Teil 6**: PR #1 gemerged, Repo öffentlich (vom Inhaber). Gedächtnis-Ordner `docs/agents/` mit Wunsch-Chronik, Entscheidungen, Arbeitsweise und Browser-Schnelltest angelegt.
