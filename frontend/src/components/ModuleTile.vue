@@ -35,5 +35,26 @@ p { margin: 0; color: var(--text-muted); font-size: 16px; line-height: 1.5; }
 .dot.aktiv { display: block; background: var(--ok); }
 .dot.extern { display: block; background: var(--warn); }
 .arrow { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface-hover); border: 1px solid var(--border); }
-@media (max-width: 900px) { .tile { min-height: 0; padding: 24px 18px 18px 30px; } h2 { font-size: 21px; } .icon { margin-bottom: 16px; } }
+h2 { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+/* Kompakte Kacheln für iPad (auch mit Homebutton) und Handy: kleiner, mit Luft drumherum */
+@media (max-width: 1199px) {
+  .tile { min-height: 0; padding: 16px 14px 14px 24px; }
+  .icon { width: 30px; height: 30px; margin-bottom: 12px; }
+  h2 { font-size: 17px; margin-bottom: 8px; }
+  h2::before { left: -12px; }
+  p { font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .foot { padding-top: 12px; }
+  .status { font-size: 12px; gap: 6px; }
+  .arrow { width: 30px; height: 30px; }
+  .arrow svg { width: 15px; height: 15px; }
+}
+@media (max-width: 699px) {
+  .tile { padding: 14px 12px 12px 20px; }
+  .icon { width: 26px; height: 26px; margin-bottom: 10px; }
+  h2 { font-size: 15px; }
+  h2::before { left: -10px; }
+  p { font-size: 12px; }
+  .status { font-size: 11px; }
+  .arrow { width: 28px; height: 28px; }
+}
 </style>

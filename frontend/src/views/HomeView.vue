@@ -37,8 +37,9 @@ onMounted(load)
 </template>
 
 <style scoped>
+/* 4 Kacheln pro Reihe auf PC und jedem iPad (auch mit Homebutton, quer und hochkant), 2 auf dem Handy */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin-top: 36px; }
-@media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
-@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); margin-top: 20px; } }
+@media (max-width: 1199px) { .grid { gap: 14px; margin-top: 22px; } }
+@media (max-width: 699px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; } }
 .seed { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px var(--pad); flex-wrap: wrap; margin-top: 24px; border-color: var(--accent); }
 </style>

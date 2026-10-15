@@ -35,5 +35,6 @@ input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: v
 input::placeholder { color: var(--text-faint); }
 .scan { color: var(--text-muted); display: grid; place-items: center; }
 .scan:hover { color: var(--text); }
-@media (max-width: 560px) { .search { height: 60px; padding: 0 18px; gap: 10px; } input { font-size: 16px; } }
+@media (max-width: 1199px) { .search { height: 60px; padding: 0 22px; gap: 14px; border-radius: 30px; } input { font-size: 17px; } .icon, .scan svg { width: 24px; height: 24px; } }
+@media (max-width: 560px) { .search { height: 52px; padding: 0 16px; gap: 10px; } input { font-size: 16px; } }
 </style>
