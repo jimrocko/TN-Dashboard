@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/lib/response.php';
+require __DIR__ . '/lib/env.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/ActivityLog.php';

@@ -3,3 +3,5 @@ dist/
 api/config.php
 api/data/*.sqlite
 .DS_Store
+.env
+.env.*

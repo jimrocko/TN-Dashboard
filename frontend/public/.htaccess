@@ -1,0 +1,4 @@
+# .env und andere versteckte Dateien nie ausliefern (falls die .env im App-Ordner liegt)
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>

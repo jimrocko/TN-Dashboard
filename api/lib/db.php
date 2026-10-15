@@ -4,11 +4,9 @@ function config(): array
 {
     static $config = null;
     if ($config === null) {
+        // Eigene config.php, sonst die Vorlage mit Standardwerten; danach Werte aus der .env übernehmen.
         $file = __DIR__ . '/../config.php';
-        if (!is_file($file)) {
-            json_error('Server nicht konfiguriert: api/config.php fehlt', 500);
-        }
-        $config = require $file;
+        $config = env_apply(require (is_file($file) ? $file : __DIR__ . '/../config.example.php'));
     }
     return $config;
 }
@@ -20,11 +18,12 @@ function db(): PDO
         return $pdo;
     }
     $c = config()['db'];
-    if ($c['driver'] === 'sqlite') {
+    if (($c['driver'] ?? 'mysql') === 'sqlite') {
         $pdo = new PDO('sqlite:' . $c['path']);
         $pdo->exec('PRAGMA foreign_keys = ON');
     } else {
-        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $c['host'], $c['port'], $c['name']);
+        // 'mysql' und 'mariadb' (wie in Laravel-.env üblich) laufen beide über pdo_mysql.
+        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $c['host'], (int) ($c['port'] ?: 3306), $c['name']);
         $pdo = new PDO($dsn, $c['user'], $c['password']);
     }
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
