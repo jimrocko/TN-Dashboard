@@ -55,7 +55,7 @@ defineProps({
 
 <style scoped>
 .klemmi { display: block; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
-.body { animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.body { animation: bob 4s ease-in-out infinite; transform-origin: 50% 100%; }
 .eyes { transform-box: fill-box; transform-origin: center; animation: blink 4.2s infinite; }
 .mouth { opacity: 0; transform-box: fill-box; transform-origin: center; }
 .talking .smile { opacity: 0; }
@@ -65,20 +65,20 @@ defineProps({
 .arm { transform-box: view-box; }
 .arm-l { transform-origin: 28px 52px; }
 .arm-r { transform-origin: 72px 52px; }
-.m-wave .arm-r { animation: wave 0.9s ease-in-out infinite alternate; }
+.m-wave .arm-r { animation: wave 3s ease-in-out 1; }
 .m-point .arm-r { transform: rotate(-95deg); transition: transform 0.3s; }
-.m-cheer .arm-r { animation: cheer-r 0.5s ease-in-out infinite alternate; }
-.m-cheer .arm-l { animation: cheer-l 0.5s ease-in-out infinite alternate; }
-.m-cheer .body { animation: jump 0.5s ease-in-out infinite alternate; }
+.m-cheer .arm-r { animation: cheer-r 3s ease-in-out 1 forwards; }
+.m-cheer .arm-l { animation: cheer-l 3s ease-in-out 1 forwards; }
+.m-cheer .body { animation: jump 3s ease-in-out 1; }
 
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
 @keyframes talk { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
 @keyframes nod { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
-@keyframes wave { from { transform: rotate(-150deg); } to { transform: rotate(-115deg); } }
-@keyframes cheer-r { from { transform: rotate(-150deg); } to { transform: rotate(-165deg); } }
-@keyframes cheer-l { from { transform: rotate(150deg); } to { transform: rotate(165deg); } }
-@keyframes jump { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+@keyframes wave { 0%, 100% { transform: rotate(0); } 15%, 45%, 75% { transform: rotate(-150deg); } 30%, 60% { transform: rotate(-115deg); } 85% { transform: rotate(-150deg); } }
+@keyframes cheer-r { 0% { transform: rotate(0); } 12%, 40%, 70%, 100% { transform: rotate(-150deg); } 26%, 55% { transform: rotate(-165deg); } }
+@keyframes cheer-l { 0% { transform: rotate(0); } 12%, 40%, 70%, 100% { transform: rotate(150deg); } 26%, 55% { transform: rotate(165deg); } }
+@keyframes jump { 0%, 40%, 100% { transform: translateY(0); } 15% { transform: translateY(-10px); } 28% { transform: translateY(0); } 34% { transform: translateY(-5px); } }
 
 :global([data-tn-motion='reduced']) .klemmi *, :global([data-tn-motion='reduced']) .klemmi { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .klemmi, .klemmi * { animation: none !important; } }

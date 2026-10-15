@@ -17,7 +17,7 @@
 <a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Tutorial.html"><img src="https://img.shields.io/badge/%F0%9F%A7%B1%20Tutorial%20starten-Klemmi%20zeigt%20dir%20alles-d01c0a?style=for-the-badge" alt="Tutorial starten" height="44"></a>
 <img src="docs/images/klemmi.png" alt="Klemmi winkt" height="96" align="absmiddle">
 
-Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
+Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer).<br>
 <sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
 Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch die App. Zuerst wählst du **Lehrer** oder **Schüler**, dann tippst du alles selbst.<br>
 Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
@@ -29,6 +29,11 @@ Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Da
 ## Worum geht es?
 
 Im Lego-Shop der Schule arbeiten die Teilnehmer mit BrickLink, BrickStore und vielen kleinen Werkzeugen. Das **TN Dashboard** bündelt das in einer App, die auf iPad, PC und Handy im Browser läuft und sich wie eine App auf den Home-Bildschirm legen lässt.
+
+<img src="frontend/public/apple-touch-icon.png" alt="App-Icon: Lego-Stein mit Klemmi" width="72" align="left">
+
+Auf dem Home-Bildschirm (Safari → Teilen → „Zum Home-Bildschirm“) erscheint das App-Icon: der Lego-Stein des TN Dashboards, unten rechts winkt Klemmi aus der Ecke. Das gilt für die App auf dem Schulserver genauso wie für Demo und Tutorial.
+<br clear="left">
 
 Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren.
 
@@ -52,16 +57,11 @@ Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr.
 | **Meine Aktivitäten** | Das eigene Protokoll. |
 | **Einstellungen** | Hell/Dunkel, Dichte, Schriftgröße und Animationen, pro Gerät. |
 | **Lehrer-Ansicht** | Teilnehmer anlegen, Protokoll aller oder einzelner Teilnehmer, CSV-Export, Dev-Rolle vergeben. |
-| **Dev-Bereich** | Werkzeuge für Entwickler, gesichert per Dev-Code. Siehe unten. |
+| **Dev-Bereich** | Werkzeuge für Entwickler, nur für Lehrer und Teilnehmer mit Dev-Rolle. Siehe unten. |
 
 ### Dev-Bereich
 
-Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben **Lehrer** und **Teilnehmer, denen ein Lehrer die Dev-Rolle gibt** (Lehrer-Ansicht, Spalte „Dev“). Zusätzlich ist er mit einem **Dev-Code** gesichert, den man pro Sitzung eingibt:
-
-- Auf dem Schulserver legt ein Lehrer den Code beim ersten Öffnen fest (4 bis 8 Ziffern). Er wird nur verschlüsselt (gehasht) in der Datenbank gespeichert. Ändert der Lehrer den Code, müssen ihn alle anderen neu eingeben.
-- Im Testbetrieb (lokal mit `./start.sh` und in der Demo) lautet der Code `0000`, solange kein eigener gesetzt ist.
-- Der Bereich sperrt sich von selbst nach **15 Minuten ohne Aktivität** (einstellbar mit `dev_lock_minutes` in `api/config.php`) und immer beim **Abmelden** oder wenn sich jemand anderes am Gerät anmeldet.
-- Nach 5 falschen Versuchen ist die Eingabe für 60 Sekunden gesperrt. Jede Eingabe steht im Protokoll.
+Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben **Lehrer** und **Teilnehmer, denen ein Lehrer die Dev-Rolle gibt** (Lehrer-Ansicht, Spalte „Dev“). Alle anderen sehen den Knopf gar nicht, und jede Dev-Route prüft die Rolle am Server. Einen zusätzlichen Code gibt es nicht: Man ist ohnehin mit dem eigenen Passwort angemeldet.
 
 | Reiter | Inhalt |
 |---|---|
@@ -69,7 +69,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 | **Tests** | Selbsttests mit einem Tipp: Datenbank lesen und schreiben, Sitzung, Temp-Ordner, BrickLink, Teileerkennung, alle API-Endpunkte (nur lesend) und Gerätefunktionen wie Speicher, Kamera und Offline-Modus. |
 | **Daten** | Alle Tabellen der App ansehen, blättern, filtern und als JSON kopieren. Nur lesen; Passwörter und gespeicherte Geheimnisse werden nie angezeigt. |
 | **API** | API-Konsole für lesende Aufrufe, Liste der letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen. |
-| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen, Dev-Code ändern, Bereich sperren. |
+| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen. |
 
 ## Screenshots
 
@@ -91,7 +91,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
     <td width="50%"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht"><br><sub><b>Lehrer-Ansicht</b>: wer hat was gemacht</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/dev-code.png" alt="Dev-Code"><br><sub><b>Dev-Bereich</b>: gesichert per Dev-Code</sub></td>
+    <td width="50%"><img src="docs/images/tutorial.png" alt="Tutorial mit Klemmi"><br><sub><b>Tutorial</b>: Klemmi zeigt, wohin du tippst</sub></td>
     <td width="50%"><img src="docs/images/dev-bereich.png" alt="Dev-Bereich Tests"><br><sub><b>Dev-Bereich</b>: Selbsttests</sub></td>
   </tr>
 </table>
@@ -107,8 +107,8 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 |---|:-:|:-:|:-:|
 | Alle Shop-Bereiche | ✓ | ✓ | ✓ |
 | Eigenes Protokoll | ✓ | ✓ | ✓ |
-| Dev-Bereich (mit Dev-Code) | | ✓ | ✓ |
-| Lehrer-Ansicht, Konten, Dev-Rolle vergeben, Dev-Code festlegen | | | ✓ |
+| Dev-Bereich | | ✓ | ✓ |
+| Lehrer-Ansicht, Konten, Dev-Rolle vergeben | | | ✓ |
 
 ## So läuft es auf dem Schulserver
 
@@ -137,7 +137,7 @@ start.sh    lokal starten (Mac/Linux), start.bat für Windows
 3. `https://<server>/tn-dashboard/api/install.php` öffnen.
    - Die Seite findet die `.env` des Servers selbst (im App-Ordner, im Web-Root oder eine Ebene darüber) und zeigt, welche Werte gefunden wurden. Angezeigt werden nur die Namen, nie die Werte.
    - Sie legt die Tabellen (`tn_…`) und das erste Lehrer-Konto an.
-4. Als Lehrer anmelden, im Dev-Bereich den Dev-Code festlegen und in der Lehrer-Ansicht die Teilnehmer anlegen.
+4. Als Lehrer anmelden und in der Lehrer-Ansicht die Teilnehmer anlegen.
 
 **Update:** neuen `dist/`-Inhalt hochladen und `api/install.php` einmal öffnen. Bestehende Daten bleiben erhalten, neue Tabellen werden ergänzt.
 
@@ -150,7 +150,7 @@ Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für di
 ### Datenschutz
 - Protokolliert werden Aktionen in der App (z. B. „Umgelagert“, „Teil erkannt“), keine Inhalte außerhalb der App.
 - Fotos des Teile-Scanners gehen nur zur Erkennung an Brickognize und werden auf dem Schulserver nicht gespeichert.
-- Passwörter und der Dev-Code liegen nur gehasht in der Datenbank und erscheinen nirgends in der App, auch nicht im Dev-Bereich.
+- Passwörter liegen nur gehasht in der Datenbank und erscheinen nirgends in der App, auch nicht im Dev-Bereich.
 
 ## Lokal testen
 - **Mac/Linux:** `./start.sh`
@@ -158,7 +158,7 @@ Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für di
 
 Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in `local-data/`), baut beim ersten Mal die App, erstellt Test-Konten mit erfundenen Lagerdaten und öffnet die App im Browser (http://127.0.0.1:8000, bei belegtem Port der nächste freie). Nach Code-Änderungen: `./start.sh --neu-bauen`. Die Test-Daten bleiben erhalten.
 
-Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `0000`.
+Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
 
 ### Demo-Version
 `TN-Dashboard-Demo.html` im Hauptordner ist die komplette App als eine einzige Datei: alle Bereiche, Lehrer-Ansicht, Dev-Bereich und CSV-Export, nur mit erfundenen Daten. Login, Daten und Protokoll liegen im Browser („Demo-Daten zurücksetzen“ im Dev-Bereich stellt den Anfang wieder her). Neu bauen mit `cd frontend && npm run build:demo`.
@@ -174,7 +174,7 @@ Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `00
 
 | Schüler-Tutorial | Lehrer-Tutorial |
 |---|---|
-| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen, Dev-Rolle vergeben, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit Dev-Code und allen fünf Reitern (System, Tests, Daten, API, Einstellungen), Sperren und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
+| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen, Dev-Rolle vergeben, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit allen fünf Reitern (System, Tests, Daten, API, Einstellungen) und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
 
 - Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
 - Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben stehen Kapitel und Tutorial, darunter ein Fortschrittsbalken als Lego-Stein.

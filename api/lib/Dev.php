@@ -1,17 +1,13 @@
 <?php
 
 /**
- * Dev-Bereich: Zugang, Dev-Code, Systemdaten, Selbsttests und Datenbank-Ansicht.
+ * Dev-Bereich: Zugang, Systemdaten, Selbsttests und Datenbank-Ansicht.
  *
  * Zugang haben Lehrer/Admins und Teilnehmer, denen ein Lehrer die Dev-Rolle gegeben hat (Tabelle dev_access).
- * Zusätzlich muss der Dev-Code eingegeben werden (pro Sitzung). Der Code liegt gehasht in der Tabelle settings.
- * Testbetrieb (SQLite, z. B. ./start.sh): Solange kein Code gesetzt ist, gilt 0000.
+ * Kein zusätzlicher Code: Man ist ohnehin mit dem eigenen Passwort angemeldet (Wunsch des Inhabers).
  */
 final class Dev
 {
-    public const TEST_PIN = '0000';
-    private const MAX_TRIES = 5;
-    private const LOCK_SECONDS = 60;
 
     /** Tabellen auch auf bestehenden Installationen anlegen, ohne dass install.php neu laufen muss. */
     public static function ensureSchema(): void
@@ -77,107 +73,16 @@ final class Dev
         if ($on) q('INSERT INTO {dev_access} (user_id, granted_by, granted_at) VALUES (?, ?, ?)', [$userId, $by, now()]);
     }
 
-    public static function pinSet(): bool
-    {
-        return self::setting('dev_pin_hash') !== null;
-    }
-
-    public static function setPin(string $pin): void
-    {
-        if (!preg_match('/^\d{4,8}$/', $pin)) json_error('Der Dev-Code muss aus 4 bis 8 Ziffern bestehen');
-        self::setSetting('dev_pin_hash', password_hash($pin, PASSWORD_DEFAULT));
-        // Neue Version: alle anderen Sitzungen müssen den neuen Code eingeben.
-        self::setSetting('dev_pin_version', (string) ((int) self::setting('dev_pin_version') + 1));
-        start_session();
-        $_SESSION['dev_unlocked'] = self::pinVersion() + 1;
-        self::touch();
-    }
-
-    private static function pinVersion(): int
-    {
-        return (int) (self::setting('dev_pin_version') ?? 0);
-    }
-
-    /** Minuten ohne Aktivität im Dev-Bereich, bis er sich wieder sperrt (config: dev_lock_minutes, Standard 15). */
-    public static function lockSeconds(): int
-    {
-        return max(1, (int) (config()['dev_lock_minutes'] ?? 15)) * 60;
-    }
-
-    public static function unlocked(): bool
-    {
-        start_session();
-        // Gespeichert ist die Code-Version beim Entsperren (+1, damit Version 0 nicht als „leer“ gilt).
-        if (!isset($_SESSION['dev_unlocked']) || $_SESSION['dev_unlocked'] !== self::pinVersion() + 1) return false;
-        if (time() - (int) ($_SESSION['dev_seen'] ?? 0) >= self::lockSeconds()) {
-            self::lock(); // Zeit abgelaufen
-            return false;
-        }
-        return true;
-    }
-
-    /** Aktivität im Dev-Bereich: verlängert die Zeit bis zur automatischen Sperre. */
-    private static function touch(): void
-    {
-        $_SESSION['dev_seen'] = time();
-    }
-
     public static function status(array $user): array
     {
-        start_session();
-        $unlocked = self::unlocked();
-        if ($unlocked) self::touch();
-        return [
-            'allowed'     => self::allowed($user),
-            'unlocked'    => $unlocked,
-            'expires_in'  => $unlocked ? self::lockSeconds() : 0,
-            'lock_minutes' => intdiv(self::lockSeconds(), 60),
-            'pin_set'     => self::pinSet(),
-            'test_mode'   => self::testMode(),
-            'can_set_pin' => in_array($user['role'], ROLES_STAFF, true),
-            'locked_for'  => max(0, (int) ($_SESSION['dev_locked_until'] ?? 0) - time()),
-        ];
+        return ['allowed' => self::allowed($user)];
     }
 
-    /** Code prüfen. Nach 5 Fehlversuchen 60 Sekunden Sperre (pro Sitzung). */
-    public static function unlock(string $pin): bool
-    {
-        start_session();
-        if (($_SESSION['dev_locked_until'] ?? 0) > time()) {
-            json_error('Zu viele Fehlversuche. Bitte ' . ($_SESSION['dev_locked_until'] - time()) . ' Sekunden warten.', 429);
-        }
-        $hash = self::setting('dev_pin_hash');
-        if ($hash === null && !self::testMode()) {
-            json_error('Es ist noch kein Dev-Code gesetzt. Ein Lehrer muss ihn zuerst festlegen.', 409);
-        }
-        $ok = $hash === null ? hash_equals(self::TEST_PIN, $pin) : password_verify($pin, $hash);
-        if ($ok) {
-            $_SESSION['dev_unlocked'] = self::pinVersion() + 1;
-            $_SESSION['dev_tries'] = 0;
-            self::touch();
-            return true;
-        }
-        $_SESSION['dev_tries'] = ($_SESSION['dev_tries'] ?? 0) + 1;
-        if ($_SESSION['dev_tries'] >= self::MAX_TRIES) {
-            $_SESSION['dev_tries'] = 0;
-            $_SESSION['dev_locked_until'] = time() + self::LOCK_SECONDS;
-        }
-        return false;
-    }
-
-    public static function lock(): void
-    {
-        start_session();
-        unset($_SESSION['dev_unlocked'], $_SESSION['dev_seen']);
-    }
-
-    /** Für alle Dev-Routen: Dev-Rolle und eingegebener Code. */
+    /** Für alle Dev-Routen: angemeldet und Dev-Rolle (Lehrer haben sie immer). */
     public static function require(): array
     {
         $user = require_user();
         if (!self::allowed($user)) json_error('Kein Zugang zum Dev-Bereich', 403);
-        if (!self::unlocked()) json_error('Dev-Bereich ist gesperrt. Bitte Dev-Code eingeben.', 423);
-        self::touch();
         return $user;
     }
 

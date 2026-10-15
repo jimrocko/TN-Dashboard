@@ -259,7 +259,7 @@ const teacherList = [
     target: () => byText('tr.clickable', 'Max Mustermann')?.querySelector('.devbtn') ?? null, wait: { api: /^POST users\/\d+\/dev$/ }, go: '/lehrer',
   },
   {
-    say: 'Max hat jetzt die Dev-Rolle. Rein kommt er trotzdem erst mit dem Dev-Code, den du festlegst. Doppelt hält besser. Mit einem weiteren Tipp nimmst du die Rolle wieder weg.',
+    say: 'Max hat jetzt die Dev-Rolle und sieht ab der nächsten Anmeldung unten den Knopf „Dev-Bereich“. Einen extra Code braucht er nicht, er ist ja schon mit seinem Passwort angemeldet. Mit einem weiteren Tipp nimmst du die Rolle wieder weg.',
     target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'next', go: '/lehrer',
   },
   // Analyse: Aktivität pro Teilnehmer (nur Lehrer)
@@ -279,11 +279,7 @@ const teacherList = [
     target: () => byText('.bottom .tab', 'Dev-Bereich'), wait: { route: /^\/dev/ },
   },
   {
-    say: 'Der Dev-Bereich ist mit einem Code gesichert. Im Testbetrieb lautet er 0000, auf dem Schulserver legst du beim ersten Öffnen einen eigenen fest (4 bis 8 Ziffern). Tipp 0 0 0 0 und dann OK. Nach 5 falschen Versuchen ist eine Minute Pause.',
-    target: () => q('.gate .pad') ?? q('.gate'), wait: { api: /^POST dev\/unlock$/ }, hint: 'Code 0000 eingeben', go: '/dev',
-  },
-  {
-    say: 'Offen! Oben sind fünf Reiter: System, Tests, Daten, API und Einstellungen. Ich zeig dir jeden. Wichtig: Nach 15 Minuten ohne Aktivität und beim Abmelden sperrt sich alles von selbst.',
+    say: 'Hier landen nur Lehrer und Schüler mit Dev-Rolle, alle anderen sehen den Knopf gar nicht. Oben sind fünf Reiter: System, Tests, Daten, API und Einstellungen. Ich zeig dir jeden.',
     target: () => q('main .seg'), wait: 'next', go: '/dev',
   },
   {
@@ -326,18 +322,10 @@ const teacherList = [
     say: '„Debug-Hilfen“ gelten nur für dieses Gerät: eine kleine Info-Leiste, ein künstlich langsames Netz zum Testen und ein Mitschnitt der API-Aufrufe. Bei „Lokale Daten“ leerst du den App-Cache, falls ein iPad eine alte Version festhält.',
     target: () => panel('Debug-Hilfen'), wait: 'next', go: '/dev',
   },
-  {
-    say: 'Bei „Zugang“ änderst du den Dev-Code. Danach müssen alle, auch Schüler mit Dev-Rolle, den neuen Code eingeben. Wer überhaupt rein darf, legst du in der Lehrer-Ansicht fest, das kennst du ja schon.',
-    target: () => panel('Zugang'), wait: 'next', go: '/dev',
-  },
-  {
-    say: 'Wenn du den Raum verlässt: abschließen! Tipp auf „Sperren“.',
-    target: () => panel('Zugang')?.querySelector('.row:last-child .btn') ?? null, wait: { api: /^POST dev\/lock$/ }, go: '/dev',
-  },
   // Einstellungen der App
   {
     chapter: 'Einstellungen',
-    say: 'Gesperrt. Zum Schluss die normalen Einstellungen: Tipp unten auf „Einstellungen“.',
+    say: 'Zum Schluss die normalen Einstellungen: Tipp unten auf „Einstellungen“.',
     target: () => byText('.bottom .tab', 'Einstellungen'), wait: { route: /^\/einstellungen/ },
   },
   {
@@ -346,7 +334,7 @@ const teacherList = [
   },
   {
     chapter: 'Geschafft!',
-    say: 'Fertig! Du kennst jetzt die Lehrer-Ansicht mit Protokoll und CSV, kannst Schüler anlegen und die Dev-Rolle vergeben, weißt, wie der Dev-Code funktioniert, und kennst alle fünf Reiter im Dev-Bereich. Das Lager ist in guten Händen. 🎉',
+    say: 'Fertig! Du kennst jetzt die Lehrer-Ansicht mit Protokoll und CSV, kannst Schüler anlegen und die Dev-Rolle vergeben und kennst alle fünf Reiter im Dev-Bereich. Das Lager ist in guten Händen. 🎉',
     wait: 'end', mood: 'cheer',
   },
 ]

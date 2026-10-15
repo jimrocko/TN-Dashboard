@@ -197,7 +197,7 @@ const confirmQuit = ref(false)
 function quit() { active.value = false; clearInterval(typer) }
 // Neu laden: main.js setzt die Tutorial-Daten zurück, man startet abgemeldet bei Schritt 1.
 const restart = () => location.reload()
-const confetti = Array.from({ length: 70 }, (_, i) => ({
+const confetti = Array.from({ length: 36 }, (_, i) => ({
   left: `${(i * 37) % 100}%`,
   delay: `${(i % 14) * 0.12}s`,
   duration: `${2.4 + (i % 5) * 0.35}s`,
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
   transition: top 0.45s cubic-bezier(0.22, 1, 0.36, 1), left 0.45s cubic-bezier(0.22, 1, 0.36, 1), width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
 }
 .spot.none { box-shadow: 0 0 0 200vmax var(--dim); }
-.spot.action { animation: glow 1.4s ease-in-out infinite; }
+.spot.action { animation: glow 4s ease-in-out infinite; }
 .blocker { position: fixed; pointer-events: auto; }
 
 /* Pfeil, hüpft aufs Ziel zu */
@@ -295,8 +295,8 @@ onBeforeUnmount(() => {
 .arrow.up { transform: translate(-50%, 0); flex-direction: column-reverse; }
 .arrow.up svg { transform: rotate(180deg); }
 .arrow svg { display: block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
-.arrow.down svg { animation: bounce-down 0.8s ease-in-out infinite; }
-.arrow.up svg { animation: bounce-up 0.8s ease-in-out infinite; }
+.arrow.down svg { animation: bounce-down 3.5s ease-in-out infinite; }
+.arrow.up svg { animation: bounce-up 3.5s ease-in-out infinite; }
 .tag {
   background: var(--red); color: #fff; font-weight: 700; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
   box-shadow: 0 3px 0 #8f1206, 0 6px 14px rgba(0, 0, 0, 0.4); margin: 4px 0;
@@ -304,8 +304,8 @@ onBeforeUnmount(() => {
 
 /* Tipp-Wellen in der Mitte des Ziels */
 .ripple { position: fixed; width: 0; height: 0; }
-.ripple i { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--yellow); animation: ripple 1.6s ease-out infinite; }
-.ripple i:nth-child(2) { animation-delay: 0.8s; }
+.ripple i { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--yellow); animation: ripple 5s ease-out 0.6s infinite; opacity: 0; }
+.ripple i:nth-child(2) { display: none; }
 
 /* Wahl Lehrer / Schüler */
 .choose { position: fixed; inset: 0; background: radial-gradient(circle at 50% 45%, #141c2b, #05080e 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; pointer-events: auto; padding: 16px; }
@@ -357,19 +357,19 @@ onBeforeUnmount(() => {
 .actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .note { margin-right: auto; color: #57544a; font-size: 0.88rem; }
 .turn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #8f1206; }
-.turn i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: blink 1s ease-in-out infinite; }
+.turn i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
 .bubble .btn:not(.btn-primary) { background: #fff; color: #1d1d1d; border-color: #d8d2b8; }
 .next { gap: 6px; }
 
 .confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
-.confetti i { position: absolute; top: -20px; height: 10px; border-radius: 2px; animation: fall linear infinite; opacity: 0.95;
+.confetti i { position: absolute; top: -20px; height: 10px; border-radius: 2px; animation: fall linear 1 forwards; opacity: 0.95;
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 2px, transparent 2.5px) !important; background-size: 6px 10px !important; }
 
-@keyframes glow { 0%, 100% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 3px var(--yellow), 0 0 14px 2px rgba(246, 212, 60, 0.4); } 50% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 5px var(--yellow), 0 0 34px 10px rgba(246, 212, 60, 0.7); } }
-@keyframes bounce-down { 0%, 100% { transform: translateY(-6px); } 50% { transform: translateY(4px); } }
-@keyframes bounce-up { 0%, 100% { transform: rotate(180deg) translateY(-6px); } 50% { transform: rotate(180deg) translateY(4px); } }
+@keyframes glow { 0%, 30%, 100% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 3px var(--yellow), 0 0 14px 2px rgba(246, 212, 60, 0.4); } 15% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 4px var(--yellow), 0 0 26px 6px rgba(246, 212, 60, 0.6); } }
+@keyframes bounce-down { 0%, 24%, 100% { transform: translateY(0); } 6%, 18% { transform: translateY(6px); } 12% { transform: translateY(-2px); } }
+@keyframes bounce-up { 0%, 24%, 100% { transform: rotate(180deg) translateY(0); } 6%, 18% { transform: rotate(180deg) translateY(6px); } 12% { transform: rotate(180deg) translateY(-2px); } }
 @keyframes arrow-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes ripple { from { transform: scale(0.4); opacity: 1; } to { transform: scale(2.4); opacity: 0; } }
+@keyframes ripple { 0% { transform: scale(0.4); opacity: 0.9; } 22%, 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes slide-in { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
 @keyframes pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
 @keyframes caret { 50% { opacity: 0; } }

@@ -33,7 +33,7 @@ async function addUser() {
     formErr.value = e.message
   }
 }
-// Dev-Rolle: Teilnehmer bekommen Zugang zum Dev-Bereich (zusätzlich gesichert durch den Dev-Code).
+// Dev-Rolle: Teilnehmer bekommen Zugang zum Dev-Bereich (Lehrer haben ihn immer).
 const devErr = ref('')
 async function toggleDev(u) {
   devErr.value = ''
@@ -88,7 +88,7 @@ onMounted(async () => { await loadUsers(); await select(null) })
             </table>
           </div>
           <p v-if="devErr" class="error small pad">{{ devErr }}</p>
-          <p class="faint small pad">Dev-Rolle: Zugang zum Dev-Bereich (Systemdaten, Tests, Datenbank). Zusätzlich braucht man den Dev-Code, den du im Dev-Bereich unter „Einstellungen“ festlegst.</p>
+          <p class="faint small pad">Dev-Rolle: Zugang zum Dev-Bereich (Systemdaten, Tests, Datenbank). Nur an Schüler vergeben, denen du das zutraust.</p>
         </section>
 
         <section class="panel">

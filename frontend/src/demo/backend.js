@@ -115,7 +115,6 @@ function dispatch(db, method, route, params, body) {
       const u = db.users.find((x) => x.username === String(body.username ?? '').trim())
       if (!u || u.password !== body.password) throw new DemoError('Benutzername oder Passwort falsch', 401)
       db.session = u.id
-      devRoutes.devLock(db)
       log(db, u.id, 'login')
       return { user: pub(u, db) }
     }
@@ -123,7 +122,6 @@ function dispatch(db, method, route, params, body) {
       const u = current(db)
       if (u) log(db, u.id, 'logout')
       db.session = null
-      devRoutes.devLock(db)
       return { ok: true }
     }
     case 'GET auth/me': {

@@ -6,8 +6,8 @@ import { dirname, resolve } from 'node:path'
 
 const tutorial = process.argv[2] === 'tutorial'
 const cfg = tutorial
-  ? { dir: 'tutorial-dist', file: 'tn-dashboard-tutorial.html', root: 'TN-Dashboard-Tutorial.html', title: 'TN Dashboard – Tutorial', label: 'Tutorial' }
-  : { dir: 'demo-dist', file: 'tn-dashboard-demo.html', root: 'TN-Dashboard-Demo.html', title: 'TN Dashboard', label: 'Demo' }
+  ? { dir: 'tutorial-dist', file: 'tn-dashboard-tutorial.html', root: 'TN-Dashboard-Tutorial.html', title: 'TN Dashboard – Tutorial', label: 'Tutorial', short: 'TN Tutorial' }
+  : { dir: 'demo-dist', file: 'tn-dashboard-demo.html', root: 'TN-Dashboard-Demo.html', title: 'TN Dashboard', label: 'Demo', short: 'TN Dashboard' }
 
 const here = dirname(fileURLToPath(import.meta.url))
 const out = resolve(here, '../..', cfg.dir)
@@ -16,8 +16,15 @@ const files = readdirSync(assets)
 const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')
 const css = files.filter((f) => f.endsWith('.css')).map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')
 
+// Icon für „Zum Home-Bildschirm“ (Safari auf iPad/iPhone) und Browser-Tab, direkt eingebettet.
+const touchIcon = readFileSync(resolve(here, '../public/apple-touch-icon.png')).toString('base64')
+const favicon = readFileSync(resolve(here, '../public/icon-192.png')).toString('base64')
+
 const html = `<title>${cfg.title}</title>
 <meta name="theme-color" content="#0a0f17">
+<meta name="apple-mobile-web-app-title" content="${cfg.short}">
+<link rel="apple-touch-icon" href="data:image/png;base64,${touchIcon}">
+<link rel="icon" type="image/png" href="data:image/png;base64,${favicon}">
 <style>${css}</style>
 <div id="app"></div>
 <script type="module">${js.replace(/<\/script/gi, '<\\/script')}</script>

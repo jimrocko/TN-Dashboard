@@ -59,9 +59,6 @@ return [
         'timeout' => 30,
     ],
 
-    // Dev-Bereich sperrt sich nach so vielen Minuten ohne Aktivität (und immer beim Abmelden).
-    'dev_lock_minutes' => 15,
-
     // Sitzungsdauer in Sekunden (8 h = ein Kurstag)
     'session_lifetime' => 28800,
 ];

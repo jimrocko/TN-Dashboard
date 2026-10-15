@@ -236,25 +236,6 @@ switch (true) {
     case $route === 'dev/status' && $method === 'GET':
         json_response(Dev::status(require_user()));
 
-    case $route === 'dev/unlock' && $method === 'POST':
-        $me = require_user();
-        if (!Dev::allowed($me)) json_error('Kein Zugang zum Dev-Bereich', 403);
-        $ok = Dev::unlock(trim((string) (request_json()['pin'] ?? '')));
-        ActivityLog::log((int) $me['id'], $ok ? 'dev_unlock' : 'dev_unlock_failed');
-        $ok ? json_response(Dev::status($me)) : json_error('Falscher Dev-Code', 401);
-
-    case $route === 'dev/lock' && $method === 'POST':
-        Dev::lock();
-        json_response(Dev::status(require_user()));
-
-    case $route === 'dev/pin' && $method === 'POST':
-        // Code festlegen: nur Lehrer; ist schon einer gesetzt, muss der Bereich entsperrt sein.
-        $me = require_staff();
-        if (Dev::pinSet() && !Dev::unlocked()) json_error('Erst mit dem alten Dev-Code entsperren', 423);
-        Dev::setPin(trim((string) (request_json()['pin'] ?? '')));
-        ActivityLog::log((int) $me['id'], 'dev_pin_changed');
-        json_response(Dev::status($me));
-
     case $route === 'dev/system' && $method === 'GET':
         Dev::require();
         json_response(Dev::system());

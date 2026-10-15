@@ -7,7 +7,7 @@ export const useAuth = defineStore('auth', {
   state: () => ({ user: null, checked: false }),
   getters: {
     isStaff: (s) => ['lehrer', 'admin'].includes(s.user?.role),
-    // Dev-Bereich: Lehrer und Teilnehmer mit Dev-Rolle (vom Lehrer vergeben). Entsperren per Dev-Code kommt dazu.
+    // Dev-Bereich: Lehrer und Teilnehmer mit Dev-Rolle (vom Lehrer vergeben). Kein zusätzlicher Code.
     canDev: (s) => !!s.user?.can_dev,
     roleLabel: (s) => ({ teilnehmer: 'Teilnehmer', lehrer: 'Lehrer', admin: 'Admin' })[s.user?.role] ?? '',
   },

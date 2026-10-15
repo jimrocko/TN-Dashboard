@@ -1,16 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Lock } from 'lucide-vue-next'
 import SegControl from '../../components/SegControl.vue'
-import { api, IS_DEMO } from '../../api'
+import { IS_DEMO } from '../../api'
 import { useAuth } from '../../stores/auth'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
 import { resetDemo } from '../../demo/backend'
 
-// Einstellungen für Entwickler: Debug-Hilfen, lokale Daten, Dev-Code. Der Stil ist hier bewusst nicht umschaltbar.
-const props = defineProps({ status: Object })
-const emit = defineEmits(['status', 'locked'])
+// Einstellungen für Entwickler: Debug-Hilfen und lokale Daten. Der Stil ist hier bewusst nicht umschaltbar.
 const router = useRouter()
 const auth = useAuth()
 const msg = ref('')
@@ -44,20 +41,6 @@ async function resetDemoData() {
   router.push('/login')
 }
 
-const pin1 = ref('')
-const pin2 = ref('')
-async function changePin() {
-  err.value = ''
-  if (pin1.value !== pin2.value) { err.value = 'Die beiden Codes sind verschieden.'; return }
-  try {
-    emit('status', await api.post('dev/pin', { pin: pin1.value }))
-    pin1.value = pin2.value = ''
-    say('Dev-Code geändert. Alle anderen müssen den neuen Code eingeben.')
-  } catch (e) { err.value = e.message }
-}
-async function lock() {
-  emit('locked', await api.post('dev/lock'))
-}
 </script>
 
 <template>
@@ -111,23 +94,6 @@ async function lock() {
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head"><h2>Zugang</h2></div>
-      <div class="rows">
-        <form v-if="status.can_set_pin" class="row" @submit.prevent="changePin">
-          <div><div class="k">Dev-Code ändern</div><div class="h">4 bis 8 Ziffern. Danach müssen alle anderen den neuen Code eingeben. Wer Zugang hat, legst du in der Lehrer-Ansicht fest.</div></div>
-          <div class="inline">
-            <input id="dev-pin1" class="input mono short" v-model="pin1" type="password" inputmode="numeric" pattern="\d{4,8}" placeholder="Neu" autocomplete="new-password" required />
-            <input id="dev-pin2" class="input mono short" v-model="pin2" type="password" inputmode="numeric" pattern="\d{4,8}" placeholder="Wiederholen" autocomplete="new-password" required />
-            <button class="btn">Ändern</button>
-          </div>
-        </form>
-        <div class="row">
-          <div><div class="k">Dev-Bereich sperren</div><div class="h">Beim nächsten Öffnen wird der Code wieder abgefragt.</div></div>
-          <button class="btn btn-sm" @click="lock"><Lock :size="14" /> Sperren</button>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
