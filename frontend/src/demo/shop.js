@@ -36,7 +36,23 @@ export function seedData(seed) {
   return db
 }
 
-const loc = (db, id) => db.locations.find((l) => l.id === id)
+// Schnelles Nachschlagen (über 1.000 Kästchen, mehrere tausend Lose): Index je Lagerort-Liste.
+const locIndex = new WeakMap()
+const loc = (db, id) => {
+  let m = locIndex.get(db.locations)
+  if (!m || m.size !== db.locations.length) locIndex.set(db.locations, (m = new Map(db.locations.map((l) => [l.id, l]))))
+  return m.get(id)
+}
+/** Lose und Teile je Lagerort in einem Durchlauf: Map(location_id → { lots, qty }) */
+const totalsByLocation = (db) => {
+  const m = new Map()
+  for (const i of db.inventory) {
+    const t = m.get(i.location_id) ?? { lots: 0, qty: 0 }
+    t.lots++; t.qty += i.qty
+    m.set(i.location_id, t)
+  }
+  return m
+}
 const lotRow = (db, i) => {
   const l = loc(db, i.location_id)
   return { ...i, location_code: l?.code ?? null, location_kind: l?.kind ?? null }
@@ -62,6 +78,7 @@ function inventory(db, f) {
   let rows = db.inventory.map((i) => lotRow(db, i)).filter((r) =>
     (!q || [r.item_no, r.name, r.color_name, r.category, r.location_code].some((v) => like(v, q)))
     && (!f.location || r.location_id === Number(f.location))
+    && (!f.id || r.id === Number(f.id))
     && (!f.category || r.category === f.category))
   const sorts = {
     qty: (a, b) => b.qty - a.qty,
@@ -76,10 +93,11 @@ function inventory(db, f) {
 function meta(db) {
   return {
     categories: [...new Set(db.inventory.map((i) => i.category))].sort(),
-    locations: db.locations.map((l) => {
-      const lots = db.inventory.filter((i) => i.location_id === l.id)
-      return { ...l, lots: lots.length, qty: lots.reduce((s, i) => s + i.qty, 0) }
-    }).sort((a, b) => natural(a.code, b.code)),
+    locations: (() => {
+      const t = totalsByLocation(db)
+      return db.locations.map((l) => ({ ...l, lots: t.get(l.id)?.lots ?? 0, qty: t.get(l.id)?.qty ?? 0 }))
+        .sort((a, b) => natural(a.code, b.code))
+    })(),
   }
 }
 
@@ -230,10 +248,9 @@ function analysis(db) {
     }
     return Object.values(m).map((g) => ({ ...g, value: round(g.value, 3) })).sort((a, b) => b.qty - a.qty)
   }
-  const byLoc = db.locations.map((l) => {
-    const lots = db.inventory.filter((i) => i.location_id === l.id)
-    return { label: l.code, kind: l.kind, lots: lots.length, qty: lots.reduce((s, i) => s + i.qty, 0) }
-  }).sort((a, b) => b.qty - a.qty)
+  const totals = totalsByLocation(db)
+  const byLoc = db.locations.map((l) => ({ label: l.code, kind: l.kind, lots: totals.get(l.id)?.lots ?? 0, qty: totals.get(l.id)?.qty ?? 0 }))
+    .sort((a, b) => b.qty - a.qty)
   return {
     by_category: group((i) => i.category),
     by_location: byLoc.filter((l) => l.kind === 'regal').slice(0, 10),

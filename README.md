@@ -16,7 +16,7 @@
 <a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
-<sub>Die Demo ist die komplette App mit erfundenen Daten. Alles bleibt nur in deinem Browser.<br>
+<sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
 Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
@@ -121,6 +121,7 @@ api/        PHP-API, Installationsseite, BrickLink, Teileerkennung, Dev-Bereich
 frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, Demo-Backend)
 docs/       Logo und Screenshots
 TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
+tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
 .github/    Build-Prüfung und Demo auf GitHub Pages
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
 start.sh    lokal starten (Mac/Linux), start.bat für Windows

@@ -69,7 +69,7 @@ const openByCode = computed(() => {
 onMounted(async () => {
   await load()
   if (route.query.lot) {
-    const found = (await api.get('inventory', { limit: 2000 })).items.find((i) => i.id === Number(route.query.lot))
+    const found = (await api.get('inventory', { id: route.query.lot, limit: 1 })).items[0]
     if (found) pick(found)
   }
 })

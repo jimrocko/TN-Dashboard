@@ -4,13 +4,18 @@ const colors = {
   Black: '#05131d', White: '#ffffff', Red: '#c91a09', Blue: '#0055bf', Yellow: '#f2cd37',
   'Light Bluish Gray': '#a0a5a9', 'Dark Bluish Gray': '#6c6e68', 'Reddish Brown': '#582a12',
   Tan: '#e4cd9e', Green: '#237841', Orange: '#fe8a18',
+  'Dark Tan': '#958a73', 'Dark Red': '#720e0f', 'Dark Blue': '#0a3463', 'Dark Green': '#184632',
+  Lime: '#bbe90b', 'Sand Green': '#a0bcac', 'Medium Blue': '#5a93db',
 }
 defineProps({ name: String })
 </script>
 
 <template>
-  <span class="sw" :class="{ trans: name?.startsWith('Trans') }" :style="{ background: colors[name] ?? 'transparent' }"></span>
-  <span>{{ name }}</span>
+  <template v-if="name">
+    <span class="sw" :class="{ trans: name.startsWith('Trans') }" :style="{ background: colors[name] ?? 'transparent' }"></span>
+    <span>{{ name }}</span>
+  </template>
+  <span v-else class="faint">–</span>
 </template>
 
 <style scoped>

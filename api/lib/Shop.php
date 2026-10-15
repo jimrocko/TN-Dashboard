@@ -59,6 +59,10 @@ final class Shop
             $where[] = 'i.location_id = ?';
             $p[] = (int) $f['location'];
         }
+        if (!empty($f['id'])) { // ein bestimmtes Los (z. B. Umlagern aus dem Inventar)
+            $where[] = 'i.id = ?';
+            $p[] = (int) $f['id'];
+        }
         if (($f['category'] ?? '') !== '') {
             $where[] = 'i.category = ?';
             $p[] = $f['category'];

@@ -27,7 +27,7 @@ let timer
 async function load() {
   loading.value = true
   try {
-    items.value = (await api.get('inventory', f.value)).items
+    items.value = (await api.get('inventory', { ...f.value, limit: LIMIT })).items
     error.value = ''
   } catch (e) { error.value = e.message } finally { loading.value = false }
 }
@@ -38,6 +38,9 @@ onMounted(async () => {
   load()
 })
 
+// Bei über 3.000 Losen nur die ersten LIMIT laden (schnell auf dem iPad); Filter grenzen ein.
+const LIMIT = 500
+const capped = computed(() => items.value.length >= LIMIT)
 const totals = computed(() => ({
   qty: items.value.reduce((s, i) => s + i.qty, 0),
   value: items.value.reduce((s, i) => s + i.qty * i.price, 0),
@@ -52,7 +55,7 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
 
 <template>
   <div class="page stack">
-    <PageHead title="Inventar" :sub="`${num(items.length)} Lose · ${num(totals.qty)} Teile · ${eur(totals.value)}`">
+    <PageHead title="Inventar" :sub="capped ? `Erste ${num(items.length)} Lose (Filter nutzen, um gezielt zu suchen)` : `${num(items.length)} Lose · ${num(totals.qty)} Teile · ${eur(totals.value)}`">
       <button type="button" class="btn" :class="{ 'btn-primary': showPlan }" :aria-expanded="showPlan" @click="showPlan = !showPlan">
         <MapIcon :size="16" /> {{ showPlan ? 'Lagerplan ausblenden' : 'Lagerplan' }}
       </button>
@@ -108,6 +111,7 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
               <td><button class="btn btn-ghost btn-sm" title="Umlagern" @click="router.push({ path: '/umlagern', query: { lot: i.id } })"><ArrowLeftRight :size="15" /></button></td>
             </tr>
             <tr v-if="!items.length && !loading"><td colspan="10" class="empty">Keine Lose gefunden.</td></tr>
+            <tr v-if="capped"><td colspan="10" class="empty">Es werden die ersten {{ num(LIMIT) }} Lose gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
           </tbody>
         </table>
       </div>
