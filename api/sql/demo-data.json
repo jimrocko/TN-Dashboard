@@ -32,13 +32,13 @@
    "kind": "regal"
   },
   {
-   "code": "H12",
-   "name": "Regal H, Kästchen 12",
+   "code": "H012",
+   "name": "Regal H, Kästchen 012",
    "kind": "regal"
   },
   {
-   "code": "H58",
-   "name": "Regal H, Kästchen 58",
+   "code": "H058",
+   "name": "Regal H, Kästchen 058",
    "kind": "regal"
   },
   {
@@ -62,8 +62,8 @@
    "kind": "regal"
   },
   {
-   "code": "N4",
-   "name": "Neu, Kästchen 4",
+   "code": "N004",
+   "name": "Neu, Kästchen 004",
    "kind": "regal"
   },
   {
@@ -160,7 +160,7 @@
    "color_name": "White",
    "name": "Brick 2 x 4",
    "category": "Brick",
-   "location": "H58",
+   "location": "H058",
    "qty": 756,
    "price": 0.159,
    "updated_days_ago": 1
@@ -268,7 +268,7 @@
    "color_name": "Orange",
    "name": "Brick 1 x 2",
    "category": "Brick",
-   "location": "H58",
+   "location": "H058",
    "qty": 48,
    "price": 0.291,
    "updated_days_ago": 20
@@ -700,7 +700,7 @@
    "color_name": "Black",
    "name": "Slope 45 2 x 1",
    "category": "Slope",
-   "location": "H58",
+   "location": "H058",
    "qty": 1848,
    "price": 0.312,
    "updated_days_ago": 26
@@ -736,7 +736,7 @@
    "color_name": "Black",
    "name": "Slope 45 2 x 2",
    "category": "Slope",
-   "location": "H12",
+   "location": "H012",
    "qty": 295,
    "price": 0.291,
    "updated_days_ago": 14
@@ -748,7 +748,7 @@
    "color_name": "Reddish Brown",
    "name": "Slope 45 2 x 2",
    "category": "Slope",
-   "location": "H58",
+   "location": "H058",
    "qty": 397,
    "price": 0.128,
    "updated_days_ago": 4
@@ -784,7 +784,7 @@
    "color_name": "Light Bluish Gray",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "N4",
+   "location": "N004",
    "qty": 41,
    "price": 0.254,
    "updated_days_ago": 0
@@ -796,7 +796,7 @@
    "color_name": "Dark Bluish Gray",
    "name": "Technic, Liftarm Thick 1 x 3",
    "category": "Technic, Liftarm",
-   "location": "H12",
+   "location": "H012",
    "qty": 686,
    "price": 0.324,
    "updated_days_ago": 39
@@ -892,7 +892,7 @@
    "color_name": "Blue",
    "name": "Panel 1 x 2 x 1 with Rounded Corners",
    "category": "Panel",
-   "location": "H12",
+   "location": "H012",
    "qty": 256,
    "price": 0.101,
    "updated_days_ago": 0

@@ -1,6 +1,6 @@
 // Dev-Bereich für die Demo, entspricht api/lib/Dev.php.
 // Die Demo gilt immer als Testbetrieb: Solange kein Code gesetzt ist, lautet der Dev-Code 0000.
-import { DemoError } from './backend.js'
+import { DemoError, KEY } from './backend.js'
 
 const TEST_PIN = '0000'
 const LOCK_MS = 15 * 60 * 1000 // automatische Sperre nach 15 Minuten ohne Aktivität (wie dev_lock_minutes)
@@ -46,11 +46,11 @@ function requireDev(db, u) {
 
 function system(db) {
   let bytes = null
-  try { bytes = (localStorage.getItem('tn-dashboard-demo-v2') ?? '').length * 2 } catch { /* egal */ }
+  try { bytes = (localStorage.getItem(KEY) ?? '').length * 2 } catch { /* egal */ }
   return {
     app: { version: '0.4', server_time: new Date().toLocaleString('de-DE'), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, test_mode: true },
     php: null,
-    db: { driver: 'demo (Browser)', version: 'localStorage', size_bytes: bytes, prefix: '–', host: null, name: 'tn-dashboard-demo-v2' },
+    db: { driver: 'demo (Browser)', version: 'localStorage', size_bytes: bytes, prefix: '–', host: null, name: KEY },
     services: { bricklink_configured: false, bricklink_cache_ttl: 0, brickognize_url: 'https://api.brickognize.com/predict/' },
     env: { file: null, fields: [] },
     session: { lifetime: 0, id_prefix: 'demo', https: location.protocol === 'https:' },

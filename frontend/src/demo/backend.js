@@ -6,7 +6,8 @@ import * as shop from './shop.js'
 import { predict } from '../utils/brickognize.js'
 import * as devRoutes from './dev.js'
 
-const KEY = 'tn-dashboard-demo-v2'
+// Version erhöhen, wenn sich die Beispieldaten ändern: alte Browser-Daten werden dann verworfen.
+export const KEY = 'tn-dashboard-demo-v3'
 
 export class DemoError extends Error {
   constructor(message, status) {

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { AREAS, areaById, parseCode } from '../utils/areas'
+import { AREAS, areaById, parseCode, formatCode } from '../utils/areas'
 import { num } from '../utils/format'
 
 // Raumplan des Lagerzimmers. Antippen: Bereich → Hunderter-Block → Kästchen → Lagerort-Seite.
@@ -31,9 +31,9 @@ const stats = (ids) => {
 }
 const fIds = AREAS.filter((a) => a.group === 'F').map((a) => a.id)
 const zones = computed(() => [
-  { key: 'G', title: 'G100–G999', sub: 'Gebraucht', color: areaById('G').color, s: stats(['G']) },
-  { key: 'H', title: 'H0–H999', sub: 'Regal H', color: areaById('H').color, s: stats(['H']) },
-  { key: 'N', title: 'N0–N999', sub: 'Neu', color: areaById('N').color, s: stats(['N']) },
+  { key: 'G', title: `${formatCode('G', 100)}–${formatCode('G', 999)}`, sub: 'Gebraucht', color: areaById('G').color, s: stats(['G']) },
+  { key: 'H', title: `${formatCode('H', 0)}–${formatCode('H', 999)}`, sub: 'Regal H', color: areaById('H').color, s: stats(['H']) },
+  { key: 'N', title: `${formatCode('N', 0)}–${formatCode('N', 999)}`, sub: 'Neu', color: areaById('N').color, s: stats(['N']) },
   { key: 'F', title: 'FG · FN · FT · Plate', sub: 'Figuren & Plates', color: areaById('FG').color, s: stats(fIds) },
   { key: 'MK', title: 'Mischkisten', sub: 'zum Einsortieren', color: '#8a8f98', s: stats(['MK']) },
 ])
@@ -65,7 +65,7 @@ const cells = computed(() => {
   const byNum = Object.fromEntries((byArea.value[area.value.id] ?? []).map((l) => [l.num, l]))
   return Array.from({ length: 100 }, (_, i) => {
     const n = block.value + i
-    return { n, code: `${area.value.id}${n}`, loc: byNum[n] ?? null }
+    return { n, code: formatCode(area.value.id, n), loc: byNum[n] ?? null }
   })
 })
 const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => ({ ...a, items: byArea.value[a.id] ?? [] })))
@@ -103,18 +103,18 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
       <template v-if="blocks.length">
         <div class="blocks">
           <button v-for="b in blocks" :key="b.start" type="button" class="blk" :class="{ on: block === b.start, empty: !b.boxes }" @click="block = block === b.start ? null : b.start">
-            <span class="mono">{{ area.id }}{{ b.start }}–{{ area.id }}{{ b.end }}</span>
+            <span class="mono">{{ formatCode(area.id, b.start) }}–{{ formatCode(area.id, b.end) }}</span>
             <span class="faint small">{{ b.boxes }} belegt</span>
             <span v-if="b.open" class="badge">{{ b.open }}</span>
           </button>
         </div>
-        <div v-if="block !== null" class="cells" role="grid" :aria-label="`Kästchen ${area.id}${block} bis ${area.id}${block + 99}`">
+        <div v-if="block !== null" class="cells" role="grid" :aria-label="`Kästchen ${formatCode(area.id, block)} bis ${formatCode(area.id, block + 99)}`">
           <template v-for="c in cells" :key="c.n">
             <RouterLink v-if="c.loc" :to="`/lagerort/${encodeURIComponent(c.code)}`" class="cell used" :class="{ empty: !c.loc.lots }"
               :title="`${c.code}: ${c.loc.lots} Lose, ${num(c.loc.qty)} Teile`">
-              {{ c.n }}<i v-if="open[c.code]" class="dot"></i>
+              {{ c.code.slice(area.id.length) }}<i v-if="open[c.code]" class="dot"></i>
             </RouterLink>
-            <span v-else class="cell" :title="`${c.code}: nicht angelegt`">{{ c.n }}</span>
+            <span v-else class="cell" :title="`${c.code}: nicht angelegt`">{{ c.code.slice(area.id.length) }}</span>
           </template>
         </div>
       </template>
