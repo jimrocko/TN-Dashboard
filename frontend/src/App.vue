@@ -1,28 +1,27 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import AppSidebar from './components/AppSidebar.vue'
-import AppTopbar from './components/AppTopbar.vue'
+import AppHeader from './components/AppHeader.vue'
+import BottomNav from './components/BottomNav.vue'
+import XpShell from './components/XpShell.vue'
+import { useSettings } from './stores/settings'
 
 const route = useRoute()
+const settings = useSettings()
 const chrome = computed(() => !route.meta.public)
-const navOpen = ref(false)
-watch(() => route.fullPath, () => { navOpen.value = false })
 </script>
 
 <template>
-  <div v-if="chrome" class="shell">
-    <AppSidebar :open="navOpen" @close="navOpen = false" />
-    <div class="main">
-      <AppTopbar @menu="navOpen = true" />
-      <main><RouterView /></main>
-    </div>
+  <RouterView v-if="!chrome" />
+  <XpShell v-else-if="settings.style === 'xp'" />
+  <div v-else class="shell">
+    <AppHeader />
+    <main class="main"><RouterView /></main>
+    <BottomNav />
   </div>
-  <RouterView v-else />
 </template>
 
 <style scoped>
-.shell { display: flex; min-height: 100dvh; }
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-main { flex: 1; }
+.shell { min-height: 100dvh; display: flex; flex-direction: column; }
+.main { flex: 1; padding-bottom: 110px; }
 </style>

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
+import GlobalSearch from '../components/GlobalSearch.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
 import { api, logActivity } from '../api'
@@ -25,7 +26,8 @@ watch(() => route.query.q, async (q) => {
 <template>
   <div class="page stack">
     <PageHead :title="route.query.q ? `Ergebnisse für „${route.query.q}“` : 'Suche'"
-      :sub="route.query.q ? `${r.parts.length} Lose · ${r.locations.length} Lagerorte · ${r.orders.length} Aufträge` : 'Suchfeld oben nutzen: Teil-Nr., Name, Farbe, Kategorie, Lagerort oder Auftrag.'" />
+      :sub="route.query.q ? `${r.parts.length} Lose · ${r.locations.length} Lagerorte · ${r.orders.length} Aufträge` : 'Teil-Nr., Name, Farbe, Kategorie, Lagerort oder Auftrag eingeben.'" />
+    <GlobalSearch :initial="route.query.q || ''" />
     <p v-if="error" class="error">{{ error }}</p>
 
     <section v-if="r.locations.length" class="panel">

@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 
 // Darstellungs-Einstellungen gelten pro Gerät und werden im Browser gespeichert.
 const KEY = 'tn-dashboard-settings'
-const defaults = { theme: 'dark', density: 'comfortable', fontSize: 'normal', reduceMotion: false }
+// style: 'modern' = normales Design, 'xp' = Windows-XP-Desktop.
+const defaults = { style: 'modern', theme: 'dark', density: 'comfortable', fontSize: 'normal', reduceMotion: false }
 
 function read() {
   try {
@@ -22,6 +23,7 @@ export const useSettings = defineStore('settings', {
   actions: {
     apply() {
       const root = document.documentElement
+      root.dataset.tnStyle = this.style
       root.dataset.tnTheme = this.resolvedTheme
       root.dataset.tnDensity = this.density
       root.dataset.tnFont = this.fontSize

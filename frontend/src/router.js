@@ -28,8 +28,8 @@ const router = createRouter({
     { path: '/inventar', component: InventoryView, meta: { title: 'Inventar', module: 'inventar' } },
     { path: '/auftraege', component: OrdersView, meta: { title: 'Auftragszentrale', module: 'auftraege' } },
     { path: '/umlagern', component: TransferView, meta: { title: 'Umlagern', module: 'umlagern' } },
-    { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur', module: 'inventur' } },
-    { path: '/analyse', component: AnalysisView, meta: { title: 'Analyse', module: 'analyse' } },
+    { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur & Bestandsprüfung', module: 'inventur' } },
+    { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
     {
       path: '/modul/:id', component: ModuleView, meta: { title: 'Modul' },
       beforeEnter: (to) => {

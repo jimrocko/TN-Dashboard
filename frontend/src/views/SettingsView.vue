@@ -29,10 +29,10 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
     <PageHead title="Einstellungen" sub="Darstellung gilt für dieses Gerät und wird im Browser gespeichert." />
 
     <section class="panel">
-      <div class="panel-head"><h2>Darstellung</h2><button class="btn btn-ghost btn-sm" @click="s.reset()">Zurücksetzen</button></div>
+      <div class="panel-head"><h2>Darstellung</h2><button class="btn btn-ghost btn-sm" @click="s.set({ theme: 'dark', density: 'comfortable', fontSize: 'normal', reduceMotion: false })">Zurücksetzen</button></div>
       <div class="rows">
         <div class="row">
-          <div><div class="k">Design</div><div class="h">Dunkel ist Standard. „Wie System“ folgt der Einstellung des Geräts.</div></div>
+          <div><div class="k">Design</div><div class="h">{{ s.style === 'xp' ? 'Hell = blaue Luna-Optik, Dunkel = schwarze Variante.' : 'Dunkel ist Standard.' }} „Wie System“ folgt dem Gerät.</div></div>
           <SegControl :model-value="s.theme" :options="themes" label="Design" @update:model-value="s.set({ theme: $event })" />
         </div>
         <div class="row">

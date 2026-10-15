@@ -22,24 +22,30 @@ Im Lego-Shop arbeiten wir mit BrickLink, BrickStore und dem Brickscanner. Das **
 
 Jede Aktion wird pro Teilnehmer protokolliert. So kann der Lehrer dokumentieren, wer was gemacht hat.
 
-| Modul | Was es macht | Stand |
+| Bereich | Was es macht | Stand |
 |---|---|---|
-| Minifig-Finder | Minifiguren und Varianten finden | Platzhalter, Integration des bestehenden Servers geplant |
-| Pickliste | Bestellungen kommissionieren, Fehlmengen melden | Platzhalter, Integration geplant |
-| Inventar | Bestände, Lagerorte, Bestandsverlauf | Platzhalter, Integration geplant |
-| Umlagern | Mischkisten analysieren, Sortiervorschläge | Platzhalter |
-| Teile-Scanner | Teile, Barcodes und Lagerplatzcodes scannen | Platzhalter |
-| Auftragszentrale | Bestellungen importieren und verfolgen | Platzhalter, Integration geplant |
-| Inventur | Mengen prüfen, Abweichungen korrigieren | Platzhalter |
-| Analyse | Engpässe und Kennzahlen | Platzhalter |
-| Profile und Lehrer-Ansicht | Login, Aktivitätsprotokoll, CSV-Export | fertig |
+| Inventar | Lose nach Nummer, Farbe, Kategorie und Lagerort filtern, Bestand und Wert | fertig |
+| Umlagern | Vorschläge aus Mischkisten übernehmen, Teile frei umbuchen, Verlauf | fertig |
+| Inventur & Bestandsprüfung | Lagerort zählen, Abweichungen erfassen, Bestand beim Abschluss korrigieren | fertig |
+| Auftragszentrale | Bestellungen nach Status, Positionen sortiert nach Lagerort, Status weiterschalten | fertig |
+| Lager- & Auftragsanalyse | Bestand nach Kategorie, volle Regalplätze, Engpässe, Aktivität pro Teilnehmer | fertig |
+| Suche | Eine Suche über Teile, Farben, Lagerorte und Aufträge | fertig |
+| Profile & Lehrer-Ansicht | Login, Aktivitätsprotokoll, CSV-Export, Teilnehmer anlegen | fertig |
+| Minifig-Finder, Pickliste | Bestehende Programme, werden eingebunden | in Integration |
+| Teile-Scanner | Barcodes und Lagerplatzcodes per Kamera | geplant |
+
+Alle Daten in der Demo und nach `install.php --demo` sind **erfunden** (Beispieldaten in `api/sql/demo-data.json`).
 
 ## Screenshots
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/login.png" alt="Login"><br><sub><b>Login</b>: jeder Teilnehmer hat ein eigenes Konto</sub></td>
-    <td width="50%"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht"><br><sub><b>Lehrer-Ansicht</b>: Teilnehmer verwalten und sehen, wer was gemacht hat</sub></td>
+    <td width="50%"><img src="docs/images/inventar.png" alt="Inventar"><br><sub><b>Inventar</b>: filtern nach Kategorie, Lagerort und Text</sub></td>
+    <td width="50%"><img src="docs/images/auftraege.png" alt="Auftragszentrale"><br><sub><b>Auftragszentrale</b>: Positionen nach Lagerort sortiert</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/analyse.png" alt="Analyse"><br><sub><b>Analyse</b>: Kennzahlen zu Lager und Aufträgen</sub></td>
+    <td width="50%"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht"><br><sub><b>Lehrer-Ansicht</b>: wer hat was gemacht</sub></td>
   </tr>
 </table>
 
@@ -52,7 +58,8 @@ Jede Aktion wird pro Teilnehmer protokolliert. So kann der Lehrer dokumentieren,
 
 - **Frontend:** Vue 3 und Vite als installierbare Web-App (PWA). Der Build erzeugt statische Dateien, auf dem Server ist kein Node nötig.
 - **Backend:** PHP 8.1+ ohne Framework, läuft auf jedem normalen Webspace.
-- **Datenbank:** die vorhandene MySQL/MariaDB der Schule. Alle Tabellen haben den Präfix `tn_`, damit die App getrennt vom Lehrer-Dashboard bleibt.
+- **Datenbank:** die vorhandene MySQL/MariaDB der Schule. Alle Tabellen haben den Präfix `tn_`, damit die App getrennt vom Lehrer-Dashboard bleibt. Beispieldaten lädt `php api/install.php --demo` oder der Lehrer über „Beispieldaten laden“ auf der Startseite (nur bei leerem Lager).
+- **Darstellung:** Dunkel ist Standard, Hell, Dichte und Schriftgröße lassen sich unter Einstellungen ändern (pro Gerät).
 - **BrickLink:** API-Antworten werden in der Datenbank zwischengespeichert, um das Tageslimit zu schonen.
 
 ```

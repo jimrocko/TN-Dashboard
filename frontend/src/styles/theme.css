@@ -1,56 +1,70 @@
 /*
-  TN Dashboard – Gestaltung im Stil einer Firmen-Software:
-  neutrale Flächen, eine Akzentfarbe, Statusfarben nur für Zustände.
+  TN Dashboard – Grundgestaltung (erstes Design: dunkles Blau-Schwarz, große Kacheln).
   Dunkel ist Standard; Hell über Einstellungen (data-tn-theme="light").
+  Der Windows-XP-Stil liegt getrennt in xp.css.
 */
 :root {
-  --bg: #0e1013;
-  --surface: #15181d;
-  --surface-2: #1a1e24;
-  --hover: #20252c;
-  --border: #262b33;
-  --border-strong: #353b45;
-  --text: #e7e9ec;
-  --text-2: #a3a9b2;
-  --text-3: #727985;
-  --accent: #5b8def;
-  --accent-text: #8fb2f5;
-  --accent-soft: rgba(91, 141, 239, 0.14);
+  --bg: #0a0f17;
+  --bg-glow: #121a27;
+  --surface: #131a25;
+  --surface-end: #0f151e;
+  --surface-2: #18212e;
+  --hover: #1a2433;
+  --border: #232d3c;
+  --border-strong: #33415a;
+  --text: #e8edf3;
+  --text-2: #9aa5b4;
+  --text-3: #6c7788;
+  --icon: #cfd7e3;
+  --accent: #3b82f6;
+  --accent-text: #8fb0e8;
+  --accent-soft: rgba(59, 130, 246, 0.16);
   --on-accent: #ffffff;
-  --ok: #45b883;
-  --warn: #d6a243;
-  --danger: #e2675f;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --nav-bg: rgba(10, 15, 23, 0.92);
+  --search-bg: linear-gradient(180deg, #172131, #121a27);
 
-  --radius: 8px;
-  --radius-sm: 6px;
-  --sidebar-w: 232px;
+  /* Kurznamen aus dem ersten Design */
+  --text-muted: var(--text-2);
+  --text-faint: var(--text-3);
+  --surface-hover: var(--hover);
+
+  --radius: 14px;
+  --radius-sm: 10px;
   --row-y: 10px;
   --pad: 20px;
-  --gap: 16px;
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --gap: 18px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
   font-size: 15px;
 }
 
 :root[data-tn-theme='light'] {
-  --bg: #f3f4f6;
+  --bg: #eef2f7;
+  --bg-glow: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f8f9fa;
-  --hover: #eef0f3;
-  --border: #e2e5e9;
-  --border-strong: #cdd2d9;
-  --text: #191c20;
-  --text-2: #565e69;
-  --text-3: #868d97;
-  --accent: #2f6fe0;
-  --accent-text: #2259c2;
-  --accent-soft: rgba(47, 111, 224, 0.1);
-  --ok: #1d9a60;
-  --warn: #a8750f;
-  --danger: #cc3b33;
-  --shadow: 0 8px 24px rgba(20, 24, 31, 0.12);
+  --surface-end: #f7f9fc;
+  --surface-2: #f1f4f8;
+  --hover: #e8eef6;
+  --border: #dbe2ea;
+  --border-strong: #c3cdda;
+  --text: #121a25;
+  --text-2: #4f5b6b;
+  --text-3: #808b9a;
+  --icon: #2c3a4f;
+  --accent: #2563eb;
+  --accent-text: #2f5fb3;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --ok: #16a34a;
+  --warn: #b45309;
+  --danger: #dc2626;
+  --shadow: 0 10px 30px rgba(18, 26, 37, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --search-bg: linear-gradient(180deg, #ffffff, #f4f7fb);
   color-scheme: light;
 }
 
@@ -62,7 +76,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
-  background: var(--bg);
+  background: radial-gradient(120% 80% at 50% 0%, var(--bg-glow) 0%, var(--bg) 60%) fixed, var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 1rem;
@@ -83,9 +97,9 @@ h1, h2, h3 { text-wrap: balance; }
 .page-sub { color: var(--text-2); margin: 4px 0 0; font-size: 0.93rem; }
 
 /* Flächen */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
-.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--pad); border-bottom: 1px solid var(--border); min-height: 52px; }
-.panel-head h2 { font-size: 0.95rem; font-weight: 600; margin: 0; }
+.panel { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-end) 100%); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--pad); border-bottom: 1px solid var(--border); min-height: 56px; }
+.panel-head h2 { font-size: 1.05rem; font-weight: 500; margin: 0; }
 .panel-body { padding: var(--pad); }
 .stack { display: flex; flex-direction: column; gap: var(--gap); }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
@@ -94,7 +108,7 @@ h1, h2, h3 { text-wrap: balance; }
 /* Bedienelemente */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 34px; padding: 0 12px; border-radius: var(--radius-sm);
+  height: 38px; padding: 0 14px; border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text);
   font-size: 0.9rem; font-weight: 500; white-space: nowrap;
 }
@@ -107,7 +121,7 @@ h1, h2, h3 { text-wrap: balance; }
 .btn-sm { height: 28px; padding: 0 9px; font-size: 0.85rem; }
 
 .input, .select {
-  height: 34px; padding: 0 10px; border-radius: var(--radius-sm);
+  height: 40px; padding: 0 10px; border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); min-width: 0;
 }
 .input:focus, .select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -121,7 +135,7 @@ label.field > span { font-size: 0.85rem; color: var(--text-2); }
 table.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .table th {
   text-align: left; font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--text-3); padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface);
+  color: var(--text-3); padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
 }
 .table td { padding: var(--row-y) 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .table tr:last-child td { border-bottom: 0; }

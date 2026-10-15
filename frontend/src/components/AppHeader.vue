@@ -1,14 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, ChevronDown, LogOut, GraduationCap, History } from 'lucide-vue-next'
+import { User, ChevronDown, LogOut, GraduationCap, History, Settings } from 'lucide-vue-next'
 import { useAuth } from '../stores/auth'
 import logo from '../assets/icon.svg'
 
 const auth = useAuth()
 const router = useRouter()
 const open = ref(false)
-
 
 async function logout() {
   open.value = false
@@ -34,9 +33,11 @@ async function logout() {
         </span>
         <ChevronDown :size="18" class="chev" />
       </button>
-      <div class="menu card" v-if="open" @click="open = false">
+      <div v-if="open" class="menu-backdrop" @click="open = false"></div>
+      <div class="menu panel" v-if="open" @click="open = false">
         <RouterLink to="/profil" class="item"><History :size="18" /> Meine Aktivitäten</RouterLink>
         <RouterLink v-if="auth.isStaff" to="/lehrer" class="item"><GraduationCap :size="18" /> Lehrer-Ansicht</RouterLink>
+        <RouterLink to="/einstellungen" class="item"><Settings :size="18" /> Einstellungen</RouterLink>
         <button class="item" @click.stop="logout"><LogOut :size="18" /> Abmelden</button>
       </div>
     </div>
@@ -44,7 +45,7 @@ async function logout() {
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; padding-top: 20px; padding-bottom: 20px; }
+.header { display: flex; align-items: center; justify-content: space-between; padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: 20px; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .logo { width: 52px; height: 52px; border-radius: 12px; }
 .brand-tn { font-weight: 800; font-style: italic; font-size: 24px; line-height: 1; }
@@ -58,8 +59,9 @@ async function logout() {
 .online { font-size: 13px; color: var(--ok); display: flex; align-items: center; gap: 6px; }
 .online i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 .chev { color: var(--text-muted); }
-.menu { position: absolute; right: 0; top: calc(100% + 8px); padding: 6px; min-width: 220px; z-index: 20; }
-.item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 8px; background: none; border: 0; text-align: left; }
+.menu-backdrop { position: fixed; inset: 0; z-index: 19; }
+.menu { position: absolute; right: 0; top: calc(100% + 8px); padding: 6px; min-width: 230px; z-index: 20; box-shadow: var(--shadow); }
+.item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 8px; background: none; border: 0; text-align: left; }
 .item:hover { background: var(--surface-hover); }
 @media (max-width: 560px) { .who { display: none; } .logo { width: 42px; height: 42px; } }
 </style>
