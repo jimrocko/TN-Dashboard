@@ -26,7 +26,7 @@ defineProps({ module: Object, data: Object })
 .tile:hover { border-color: var(--border-strong); transform: translateY(-2px); }
 .tile:active { transform: none; }
 .icon { color: #cfd7e3; margin-bottom: 26px; }
-h2 { position: relative; margin: 0 0 18px; font-size: 26px; font-weight: 500; }
+h2 { position: relative; margin: 0 0 18px; font-size: clamp(20px, 2vw, 26px); font-weight: 500; }
 h2::before { content: ''; position: absolute; left: -18px; top: 3px; bottom: 3px; width: 3px; border-radius: 2px; background: var(--accent); opacity: .8; }
 p { margin: 0; color: var(--text-muted); font-size: 16px; line-height: 1.5; }
 .foot { margin-top: auto; padding-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
