@@ -33,23 +33,23 @@ onMounted(async () => {
           </select>
         </div>
         <div class="panel-body">
-          <BarList :rows="a.by_category" :value-key="metric" :format="metric === 'value' ? eur : num" />
+          <BarList :rows="a.by_category" :value-key="metric" :format="metric === 'value' ? eur : num" :link="(r) => ({ path: '/inventar', query: { category: r.label } })" />
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Volle Regalplätze (Top 10)</h2><span class="faint small">Teile je Fach</span></div>
-        <div class="panel-body"><BarList :rows="a.by_location" value-key="qty" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.by_location" value-key="qty" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Aufträge nach Status</h2></div>
-        <div class="panel-body"><BarList :rows="a.orders_by_status" value-key="count" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.orders_by_status" value-key="count" :format="num" :link="(r) => ({ path: '/auftraege', query: { status: r.label } })" /></div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">Lose je Kiste</span></div>
-        <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 
       <section class="panel">

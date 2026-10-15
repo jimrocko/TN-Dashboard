@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { api } from '../api'
+import { useSettings } from './settings'
+import { leaveXp } from '../utils/cheats'
 
 export const useAuth = defineStore('auth', {
   state: () => ({ user: null, checked: false }),
@@ -23,10 +25,12 @@ export const useAuth = defineStore('auth', {
     async login(username, password) {
       this.user = (await api.post('auth/login', { username, password })).user
       this.checked = true
+      leaveXp(useSettings()) // jede Anmeldung startet im normalen Design
     },
     async logout() {
       await api.post('auth/logout').catch(() => {})
       this.user = null
+      leaveXp(useSettings())
     },
   },
 })

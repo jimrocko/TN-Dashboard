@@ -275,6 +275,41 @@ final class Shop
         return ['location' => $s['location_code'], 'corrections' => $corrections];
     }
 
+    /**
+     * Alles zu einem Lagerort: Inhalt, Kennzahlen, Inventur-Stand, Umlagerungen und Vorschläge (rein bzw. raus),
+     * offene Aufträge, die hier Teile holen müssen.
+     */
+    public static function location(string $code): ?array
+    {
+        $loc = q('SELECT id, code, name, kind FROM {locations} WHERE UPPER(code) = UPPER(?)', [$code])->fetch();
+        if (!$loc) return null;
+        $loc = typed([$loc], ['id'])[0];
+        $id = $loc['id'];
+        $lots = typed(q(self::LOT_SELECT . ' WHERE i.location_id = ? ORDER BY i.item_no, i.color_name', [$id])->fetchAll(), LOT_INTS, ['price']);
+        $st = q("SELECT id, status, created_at, closed_at FROM {stocktakes} WHERE location_id = ? ORDER BY CASE WHEN status = 'offen' THEN 0 ELSE 1 END, created_at DESC LIMIT 1", [$id])->fetch();
+        $in = implode(',', array_fill(0, count(ORDER_ACTIVE), '?'));
+        $picks = typed(q("SELECT o.id, o.order_no, o.status, x.item_no, x.color_name, x.name, x.qty
+            FROM {order_items} x JOIN {orders} o ON o.id = x.order_id JOIN {inventory} i ON i.id = x.inventory_id
+            WHERE i.location_id = ? AND o.status IN ($in) ORDER BY o.ordered_at", [$id, ...ORDER_ACTIVE])->fetchAll(), ['id', 'qty']);
+        $transfers = typed(q('SELECT t.id, t.item_no, t.color_name, t.qty, t.created_at, lf.code AS from_code, lt.code AS to_code, u.display_name
+            FROM {transfers} t LEFT JOIN {locations} lf ON lf.id = t.from_location_id
+            LEFT JOIN {locations} lt ON lt.id = t.to_location_id LEFT JOIN {users} u ON u.id = t.user_id
+            WHERE t.from_location_id = ? OR t.to_location_id = ? ORDER BY t.id DESC LIMIT 15', [$id, $id])->fetchAll(), ['id', 'qty']);
+        $suggestions = array_values(array_filter(self::suggestions(),
+            fn ($s) => $s['lot']['location_id'] === $id || $s['to_location_id'] === $id));
+        $neighbors = q('SELECT code FROM {locations} WHERE kind = ? ORDER BY code', [$loc['kind']])->fetchAll(PDO::FETCH_COLUMN);
+        $pos = array_search($loc['code'], $neighbors, true);
+        return $loc + [
+            'lots'        => $lots,
+            'stocktake'   => $st ? typed([$st], ['id'])[0] : null,
+            'picks'       => $picks,
+            'transfers'   => $transfers,
+            'suggestions' => $suggestions,
+            'prev'        => $pos > 0 ? $neighbors[$pos - 1] : null,
+            'next'        => $pos !== false && $pos < count($neighbors) - 1 ? $neighbors[$pos + 1] : null,
+        ];
+    }
+
     /** Alles Wichtige zu einem Teil: Bestand je Farbe und Lagerort, Aufträge mit dem Teil, letzte Umlagerungen. */
     public static function part(string $itemNo): array
     {

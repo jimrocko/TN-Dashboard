@@ -30,6 +30,8 @@ const select = (id) => router.replace({ query: { ...route.query, id } })
 
 watch(status, (s) => { router.replace({ query: { ...route.query, status: s } }); loadList() })
 watch(() => route.query.id, (id) => open(id), { immediate: true })
+// Links von anderen Seiten (z. B. Analyse → „Bezahlt“) setzen den Filter, auch wenn die Ansicht schon offen ist.
+watch(() => route.query.status, (s) => { if (s !== undefined && s !== status.value) status.value = s })
 onMounted(loadList)
 
 const next = computed(() => {

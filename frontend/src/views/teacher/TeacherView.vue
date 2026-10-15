@@ -42,6 +42,17 @@ async function toggleDev(u) {
     u.dev_access = !u.dev_access
   } catch (e) { devErr.value = e.message }
 }
+// Demo (ohne Server): CSV im Browser erzeugen, gleiche Spalten wie der Server-Export.
+async function demoCsv() {
+  const rows = (await api.get('activity', { limit: 5000, ...(selected.value ? { user: selected.value.id } : {}) })).activity
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const lines = [['Zeit', 'Benutzer', 'Name', 'Aktion', 'Modul', 'Details'].join(';'),
+    ...rows.map((r) => [r.created_at, r.username, r.display_name, r.action, r.module, r.details ? JSON.stringify(r.details) : ''].map(esc).join(';'))]
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }))
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'aktivitaeten.csv' })
+  document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 const csvUrl = () => apiUrl('activity', { format: 'csv', limit: 5000, ...(selected.value ? { user: selected.value.id } : {}) })
 
 onMounted(async () => { await loadUsers(); await select(null) })
@@ -97,6 +108,7 @@ onMounted(async () => { await loadUsers(); await select(null) })
         <div class="panel-head">
           <h2>Protokoll: {{ selected ? selected.display_name : 'alle Teilnehmer' }}</h2>
           <a v-if="!IS_DEMO" class="btn btn-sm" :href="csvUrl()"><Download :size="15" /> CSV</a>
+          <button v-else class="btn btn-sm" @click="demoCsv"><Download :size="15" /> CSV</button>
         </div>
         <ActivityTable :rows="activity" :show-user="!selected" />
       </section>

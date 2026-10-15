@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
 import GlobalSearch from '../components/GlobalSearch.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
@@ -9,6 +9,7 @@ import { api, logActivity } from '../api'
 import { num, eur, dateTime, orderStatusClass } from '../utils/format'
 
 const route = useRoute()
+const router = useRouter()
 const r = ref({ parts: [], locations: [], orders: [] })
 const loading = ref(false)
 const error = ref('')
@@ -33,8 +34,8 @@ watch(() => route.query.q, async (q) => {
     <section v-if="r.locations.length" class="panel">
       <div class="panel-head"><h2>Lagerorte</h2></div>
       <div class="panel-body chips">
-        <RouterLink v-for="l in r.locations" :key="l.id" :to="{ path: '/inventar', query: { location: l.id } }" class="btn btn-sm">
-          <LocationTag :code="l.code" :kind="l.kind" /> {{ l.name }}
+        <RouterLink v-for="l in r.locations" :key="l.id" :to="`/lagerort/${l.code}`" class="btn btn-sm">
+          <LocationTag :code="l.code" :kind="l.kind" :link="false" /> {{ l.name }}
         </RouterLink>
       </div>
     </section>
@@ -45,8 +46,8 @@ watch(() => route.query.q, async (q) => {
         <table class="table">
           <thead><tr><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th><th class="num">Wert</th></tr></thead>
           <tbody>
-            <tr v-for="i in r.parts" :key="i.id">
-              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink></td>
+            <tr v-for="i in r.parts" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
+              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
               <td><LocationTag :code="i.location_code" :kind="i.location_kind" /></td>
@@ -63,7 +64,7 @@ watch(() => route.query.q, async (q) => {
       <div class="table-wrap">
         <table class="table">
           <tbody>
-            <tr v-for="o in r.orders" :key="o.id">
+            <tr v-for="o in r.orders" :key="o.id" class="clickable" @click="router.push({ path: '/auftraege', query: { status: '', id: o.id } })">
               <td class="mono"><RouterLink :to="{ path: '/auftraege', query: { status: '', id: o.id } }">{{ o.order_no }}</RouterLink></td>
               <td>{{ o.buyer }}</td>
               <td class="faint">{{ dateTime(o.ordered_at) }}</td>

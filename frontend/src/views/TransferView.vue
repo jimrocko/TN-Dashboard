@@ -83,7 +83,7 @@ onMounted(async () => {
           <thead><tr><th>Teil</th><th>Farbe</th><th>Von</th><th></th><th>Nach</th><th class="num">Menge</th><th class="num">Am Ziel</th><th></th></tr></thead>
           <tbody>
             <tr v-for="s in suggestions" :key="s.lot.id">
-              <td><span class="mono">{{ s.lot.item_no }}</span> <span class="muted small">{{ s.lot.name }}</span></td>
+              <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
               <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
               <td><LocationTag :code="s.lot.location_code" kind="mischkiste" /></td>
               <td class="faint"><ArrowRight :size="14" /></td>
@@ -110,13 +110,13 @@ onMounted(async () => {
             <button v-for="l in lotResults" :key="l.id" class="res" type="button" @click="pick(l)">
               <span class="mono">{{ l.item_no }}</span>
               <span class="muted small grow">{{ l.color_name }} · {{ l.name }}</span>
-              <LocationTag :code="l.location_code" :kind="l.location_kind" />
+              <LocationTag :code="l.location_code" :kind="l.location_kind" :link="false" />
               <span class="small num">{{ num(l.qty) }}</span>
             </button>
           </div>
           <form v-if="lot" class="form" @submit.prevent="book(lot.id, to, qty)">
             <div class="chosen">
-              <span class="mono">{{ lot.item_no }}</span> <ColorSwatch :name="lot.color_name" />
+              <RouterLink class="mono" :to="`/teil/${lot.item_no}`">{{ lot.item_no }}</RouterLink> <ColorSwatch :name="lot.color_name" />
               <span class="faint small">· {{ num(lot.qty) }} Stück in</span> <LocationTag :code="lot.location_code" :kind="lot.location_kind" />
             </div>
             <div class="row">
@@ -144,8 +144,8 @@ onMounted(async () => {
             <tbody>
               <tr v-for="t in history" :key="t.id">
                 <td class="faint nowrap">{{ dateTime(t.created_at) }}</td>
-                <td><span class="mono">{{ t.item_no }}</span> <span class="muted small">{{ t.color_name }}</span></td>
-                <td class="mono small nowrap">{{ t.from_code }} → {{ t.to_code }}</td>
+                <td><RouterLink class="mono" :to="`/teil/${t.item_no}`">{{ t.item_no }}</RouterLink> <span class="muted small">{{ t.color_name }}</span></td>
+                <td class="nowrap"><LocationTag :code="t.from_code" /> <ArrowRight :size="12" class="faint" /> <LocationTag :code="t.to_code" /></td>
                 <td class="num">{{ num(t.qty) }}</td>
                 <td class="muted">{{ t.display_name }}</td>
               </tr>

@@ -14,7 +14,13 @@ const items = ref([])
 const meta = ref({ categories: [], locations: [] })
 const loading = ref(false)
 const error = ref('')
-const f = ref({ q: '', category: '', location: route.query.location ?? '', sort: 'item' })
+const f = ref({ q: route.query.q ?? '', category: route.query.category ?? '', location: route.query.location ?? '', sort: 'item' })
+// Links wie /inventar?category=Brick oder ?location=3 setzen die Filter, auch wenn die Ansicht schon offen ist.
+watch(() => [route.query.category, route.query.location, route.query.q], ([c, l, q]) => {
+  if (c !== undefined) f.value.category = c
+  if (l !== undefined) f.value.location = l
+  if (q !== undefined) f.value.q = q
+})
 
 let timer
 async function load() {
@@ -69,11 +75,11 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
               <th class="num">Menge</th><th class="num">Stückpreis</th><th class="num">Wert</th><th>Geändert</th><th></th></tr>
           </thead>
           <tbody>
-            <tr v-for="i in items" :key="i.id">
-              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink></td>
+            <tr v-for="i in items" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
+              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
-              <td class="muted">{{ i.category }}</td>
+              <td><RouterLink class="muted catlink" :to="{ path: '/inventar', query: { category: i.category } }" @click.stop>{{ i.category }}</RouterLink></td>
               <td><LocationTag :code="i.location_code" :kind="i.location_kind" /></td>
               <td class="num" :class="{ low: i.qty < 20 && i.location_kind === 'regal' }">{{ num(i.qty) }}</td>
               <td class="num muted">{{ eur(i.price) }}</td>
@@ -93,4 +99,5 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
 .grow { flex: 1; min-width: 200px; }
 .nowrap { white-space: nowrap; }
 .low { color: var(--warn); }
+.catlink:hover { color: var(--accent-text); text-decoration: underline; }
 </style>

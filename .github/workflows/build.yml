@@ -49,4 +49,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: tn-dashboard-demo
-          path: docs/demo/tn-dashboard-demo.html
+          path: TN-Dashboard-Demo.html

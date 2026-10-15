@@ -85,6 +85,11 @@ switch (true) {
         }
         json_response(Shop::search($term));
 
+    case count($parts) === 2 && $parts[0] === 'location' && $method === 'GET':
+        require_user();
+        $l = Shop::location(rawurldecode($parts[1]));
+        $l ? json_response(['location' => $l]) : json_error('Lagerort nicht gefunden', 404);
+
     case count($parts) === 2 && $parts[0] === 'part' && $method === 'GET':
         require_user();
         $no = rawurldecode($parts[1]);

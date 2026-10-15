@@ -168,6 +168,31 @@ function createStocktake(db, locationId) {
   return s
 }
 
+// Entspricht Shop::location()
+function location(db, code) {
+  const l = db.locations.find((x) => x.code.toUpperCase() === String(code).toUpperCase())
+  if (!l) return null
+  const lots = inventory(db, { location: l.id, limit: 2000 })
+  const st = db.stocktakes.filter((s) => s.location_id === l.id)
+    .sort((a, b) => (a.status === 'offen' ? 0 : 1) - (b.status === 'offen' ? 0 : 1) || b.created_at.localeCompare(a.created_at))[0]
+  const picks = db.orders.filter((o) => ORDER_ACTIVE.includes(o.status))
+    .sort((a, b) => a.ordered_at.localeCompare(b.ordered_at))
+    .flatMap((o) => o.items.filter((x) => db.inventory.find((i) => i.id === x.inventory_id)?.location_id === l.id)
+      .map((x) => ({ id: o.id, order_no: o.order_no, status: o.status, item_no: x.item_no, color_name: x.color_name, name: x.name, qty: x.qty })))
+  const transfers = db.transfers.filter((t) => t.from_code === l.code || t.to_code === l.code).reverse().slice(0, 15)
+    .map((t) => ({ ...t, display_name: db.users.find((u) => u.id === t.user_id)?.display_name }))
+  const same = db.locations.filter((x) => x.kind === l.kind).map((x) => x.code).sort()
+  const pos = same.indexOf(l.code)
+  return {
+    ...l, lots,
+    stocktake: st ? { id: st.id, status: st.status, created_at: st.created_at, closed_at: st.closed_at } : null,
+    picks, transfers,
+    suggestions: suggestions(db).filter((s) => s.lot.location_id === l.id || s.to_location_id === l.id),
+    prev: pos > 0 ? same[pos - 1] : null,
+    next: pos < same.length - 1 ? same[pos + 1] : null,
+  }
+}
+
 // Entspricht Shop::part()
 function part(db, no) {
   const lots = db.inventory.filter((i) => i.item_no === no).map((i) => lotRow(db, i))
@@ -240,6 +265,12 @@ export function route(db, method, parts, params, body, requireUser, log) {
       locations: db.locations.filter((l) => like(l.code, term) || like(l.name, term)).slice(0, 20),
       orders: orders(db, null, term),
     }
+  }
+  if (method === 'GET' && a === 'location' && b) {
+    requireUser()
+    const l = location(db, decodeURIComponent(b))
+    if (!l) throw new DemoError('Lagerort nicht gefunden', 404)
+    return { location: l }
   }
   if (method === 'GET' && a === 'part' && b) {
     requireUser()

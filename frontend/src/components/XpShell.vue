@@ -1,11 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, History, Settings, GraduationCap, Code2, Power } from 'lucide-vue-next'
+import { Search, History, Settings, GraduationCap, Code2, Power, LogOut } from 'lucide-vue-next'
 import { modules, moduleById } from '../modules'
 import { pageTitle } from '../router'
 import { useAuth } from '../stores/auth'
 import { windowKey } from '../utils/windowing'
+import { useSettings } from '../stores/settings'
+import { leaveXp, xpTouch, xpIdleFor, XP_IDLE_MS } from '../utils/cheats'
 import XpWindowView from './XpWindowView.vue'
 import logo from '../assets/icon.svg'
 
@@ -30,7 +32,7 @@ const extras = computed(() => [
   ...(auth.isStaff ? [{ id: 'lehrer', title: 'Lehrer-Ansicht', icon: GraduationCap, path: '/lehrer', xpColor: '#b5651d' }] : []),
 ])
 const desktopIcons = computed(() => [...modules, ...extras.value])
-const iconFor = (key) => (key.startsWith('/teil/') ? moduleById('inventar')
+const iconFor = (key) => (key.startsWith('/teil/') || key.startsWith('/lagerort/') ? moduleById('inventar')
   : desktopIcons.value.find((i) => key === i.path || key.startsWith(i.path + '/')) ?? null)
 
 // Bildschirmbreite: schmal = Fenster immer bildschirmfüllend
@@ -135,6 +137,23 @@ function search() {
   const term = q.value.trim()
   if (term) { router.push({ path: '/suche', query: { q: term } }); q.value = '' }
 }
+// „Ausschalten“: XP sofort verlassen, zurück zum normalen Design. Passiert auch nach 15 Minuten ohne Bedienung.
+const settings = useSettings()
+function shutDown() {
+  startOpen.value = false
+  windows.value = []
+  leaveXp(settings)
+}
+let lastTouch = 0
+function onActivity() {
+  if (Date.now() - lastTouch < 10000) return
+  lastTouch = Date.now()
+  xpTouch()
+}
+function checkIdle() {
+  if (xpIdleFor() >= XP_IDLE_MS) shutDown()
+}
+
 async function logout() {
   startOpen.value = false
   windows.value = []
@@ -146,13 +165,19 @@ const tick = () => { time.value = new Date().toLocaleTimeString('de-DE', { hour:
 const onKey = (e) => { if (e.key === 'Escape') startOpen.value = false }
 let timer
 onMounted(() => {
-  tick(); timer = setInterval(tick, 15000)
+  checkIdle() // z. B. App nach langer Pause wieder geöffnet
+  xpTouch()
+  tick(); timer = setInterval(() => { tick(); checkIdle() }, 15000)
   window.addEventListener('keydown', onKey)
+  window.addEventListener('pointerdown', onActivity)
+  window.addEventListener('keydown', onActivity)
   compactMq?.addEventListener?.('change', onCompact)
 })
 onBeforeUnmount(() => {
   clearInterval(timer)
   window.removeEventListener('keydown', onKey)
+  window.removeEventListener('pointerdown', onActivity)
+  window.removeEventListener('keydown', onActivity)
   compactMq?.removeEventListener?.('change', onCompact)
 })
 </script>
@@ -214,7 +239,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="sm-foot">
-        <button class="sm-off" @click="logout"><span class="off-ic"><Power :size="16" /></span> Abmelden</button>
+        <button class="sm-off" @click="logout"><span class="off-ic key"><LogOut :size="15" /></span> Abmelden</button>
+        <button class="sm-off" @click="shutDown"><span class="off-ic"><Power :size="16" /></span> Ausschalten</button>
       </div>
     </div>
 
@@ -335,9 +361,10 @@ onBeforeUnmount(() => {
 .sm-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; min-height: 44px; border-radius: 3px; color: var(--xp-pane-link); font-weight: 700; font-size: 14px; }
 .sm-item:hover, .sm-link:hover { background: var(--xp-select); color: #fff; }
 .sm-sep { height: 1px; background: var(--border-strong); margin: 6px 4px; }
-.sm-foot { display: flex; justify-content: flex-end; padding: 6px 10px; background: var(--xp-title); }
+.sm-foot { display: flex; justify-content: flex-end; gap: 4px; padding: 6px 10px; background: var(--xp-title); }
 .sm-off { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; background: none; border: 0; color: #fff; font-size: 14px; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); border-radius: 3px; }
 .sm-off:hover { background: rgba(255, 255, 255, 0.15); }
+.off-ic.key { background: linear-gradient(180deg, #ffd56a, #e2a31b); }
 .off-ic { width: 26px; height: 26px; border-radius: 4px; display: grid; place-items: center; background: linear-gradient(180deg, #f6a46c, #e05a19); border: 1px solid #fff; }
 @media (max-width: 480px) { .sm-body { grid-template-columns: 1fr; } .sm-right { border-left: 0; border-top: 1px solid var(--border-strong); } }
 

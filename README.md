@@ -13,10 +13,11 @@
 ![PWA](https://img.shields.io/badge/PWA-iPad%20ready-5A0FC8?logo=pwa&logoColor=white)
 [![Build](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml/badge.svg)](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml)
 
-### [▶ Demo im Browser öffnen](https://jimrocko.github.io/TN-Dashboard/)
+<a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
 
-Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code in der Demo: `0000`.<br>
-<sub>Alle Daten in der Demo sind erfunden und bleiben nur in deinem Browser. Ohne Internet: [Demo-Datei herunterladen](docs/demo/tn-dashboard-demo.html) und per Doppelklick öffnen.</sub>
+Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
+<sub>Die Demo ist die komplette App mit erfundenen Daten. Alles bleibt nur in deinem Browser.<br>
+Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
 
@@ -30,12 +31,15 @@ Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, we
 
 ## Die Bereiche
 
+Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale, Kategorien und Balken in der Analyse filtern das Inventar.
+
 | Bereich | Was man dort macht |
 |---|---|
 | **Startseite** | Große Kacheln für alle Bereiche mit Live-Zahlen (Bestand, offene Aufträge, Vorschläge, offene Inventuren) und eine Suche über alles. |
 | **Suche** | Eine Suche über Teil-Nummern, Namen, Farben, Kategorien, Lagerorte und Aufträge. |
 | **Teile-Scanner** | Teil mit der Kamera fotografieren. Es wird automatisch erkannt (über den kostenlosen Dienst [Brickognize](https://brickognize.com)), danach öffnet sich direkt die Teile-Seite. |
 | **Teile-Seite** | Alles zu einer Teil-Nr.: Bestand nach Farbe und Lagerort, Wert, in offenen Aufträgen reservierte Menge, Aufträge mit dem Teil, letzte Umlagerungen, Link zu BrickLink. Jede Teil-Nr. in der App führt hierher. |
+| **Lagerort-Seite** | Was in einem Regalplatz oder einer Mischkiste liegt: Inhalt mit Menge und Wert, Inventur-Stand, was woanders hingehört, welche offenen Aufträge hier Teile holen, letzte Umlagerungen. Mit Pfeilen zum Nachbarfach blättern. |
 | **Inventar** | Alle Lose nach Nummer, Farbe, Kategorie und Lagerort filtern und sortieren, mit Menge und Wert. |
 | **Umlagern** | Vorschläge, welche Teile aus Mischkisten an ihren festen Regalplatz gehören, mit einem Tipp übernehmen, oder frei umbuchen. Gleiche Teile am Ziel werden zusammengeführt. |
 | **Inventur & Bestandsprüfung** | Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren. |
@@ -70,6 +74,10 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
   <tr>
     <td width="50%"><img src="docs/images/teil.png" alt="Teile-Seite"><br><sub><b>Teile-Seite</b>: öffnet sich nach dem Scannen</sub></td>
     <td width="50%"><img src="docs/images/scanner.png" alt="Teile-Scanner"><br><sub><b>Teile-Scanner</b>: Foto machen, Teil wird erkannt</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/lagerort.png" alt="Lagerort-Seite"><br><sub><b>Lagerort-Seite</b>: was liegt wo</sub></td>
+    <td width="50%"><img src="docs/images/dashboard.png" alt="Startseite"><br><sub><b>Startseite</b>: alle Bereiche auf einen Blick</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/inventar.png" alt="Inventar"><br><sub><b>Inventar</b>: filtern nach Kategorie, Lagerort und Text</sub></td>
@@ -111,7 +119,8 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 ```
 api/        PHP-API, Installationsseite, BrickLink, Teileerkennung, Dev-Bereich
 frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, Demo-Backend)
-docs/       Logo, Screenshots, Demo-Datei
+docs/       Logo und Screenshots
+TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
 .github/    Build-Prüfung und Demo auf GitHub Pages
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
 start.sh    lokal starten (Mac/Linux), start.bat für Windows
@@ -147,7 +156,9 @@ Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in 
 Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `0000`.
 
 ### Demo-Version
-`cd frontend && npm run build:demo` baut die App als einzelne HTML-Datei ohne Server: `docs/demo/tn-dashboard-demo.html` (zum Herunterladen) und `demo-dist/tn-dashboard-demo.html`. Login, Daten und Protokoll liegen dabei nur im Browser. Bei jedem Push auf den Standard-Branch wird sie automatisch auf [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) veröffentlicht (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen).
+`TN-Dashboard-Demo.html` im Hauptordner ist die komplette App als eine einzige Datei: alle Bereiche, Lehrer-Ansicht, Dev-Bereich und CSV-Export, nur mit erfundenen Daten. Login, Daten und Protokoll liegen im Browser („Demo-Daten zurücksetzen“ im Dev-Bereich stellt den Anfang wieder her). Neu bauen mit `cd frontend && npm run build:demo`.
+
+Öffnen: im Repo oben auf **Demo starten** klicken, oder die Datei herunterladen und per Doppelklick öffnen. Bei jedem Push auf den Standard-Branch wird sie außerdem auf [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) veröffentlicht (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen).
 
 ### Entwicklung mit Hot-Reload
 ```sh

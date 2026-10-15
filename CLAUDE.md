@@ -32,7 +32,7 @@ frontend/           Vue 3 + Vite + Pinia + vue-router (Hash-Routing)
   src/demo/dev.js   Dev-Bereich im Demo-Backend
   src/utils/devtools.js  Dev-Optionen (Debug-Anzeige, Verzögerung) und API-Protokoll
   src/styles/theme.css  Normales Design (Tokens), xp.css = XP-Stil (nur mit data-tn-style="xp")
-docs/demo/         Demo als eine HTML-Datei (wird von npm run build:demo erzeugt und eingecheckt)
+TN-Dashboard-Demo.html  Komplette App als eine HTML-Datei mit Fake-Daten (npm run build:demo erzeugt sie, wird eingecheckt)
 .github/workflows/ build.yml = Build-Prüfung (PHP-Lint, Build, Demo, install.php), demo-pages.yml = Demo auf GitHub Pages
 start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 ```
@@ -63,6 +63,9 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Kennzahlen (Bestand, Farben, Wert, in offenen Aufträgen reserviert), Bestand nach Farbe und Lagerort mit Umlagern-Knopf, Aufträge mit dem Teil, letzte Umlagerungen, Alternativen aus der Erkennung.
 - Bilder: `PartImage.vue` nimmt das Erkennungsbild, sonst BrickLink (`img.bricklink.com/ItemImage/PN/<farbe>/<nr>.png`; `color_id` sind BrickLink-Farb-IDs), sonst Platzhalter.
 - Teil-Nummern in Inventar, Suche, Aufträgen und Analyse verlinken hierher.
+### Lagerort-Seite (`/lagerort/:code`, `LocationView.vue`, `GET api/?r=location/<code>`)
+- Inhalt, Kennzahlen, Inventur-Stand, Vorschläge rein/raus, offene Aufträge mit Teilen von hier, Umlagerungen, Blättern zum Nachbarfach.
+- **Alles soll anklickbar sein** (Wunsch des Inhabers): `LocationTag` ist standardmäßig ein Link hierher (`:link="false"` nur innerhalb von Knöpfen/Links). Inventar liest `?category=`, `?location=`, `?q=` aus der Adresse; `BarList` hat eine `link`-Funktion; Tabellenzeilen mit `class="clickable"` öffnen die Teile-Seite, innere Links brauchen `@click.stop`.
 ### Dev-Bereich (`/dev`, `DevView.vue`, `api/lib/Dev.php`)
 - `GET dev/status` → `allowed, unlocked, pin_set, test_mode, can_set_pin, locked_for`. `POST dev/unlock {pin}` (5 Fehlversuche → 60 s Sperre), `dev/lock`, `dev/pin {pin}` (nur Lehrer; ist schon ein Code gesetzt, muss entsperrt sein; neue Version sperrt alle anderen Sitzungen).
 - `GET dev/system`, `dev/tables`, `dev/table?name=&page=&per=`, `POST dev/test {name}` (db_read, db_write, session, tmp_write, bricklink, brickognize). `POST users/<id>/dev {enabled}` vergibt die Dev-Rolle.
@@ -75,12 +78,14 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Jedes Fenster rendert `<RouterView :route>` und stellt per `provide(routeLocationKey, …)` eine **eigene Route** bereit (`XpWindowView.vue`). Deshalb behalten Ansichten (z. B. ausgewählter Auftrag) ihren Zustand, wenn man das Fenster wechselt. Ansichten müssen `useRoute()` verwenden, nicht `router.currentRoute`.
 - `inject(WINDOW_VISIBLE)` sagt einer Ansicht, ob ihr Fenster minimiert ist (Scanner stoppt dann die Kamera).
 - Unter 900 px Breite: Fenster bildschirmfüllend, nur das aktive sichtbar.
+- **Schnell wieder weg:** Startmenü → „Ausschalten“ schaltet aufs normale Design zurück; automatisch nach 15 Minuten ohne Bedienung (`XP_IDLE_MS`, `tn-xp-seen` in localStorage, gilt auch nach Neuladen) und bei jeder An- oder Abmeldung (`leaveXp()` im Auth-Store).
 
 ## Testen
 - Lokal: `./start.sh` (baut, legt SQLite + Test-Konten an, startet `php -S`). Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
 - Nach Änderungen: `cd frontend && npm run build` und `npm run build:demo` müssen fehlerfrei laufen; `php -l` für geänderte PHP-Dateien.
-- Demo: `npm run build:demo` schreibt `demo-dist/tn-dashboard-demo.html` (Artifact-Format) und `docs/demo/tn-dashboard-demo.html` (vollständige Datei, wird **mit eingecheckt**, nach Frontend-Änderungen neu bauen und committen).
-- Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifact https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R (privat; dieselbe Datei erneut veröffentlichen, Link bleibt).
+- Demo: `npm run build:demo` schreibt `demo-dist/tn-dashboard-demo.html` (Artifact-Format) und **`TN-Dashboard-Demo.html` im Hauptordner** (vollständige Datei, wird eingecheckt; nach Frontend-Änderungen neu bauen und committen). Die Demo hat **alle Funktionen**, nur mit Fake-Daten (Wunsch des Inhabers, keine „eingeschränkte“ Demo); einzig BrickLink-Abrufe brauchen den Server.
+- Ein-Klick-Demo im README: https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html (braucht öffentliches Repo).
+- Weitere Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifact https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R (privat; dieselbe Datei erneut veröffentlichen, Link bleibt).
 - Browser-Tests mit Playwright: Chromium liegt in `/opt/pw-browsers/chromium` (Cloud-Umgebung). XP-Stil im Test aktivieren: `localStorage['tn-dashboard-settings'] = '{"style":"xp"}'`.
 - In der Cloud-Sandbox sind Brickognize und BrickLink-Bilder gesperrt; Erkennung dort nur über den Demo-Knopf testbar.
 
@@ -98,3 +103,4 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Sitzung 3, Teil 2** (2026-10-15): Dev-Bereich gesichert (Dev-Rolle + Dev-Code, Test = 0000) und stark erweitert (System, Tests, Daten, API, Einstellungen, Debug-Anzeige); Lehrer-Ansicht mit Dev-Spalte; README als fertige Produkt-Doku mit Demo-Link; GitHub Actions für Build und Demo auf Pages; Demo-Datei in `docs/demo/`.
 - **Sitzung 3, Teil 3**: Stil-Umschalter und Code-Feld aus den Dev-Einstellungen entfernt, versteckte Versionszeile (5× antippen) wiederhergestellt, XP-Stil aus README und Screenshots entfernt.
 - **Sitzung 3, Teil 4**: Dev-Bereich sperrt sich nach 15 Minuten ohne Aktivität und beim Abmelden; Lücke geschlossen (Anmelden ohne Abmelden übernahm die Entsperrung des Vorgängers).
+- **Sitzung 3, Teil 5**: Lagerort-Seite und überall anklickbare Lagerorte, Teile, Kategorien, Balken; XP mit „Ausschalten“, automatischem Zurückschalten nach 15 Minuten und bei An-/Abmeldung; CSV-Export auch in der Demo; Demo als `TN-Dashboard-Demo.html` im Hauptordner mit Ein-Klick-Link im README.

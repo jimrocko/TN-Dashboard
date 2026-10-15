@@ -14,6 +14,7 @@ import StocktakeView from './views/StocktakeView.vue'
 import AnalysisView from './views/AnalysisView.vue'
 import ScannerView from './views/ScannerView.vue'
 import PartView from './views/PartView.vue'
+import LocationView from './views/LocationView.vue'
 import ProfileView from './views/ProfileView.vue'
 import SettingsView from './views/SettingsView.vue'
 import DevView from './views/DevView.vue'
@@ -34,6 +35,7 @@ const router = createRouter({
     { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
     { path: '/scanner', component: ScannerView, meta: { title: 'Teile-Scanner', module: 'scanner' } },
     { path: '/teil/:no', component: PartView, meta: { title: 'Teil', module: 'inventar' } },
+    { path: '/lagerort/:code', component: LocationView, meta: { title: 'Lagerort', module: 'inventar' } },
     {
       path: '/modul/:id', component: ModuleView, meta: { title: 'Modul' },
       beforeEnter: (to) => {
@@ -67,6 +69,6 @@ router.afterEach((to, from) => {
 
 /** Seitentitel, auch für die Modul-Platzhalter (/modul/:id). */
 export const pageTitle = (r) => (r.path.startsWith('/modul/') ? moduleById(r.params.id)?.title
-  : r.params.no ? `Teil ${r.params.no}` : r.meta.title) ?? ''
+  : r.params.no ? `Teil ${r.params.no}` : r.params.code ? `Lagerort ${r.params.code}` : r.meta.title) ?? ''
 
 export default router
