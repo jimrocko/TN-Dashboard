@@ -3,7 +3,8 @@
 // G = gebraucht (linke Wand), H (rechte Wand oben), N = neu (rechte Wand unten),
 // FG/FN/FT/Plate = Figuren gebraucht/neu, Figurenteile, Plates (unten links). Mischkisten (MK-…) liegen außerhalb des Plans.
 export const AREAS = [
-  { id: 'G', label: 'Gebraucht', color: '#3f8f3a', from: 100, to: 999, digits: 3 },
+  // maxLots: Kästchen mit mehr verschiedenen Losen gelten als Mischkiste (noch nicht aufgeteilt) und werden rot markiert.
+  { id: 'G', label: 'Gebraucht', color: '#3f8f3a', from: 100, to: 999, digits: 3, maxLots: 3 },
   { id: 'H', label: 'Regal H', color: '#2f63d8', from: 0, to: 999, digits: 3 },
   { id: 'N', label: 'Neu', color: '#e3b81c', from: 0, to: 999, digits: 3 },
   { id: 'FG', label: 'Figuren gebraucht', color: '#c8412f', group: 'F' },
@@ -32,3 +33,10 @@ export function parseCode(code) {
 }
 
 export const areaById = (id) => AREAS.find((a) => a.id === id)
+
+/** Ist das Kästchen eine Mischkiste, also noch nicht auf die erlaubte Zahl Lose aufgeteilt? (G: mehr als 3 verschiedene Lose) */
+export function isMixedBox(code, lots) {
+  const max = areaById(parseCode(code)?.area)?.maxLots
+  return max !== undefined && lots > max
+}
+export const maxLotsFor = (code) => areaById(parseCode(code)?.area)?.maxLots

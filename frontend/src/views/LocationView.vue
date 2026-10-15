@@ -8,6 +8,7 @@ import LocationTag from '../components/LocationTag.vue'
 import PartImage from '../components/PartImage.vue'
 import { api } from '../api'
 import { num, eur, dateTime, orderStatusClass } from '../utils/format'
+import { isMixedBox, maxLotsFor } from '../utils/areas'
 
 // Lagerort-Seite: was liegt drin, was gehört hierher oder woanders hin, welche Aufträge holen hier Teile.
 // Erreichbar über jeden Lagerort-Tag in der App.
@@ -59,6 +60,8 @@ async function startStocktake() {
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 const kindLabel = { regal: 'Regalplatz', mischkiste: 'Mischkiste' }
+// Kästchen mit zu vielen verschiedenen Losen (bei G mehr als 3) = Mischkiste, muss noch aufgeteilt werden
+const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value.lots.length))
 </script>
 
 <template>
@@ -71,6 +74,10 @@ const kindLabel = { regal: 'Regalplatz', mischkiste: 'Mischkiste' }
     </PageHead>
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
+    <div v-if="mixed" class="mixed-note" role="status">
+      <strong>Mischkiste:</strong> {{ loc.lots.length }} verschiedene Lose, erlaubt sind höchstens {{ maxLotsFor(loc.code) }}.
+      Bitte aufteilen und überzählige Lose in andere Kästchen umlagern.
+    </div>
 
     <template v-if="loc">
       <div class="stats">
@@ -176,6 +183,8 @@ const kindLabel = { regal: 'Regalplatz', mischkiste: 'Mischkiste' }
 </template>
 
 <style scoped>
+.mixed-note { padding: 12px 16px; border-radius: var(--radius-sm); border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--text); }
+.mixed-note strong { color: var(--danger); }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
