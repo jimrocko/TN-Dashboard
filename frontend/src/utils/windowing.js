@@ -1,4 +1,4 @@
-// Gemeinsame Schlüssel für die XP-Fensterverwaltung (components/XpShell.vue, components/XpWindow.vue).
+// Gemeinsame Schlüssel für die XP-Fensterverwaltung (components/XpShell.vue, components/XpWindowView.vue).
 
 /** inject(WINDOW_VISIBLE): Ref<boolean>, ob das Fenster gerade sichtbar (nicht minimiert) ist. Außerhalb von XP immer true. */
 export const WINDOW_VISIBLE = Symbol('tn-window-visible')
