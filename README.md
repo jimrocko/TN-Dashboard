@@ -22,7 +22,7 @@ Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB.
 - **Mac/Linux:** `./start.sh`
 - **Windows:** `start.bat`
 
-Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in `local-data/`), baut die App beim ersten Mal, erstellt Test-Konten und startet sie unter http://localhost:8000.
+Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in `local-data/`), baut die App beim ersten Mal, erstellt Test-Konten startet sie und öffnet sie im Browser, sobald der Server bereit ist (http://127.0.0.1:8000, bei belegtem Port der nächste freie).
 Nach Code-Änderungen baust du mit `./start.sh --neu-bauen` neu, die Test-Daten bleiben dabei erhalten.
 Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
 
