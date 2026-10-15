@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Download } from 'lucide-vue-next'
 import ActivityTable from '../components/ActivityTable.vue'
-import { api, apiUrl } from '../api'
+import { api, apiUrl, IS_DEMO } from '../api'
 import { useAuth } from '../stores/auth'
 
 const auth = useAuth()
@@ -17,7 +17,7 @@ onMounted(async () => {
   <div class="page">
     <h1 class="page-title">Meine Aktivitäten</h1>
     <p class="page-sub">{{ auth.user.display_name }} · Dieses Protokoll sieht auch dein Lehrer.</p>
-    <a class="btn" :href="apiUrl('activity', { format: 'csv', limit: 5000 })"><Download :size="18" /> Als CSV herunterladen</a>
+    <a v-if="!IS_DEMO" class="btn" :href="apiUrl('activity', { format: 'csv', limit: 5000 })"><Download :size="18" /> Als CSV herunterladen</a>
     <div class="card spaced">
       <p v-if="error" class="error">{{ error }}</p>
       <ActivityTable :rows="rows" />

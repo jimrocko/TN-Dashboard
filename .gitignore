@@ -6,3 +6,4 @@ api/data/*.sqlite
 .env
 local-data/
 .env.*
+demo-dist/

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Download, UserPlus } from 'lucide-vue-next'
 import ActivityTable from '../../components/ActivityTable.vue'
-import { api, apiUrl } from '../../api'
+import { api, apiUrl, IS_DEMO } from '../../api'
 
 const users = ref([])
 const selected = ref(null)
@@ -74,7 +74,7 @@ onMounted(async () => { await loadUsers(); await select(null) })
       <div class="card">
         <div class="bar">
           <h2>Protokoll: {{ selected ? selected.display_name : 'alle Teilnehmer' }}</h2>
-          <a class="btn" :href="csvUrl()"><Download :size="18" /> CSV</a>
+          <a v-if="!IS_DEMO" class="btn" :href="csvUrl()"><Download :size="18" /> CSV</a>
         </div>
         <ActivityTable :rows="activity" :show-user="!selected" />
       </div>

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/package-dist.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:demo": "vite build --mode demo && node scripts/inline-demo.mjs"
   },
   "dependencies": {
     "lucide-vue-next": "^1.0.0",

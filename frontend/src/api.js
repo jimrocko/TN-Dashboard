@@ -1,3 +1,8 @@
+import * as demoBackend from './demo/backend.js'
+
+// Demo-Version (npm run build:demo): läuft ohne Server, Daten nur im Browser.
+export const IS_DEMO = import.meta.env.MODE === 'demo'
+
 // Relativer Pfad, damit die App in jedem Unterordner des Webservers läuft.
 const BASE = 'api/'
 
@@ -14,6 +19,13 @@ export function apiUrl(route, params = {}) {
 }
 
 async function request(method, route, { body, params } = {}) {
+  if (IS_DEMO) {
+    try {
+      return await demoBackend.handle(method, route, params, body)
+    } catch (e) {
+      throw new ApiError(e.message, e.status)
+    }
+  }
   const res = await fetch(apiUrl(route, params), {
     method,
     credentials: 'same-origin',

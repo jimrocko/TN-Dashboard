@@ -3,11 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, ChevronDown, LogOut, GraduationCap, History } from 'lucide-vue-next'
 import { useAuth } from '../stores/auth'
+import logo from '../assets/icon.svg'
 
 const auth = useAuth()
 const router = useRouter()
 const open = ref(false)
-const logo = import.meta.env.BASE_URL + 'icon.svg'
+
 
 async function logout() {
   open.value = false

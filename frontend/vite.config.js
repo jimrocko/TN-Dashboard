@@ -2,17 +2,22 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const demo = mode === 'demo'
+  return {
   // Relative Pfade: Die App funktioniert in jedem Unterordner des Webservers (z. B. /tn-dashboard/).
   base: './',
-  build: { outDir: '../dist', emptyOutDir: true },
+  // Demo: alles in eine Datei (ohne Server, ohne Service Worker), siehe scripts/inline-demo.mjs.
+  build: demo
+    ? { outDir: '../demo-dist', emptyOutDir: true, assetsInlineLimit: 100000000, cssCodeSplit: false, modulePreload: false }
+    : { outDir: '../dist', emptyOutDir: true },
   server: {
     // Lokal: PHP-Server mit `php -S 127.0.0.1:8000 -t ..` im Projektordner starten.
     proxy: { '/api': 'http://127.0.0.1:8000' },
   },
   plugins: [
     vue(),
-    VitePWA({
+    !demo && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -39,4 +44,5 @@ export default defineConfig({
       },
     }),
   ],
+}
 })

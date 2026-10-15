@@ -1,6 +1,6 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createMemoryHistory } from 'vue-router'
 import { useAuth } from './stores/auth'
-import { logActivity } from './api'
+import { logActivity, IS_DEMO } from './api'
 import { moduleById } from './modules'
 
 import HomeView from './views/HomeView.vue'
@@ -13,8 +13,9 @@ import DevView from './views/DevView.vue'
 import TeacherView from './views/teacher/TeacherView.vue'
 
 // Hash-Routing (#/…): funktioniert auf jedem Webserver ohne Rewrite-Regeln.
+// Die Demo läuft eingebettet und hält die Navigation nur im Speicher.
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: IS_DEMO ? createMemoryHistory() : createWebHashHistory(),
   routes: [
     { path: '/login', component: LoginView, meta: { public: true } },
     { path: '/', component: HomeView },
