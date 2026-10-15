@@ -1,11 +1,15 @@
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, defineAsyncComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import BottomNav from './components/BottomNav.vue'
 import XpShell from './components/XpShell.vue'
 import DebugOverlay from './components/DebugOverlay.vue'
 import { useSettings } from './stores/settings'
+import { IS_TUTORIAL } from './api'
+
+// Klemmi gibt es nur im Tutorial-Build; in App und Demo fällt der Code komplett weg.
+const TutorialCoach = IS_TUTORIAL ? defineAsyncComponent(() => import('./tutorial/TutorialCoach.vue')) : null
 
 const route = useRoute()
 const settings = useSettings()
@@ -24,6 +28,7 @@ watch(() => settings.style, (s) => { if (s !== 'xp' && route.meta.xpOnly) router
     <BottomNav />
   </div>
   <DebugOverlay v-if="chrome" />
+  <TutorialCoach v-if="TutorialCoach" />
 </template>
 
 <style scoped>

@@ -3,13 +3,18 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ mode }) => {
-  const demo = mode === 'demo'
+  // Demo und Tutorial laufen ohne Server (Demo-Backend im Browser) und landen jeweils in einer einzigen HTML-Datei.
+  const demo = mode === 'demo' || mode === 'tutorial'
   return {
   // Relative Pfade: Die App funktioniert in jedem Unterordner des Webservers (z. B. /tn-dashboard/).
   base: './',
   // Demo: alles in eine Datei (ohne Server, ohne Service Worker), siehe scripts/inline-demo.mjs.
   build: demo
-    ? { outDir: '../demo-dist', emptyOutDir: true, assetsInlineLimit: 100000000, cssCodeSplit: false, modulePreload: false }
+    ? {
+        outDir: mode === 'tutorial' ? '../tutorial-dist' : '../demo-dist', emptyOutDir: true,
+        assetsInlineLimit: 100000000, cssCodeSplit: false, modulePreload: false,
+        rollupOptions: { output: { inlineDynamicImports: true } },
+      }
     : { outDir: '../dist', emptyOutDir: true },
   server: {
     // Lokal: PHP-Server mit `php -S 127.0.0.1:8000 -t ..` im Projektordner starten.

@@ -2,7 +2,9 @@ import * as demoBackend from './demo/backend.js'
 import { devFlags, recordApi } from './utils/devtools.js'
 
 // Demo-Version (npm run build:demo): läuft ohne Server, Daten nur im Browser.
-export const IS_DEMO = import.meta.env.MODE === 'demo'
+// Tutorial (npm run build:tutorial): dieselbe Demo, dazu führt Klemmi Schritt für Schritt durch die App.
+export const IS_TUTORIAL = import.meta.env.MODE === 'tutorial'
+export const IS_DEMO = import.meta.env.MODE === 'demo' || IS_TUTORIAL
 
 // Relativer Pfad, damit die App in jedem Unterordner des Webservers läuft.
 const BASE = 'api/'
@@ -25,6 +27,8 @@ async function request(method, route, opts = {}) {
   try {
     const data = await send(method, route, opts)
     recordApi({ method, route, status: 200, ms: Math.round(performance.now() - t0) })
+    // Das Tutorial wartet bei manchen Schritten auf eine Aktion (z. B. Umlagerung gebucht).
+    if (IS_TUTORIAL) window.dispatchEvent(new CustomEvent('tn-api', { detail: { method, route } }))
     return data
   } catch (e) {
     recordApi({ method, route, status: e.status ?? 0, ms: Math.round(performance.now() - t0), error: e.message })

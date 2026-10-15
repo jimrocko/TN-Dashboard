@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 
 // Darstellungs-Einstellungen gelten pro Gerät und werden im Browser gespeichert.
-const KEY = 'tn-dashboard-settings'
+const TUTORIAL = import.meta.env.MODE === 'tutorial'
+const KEY = TUTORIAL ? 'tn-tutorial-settings' : 'tn-dashboard-settings'
 // style: 'modern' = normales Design, 'xp' = Windows-XP-Desktop.
 const defaults = { style: 'modern', theme: 'dark', density: 'comfortable', fontSize: 'normal', reduceMotion: false }
 
 function read() {
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) || '{}') }
+    const s = { ...defaults, ...JSON.parse(localStorage.getItem(KEY) || '{}') }
+    return TUTORIAL ? { ...s, style: 'modern' } : s
   } catch {
     return { ...defaults }
   }

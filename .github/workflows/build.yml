@@ -35,6 +35,10 @@ jobs:
         working-directory: frontend
         run: npm run build:demo
 
+      - name: Tutorial bauen (Demo mit Klemmi, eine HTML-Datei)
+        working-directory: frontend
+        run: npm run build:tutorial
+
       - name: Installation mit SQLite und Demo-Daten testen
         run: |
           printf 'TN_DB_DRIVER=sqlite\nTN_DB_PATH=%s/local-data/ci.sqlite\n' "$PWD" > .env

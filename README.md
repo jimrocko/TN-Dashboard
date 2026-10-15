@@ -14,9 +14,11 @@
 [![Build](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml/badge.svg)](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml)
 
 <a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
+<a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Tutorial.html"><img src="https://img.shields.io/badge/%F0%9F%A7%B1%20Tutorial%20starten-Klemmi%20zeigt%20dir%20alles-d01c0a?style=for-the-badge" alt="Tutorial starten" height="44"></a>
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
 <sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
+Im **Tutorial** führt dich Klemmi, eine rote Lego-Figur, in ein paar Minuten durch alle Bereiche. Du tippst selbst: suchen, Kästchen öffnen, Bestand zählen, umlagern, Auftrag weiterschieben.<br>
 Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
@@ -121,6 +123,7 @@ api/        PHP-API, Installationsseite, BrickLink, Teileerkennung, Dev-Bereich
 frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, Demo-Backend)
 docs/       Logo und Screenshots
 TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
+TN-Dashboard-Tutorial.html  geführte Tour mit Klemmi durch die Demo (ohne Server)
 tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
 .github/    Build-Prüfung und Demo auf GitHub Pages
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
@@ -160,6 +163,9 @@ Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `00
 `TN-Dashboard-Demo.html` im Hauptordner ist die komplette App als eine einzige Datei: alle Bereiche, Lehrer-Ansicht, Dev-Bereich und CSV-Export, nur mit erfundenen Daten. Login, Daten und Protokoll liegen im Browser („Demo-Daten zurücksetzen“ im Dev-Bereich stellt den Anfang wieder her). Neu bauen mit `cd frontend && npm run build:demo`.
 
 Öffnen: im Repo oben auf **Demo starten** klicken, oder die Datei herunterladen und per Doppelklick öffnen. Bei jedem Push auf den Standard-Branch wird sie außerdem auf [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) veröffentlicht (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen).
+
+### Tutorial
+`TN-Dashboard-Tutorial.html` ist dieselbe Demo mit einer geführten Tour: Klemmi, eine animierte rote Minifigur, erklärt in Sprechblasen Suche, Inventar mit Lagerplan, Lagerort, Inventur, Umlagern, Aufträge, Analyse und das Aktivitätsprotokoll. Man klickt jeden Schritt selbst, alles andere ist währenddessen abgedunkelt. Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn; mit dem X oben in der Sprechblase kann man jederzeit aufhören und frei weiterprobieren. Neu bauen mit `cd frontend && npm run build:tutorial`.
 
 ### Entwicklung mit Hot-Reload
 ```sh

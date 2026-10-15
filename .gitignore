@@ -7,3 +7,4 @@ api/data/*.sqlite
 local-data/
 .env.*
 demo-dist/
+tutorial-dist/
