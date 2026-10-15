@@ -44,7 +44,7 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Alle Lager-/Auftragsdaten sind erfunden** (`api/sql/demo-data.json`). Keine echten Kunden oder Bestellungen ins Repo.
 - **Keine Secrets ins Repo:** `.env`, `api/config.php`, `local-data/` sind in `.gitignore`.
 - **Hash-Routing** (`#/inventar`), damit es auf jedem Webserver ohne Rewrite-Regeln läuft.
-- **Designs:** Standard ist das Kachel-Design (dunkel). Der XP-Stil ist nur im Dev-Bereich umschaltbar (Einstellungen → Stil, oder Code `WINXP`/`MODERN`) bzw. per Konami-Code (`src/utils/cheats.js`). Nicht in den normalen Einstellungen anbieten.
+- **Designs:** Standard ist das Kachel-Design (dunkel). Der XP-Stil ist ein **Geheimnis**: nur über den versteckten Code (Dev-Bereich, Versionszeile unten 5× antippen → Diagnose-Feld; Codes in `src/utils/cheats.js`) oder den Konami-Code. **Nirgends einen Stil-Umschalter anbieten** (weder Einstellungen noch Dev-Einstellungen), den Stil nicht in Anzeigen verraten und im README weder XP-Stil noch Codes erwähnen. Ausdrücklicher Wunsch des Inhabers.
 - **Dev-Bereich ist gesichert:** nur Lehrer und Teilnehmer mit Dev-Rolle (Tabelle `tn_dev_access`, vergeben in der Lehrer-Ansicht) plus Dev-Code. Code gehasht in `tn_settings` (`dev_pin_hash`, `dev_pin_version`). **Testbetrieb (SQLite, Demo) = `0000`**, solange kein Code gesetzt ist; auf dem Server (MySQL) legt ein Lehrer ihn fest. Alle Dev-Routen über `Dev::require()`. Dev-Bereich ist nur lesend für Daten (keine Tabellen bearbeiten); Geheimnisse (Passwort-Hashes, settings-Werte) nie ausgeben.
 - **README als fertige Produkt-Doku:** Der Inhaber möchte, dass das Repo so beschrieben ist, als liefe die App schon auf dem Schulserver. Neue Bereiche im README unter „Die Bereiche“ erklären.
 - **Externe Programme:** Minifig-Finder und Pickliste existieren als eigene Programme und sollen eingebunden werden (Status `extern`). Ihr Code liegt nicht in diesem Repo; nicht neu erfinden, ohne den Inhaber zu fragen.
@@ -68,7 +68,7 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - `GET dev/system`, `dev/tables`, `dev/table?name=&page=&per=`, `POST dev/test {name}` (db_read, db_write, session, tmp_write, bricklink, brickognize). `POST users/<id>/dev {enabled}` vergibt die Dev-Rolle.
 - `public_user()` liefert `can_dev`; Router-Guard `meta.dev`; Dev-Links (Leiste unten, XP-Startmenü) nur bei `auth.canDev`.
 - Neue Tabellen legt `Dev::ensureSchema()` selbst an, damit Updates ohne erneutes install.php laufen.
-### XP-Fenster (`XpShell.vue`)
+### XP-Fenster (`XpShell.vue`, geheim, siehe Regeln)
 - Mehrere Fenster gleichzeitig; verschieben (Titelleiste), Größe ändern (Ecke unten rechts), minimieren, maximieren (auch Doppelklick), schließen, Taskleiste mit allen Fenstern, Knopf „Desktop anzeigen“ rechts.
 - Die Router-Adresse ist immer das **aktive** Fenster; `/` = Desktop. Fenster-Schlüssel = Pfad (`utils/windowing.js`), Query gehört zum Fenster.
 - Jedes Fenster rendert `<RouterView :route>` und stellt per `provide(routeLocationKey, …)` eine **eigene Route** bereit (`XpWindowView.vue`). Deshalb behalten Ansichten (z. B. ausgewählter Auftrag) ihren Zustand, wenn man das Fenster wechselt. Ansichten müssen `useRoute()` verwenden, nicht `router.currentRoute`.
@@ -95,3 +95,4 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Sitzung 2**: Fake-Lagerdaten, Module Inventar/Umlagern/Inventur/Aufträge/Analyse/Suche, Firmen-Design, dann zurück zum ersten Kachel-Design als Standard plus versteckter XP-Stil.
 - **Sitzung 3** (2026-10-15): XP-Stil mit echter Fensterverwaltung; Teile-Scanner als Foto-Teileerkennung über Brickognize; neue Teile-Seite `/teil/:no`; Teil-Nummern überall verlinkt; diese Agent-Doku angelegt. Verworfen auf Wunsch: Code-/QR-Scanner für Lagerorte und Etikettendruck.
 - **Sitzung 3, Teil 2** (2026-10-15): Dev-Bereich gesichert (Dev-Rolle + Dev-Code, Test = 0000) und stark erweitert (System, Tests, Daten, API, Einstellungen, Debug-Anzeige); Lehrer-Ansicht mit Dev-Spalte; README als fertige Produkt-Doku mit Demo-Link; GitHub Actions für Build und Demo auf Pages; Demo-Datei in `docs/demo/`.
+- **Sitzung 3, Teil 3**: Stil-Umschalter und Code-Feld aus den Dev-Einstellungen entfernt, versteckte Versionszeile (5× antippen) wiederhergestellt, XP-Stil aus README und Screenshots entfernt.

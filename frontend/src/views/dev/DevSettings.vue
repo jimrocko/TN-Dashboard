@@ -1,42 +1,30 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { LayoutGrid, Monitor, Lock } from 'lucide-vue-next'
+import { Lock } from 'lucide-vue-next'
 import SegControl from '../../components/SegControl.vue'
 import { api, IS_DEMO } from '../../api'
 import { useAuth } from '../../stores/auth'
-import { useSettings } from '../../stores/settings'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
-import { applyCheat } from '../../utils/cheats'
 import { resetDemo } from '../../demo/backend'
 
-// Einstellungen für Entwickler: Stil, Debug-Hilfen, lokale Daten, Dev-Code.
+// Einstellungen für Entwickler: Debug-Hilfen, lokale Daten, Dev-Code. Der Stil ist hier bewusst nicht umschaltbar.
 const props = defineProps({ status: Object })
 const emit = defineEmits(['status', 'locked'])
 const router = useRouter()
 const auth = useAuth()
-const s = useSettings()
 const msg = ref('')
 const err = ref('')
 
 const say = (m) => { msg.value = m; err.value = ''; setTimeout(() => { if (msg.value === m) msg.value = '' }, 3000) }
 
-const styles = [{ value: 'modern', label: 'Kacheln', icon: LayoutGrid }, { value: 'xp', label: 'Windows XP', icon: Monitor }]
-const themes = [{ value: 'dark', label: 'Dunkel' }, { value: 'light', label: 'Hell' }, { value: 'system', label: 'System' }]
 const delays = [{ value: 0, label: 'Aus' }, { value: 300, label: '0,3 s' }, { value: 1000, label: '1 s' }, { value: 3000, label: '3 s' }]
 const onOff = [{ value: true, label: 'An' }, { value: false, label: 'Aus' }]
-
-// Versteckte Codes (WINXP, MODERN …) gehen weiterhin, hier zusätzlich als Eingabe.
-const cheat = ref('')
-function submitCheat() {
-  say(applyCheat(cheat.value, s) ? 'Code angewendet.' : 'Unbekannter Code.')
-  cheat.value = ''
-}
 
 function clearLocal(what) {
   try {
     if (what === 'scan') { sessionStorage.removeItem('tn-last-recognition'); say('Letzte Teileerkennung gelöscht.') }
-    if (what === 'settings') { s.reset(); resetDevFlags(); say('Darstellung und Dev-Optionen zurückgesetzt.') }
+    if (what === 'settings') { resetDevFlags(); say('Dev-Optionen zurückgesetzt.') }
   } catch { err.value = 'Browser-Speicher nicht verfügbar.' }
 }
 async function clearCaches() {
@@ -78,31 +66,10 @@ async function lock() {
     <p v-if="err" class="error">{{ err }}</p>
 
     <section class="panel">
-      <div class="panel-head"><h2>Darstellung</h2></div>
-      <div class="rows">
-        <div class="row">
-          <div><div class="k">Stil</div><div class="h">Windows XP ist der versteckte Retro-Stil mit Fenstern. Gilt für dieses Gerät.</div></div>
-          <SegControl :model-value="s.style" :options="styles" label="Stil" @update:model-value="s.set({ style: $event })" />
-        </div>
-        <div class="row">
-          <div><div class="k">Farbschema</div></div>
-          <SegControl :model-value="s.theme" :options="themes" label="Farbschema" @update:model-value="s.set({ theme: $event })" />
-        </div>
-        <form class="row" @submit.prevent="submitCheat">
-          <div><div class="k">Code eingeben</div><div class="h">Die versteckten Codes aus dem Kurs (z. B. WINXP, MODERN).</div></div>
-          <div class="inline">
-            <input id="dev-cheat" class="input mono" v-model="cheat" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code" />
-            <button class="btn">OK</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <section class="panel">
       <div class="panel-head"><h2>Debug-Hilfen</h2><span class="faint small">nur dieses Gerät</span></div>
       <div class="rows">
         <div class="row">
-          <div><div class="k">Debug-Anzeige</div><div class="h">Kleine Leiste unten links mit Adresse, Fenstergröße, Stil und letztem API-Aufruf.</div></div>
+          <div><div class="k">Debug-Anzeige</div><div class="h">Kleine Leiste unten links mit Adresse, Fenstergröße, Farbschema und letztem API-Aufruf.</div></div>
           <SegControl v-model="devFlags.overlay" :options="onOff" label="Debug-Anzeige" />
         </div>
         <div class="row">
@@ -124,7 +91,7 @@ async function lock() {
           <button class="btn btn-sm" @click="clearLocal('scan')">Löschen</button>
         </div>
         <div class="row">
-          <div><div class="k">Darstellung und Dev-Optionen</div><div class="h">Alles auf Standard (Kacheln, dunkel).</div></div>
+          <div><div class="k">Dev-Optionen</div><div class="h">Debug-Anzeige, Verzögerung und API-Protokoll auf Standard.</div></div>
           <button class="btn btn-sm" @click="clearLocal('settings')">Zurücksetzen</button>
         </div>
         <div class="row">

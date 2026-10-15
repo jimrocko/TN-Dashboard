@@ -61,11 +61,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 | **Tests** | Selbsttests mit einem Tipp: Datenbank lesen und schreiben, Sitzung, Temp-Ordner, BrickLink, Teileerkennung, alle API-Endpunkte (nur lesend) und Gerätefunktionen wie Speicher, Kamera und Offline-Modus. |
 | **Daten** | Alle Tabellen der App ansehen, blättern, filtern und als JSON kopieren. Nur lesen; Passwörter und gespeicherte Geheimnisse werden nie angezeigt. |
 | **API** | API-Konsole für lesende Aufrufe, Liste der letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen. |
-| **Einstellungen** | Stil (Kacheln oder Windows XP), Debug-Anzeige, langsames Netz simulieren, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen, Dev-Code ändern, Bereich sperren. |
-
-### Retro-Stil „Windows XP“
-
-Im Dev-Bereich (oder mit dem Code `WINXP`) lässt sich die ganze App auf einen Windows-XP-Desktop umstellen. Jeder Bereich öffnet sich dort als eigenes Fenster: mehrere gleichzeitig, verschiebbar, in der Größe änderbar, minimierbar, mit Startmenü und Taskleiste. Jedes Fenster behält seinen Zustand, auch wenn man zwischendurch woanders arbeitet.
+| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen, Dev-Code ändern, Bereich sperren. |
 
 ## Screenshots
 
@@ -85,9 +81,6 @@ Im Dev-Bereich (oder mit dem Code `WINXP`) lässt sich die ganze App auf einen W
   <tr>
     <td width="50%"><img src="docs/images/dev-code.png" alt="Dev-Code"><br><sub><b>Dev-Bereich</b>: gesichert per Dev-Code</sub></td>
     <td width="50%"><img src="docs/images/dev-bereich.png" alt="Dev-Bereich Tests"><br><sub><b>Dev-Bereich</b>: Selbsttests</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="docs/images/xp-fenster.png" alt="Windows-XP-Stil"><br><sub><b>Retro-Stil</b>: Bereiche als Fenster mit Taskleiste</sub></td>
   </tr>
 </table>
 
@@ -116,7 +109,7 @@ Im Dev-Bereich (oder mit dem Code `WINXP`) lässt sich die ganze App auf einen W
 
 ```
 api/        PHP-API, Installationsseite, BrickLink, Teileerkennung, Dev-Bereich
-frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, XP-Stil, Demo-Backend)
+frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, Demo-Backend)
 docs/       Logo, Screenshots, Demo-Datei
 .github/    Build-Prüfung und Demo auf GitHub Pages
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)

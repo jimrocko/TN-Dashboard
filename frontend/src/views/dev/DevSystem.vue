@@ -78,7 +78,7 @@ const device = computed(() => {
     { k: 'Service Worker', v: sw.value },
     { k: 'Speicher', v: storage.value ? `${bytes(storage.value.usage)} von ${bytes(storage.value.quota)}` : 'unbekannt' },
     { k: 'System-Farbschema', v: matchMedia('(prefers-color-scheme: dark)').matches ? 'dunkel' : 'hell' },
-    { k: 'App-Darstellung', v: `${settings.style === 'xp' ? 'XP' : 'Kacheln'} · ${settings.resolvedTheme} · ${settings.density} · Schrift ${settings.fontSize}` },
+    { k: 'App-Darstellung', v: `${settings.resolvedTheme} · ${settings.density} · Schrift ${settings.fontSize}` },
   ]
 })
 </script>

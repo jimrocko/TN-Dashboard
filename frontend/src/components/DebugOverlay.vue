@@ -16,7 +16,7 @@ onBeforeUnmount(() => removeEventListener('resize', measure))
 <template>
   <div v-if="devFlags.overlay" class="dbg mono" aria-hidden="true">
     <span>{{ route.fullPath }}</span>
-    <span>{{ size }} · {{ settings.style }}/{{ settings.resolvedTheme }}</span>
+    <span>{{ size }} · {{ settings.resolvedTheme }}</span>
     <span v-if="apiLog[0]" :class="{ bad: apiLog[0].status >= 400 || !apiLog[0].status }">{{ apiLog[0].route }} {{ apiLog[0].status || 'Fehler' }} · {{ apiLog[0].ms }} ms</span>
     <span v-if="devFlags.delay">+{{ devFlags.delay }} ms Verzögerung</span>
   </div>
