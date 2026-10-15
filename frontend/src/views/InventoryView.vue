@@ -70,7 +70,7 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
           </thead>
           <tbody>
             <tr v-for="i in items" :key="i.id">
-              <td class="mono">{{ i.item_no }}</td>
+              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
               <td class="muted">{{ i.category }}</td>

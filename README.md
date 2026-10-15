@@ -30,9 +30,10 @@ Jede Aktion wird pro Teilnehmer protokolliert. So kann der Lehrer dokumentieren,
 | Auftragszentrale | Bestellungen nach Status, Positionen sortiert nach Lagerort, Status weiterschalten | fertig |
 | Lager- & Auftragsanalyse | Bestand nach Kategorie, volle Regalplätze, Engpässe, Aktivität pro Teilnehmer | fertig |
 | Suche | Eine Suche über Teile, Farben, Lagerorte und Aufträge | fertig |
+| Teile-Scanner | Teil fotografieren, automatisch erkennen lassen (Brickognize) und direkt die Teile-Seite öffnen | fertig |
+| Teile-Seite | Alles zu einer Teil-Nr.: Bestand nach Farbe und Lagerort, Wert, Aufträge, Umlagerungen | fertig |
 | Profile & Lehrer-Ansicht | Login, Aktivitätsprotokoll, CSV-Export, Teilnehmer anlegen | fertig |
 | Minifig-Finder, Pickliste | Bestehende Programme, werden eingebunden | in Integration |
-| Teile-Scanner | Barcodes und Lagerplatzcodes per Kamera | geplant |
 
 Alle Daten in der Demo und nach `install.php --demo` sind **erfunden** (Beispieldaten in `api/sql/demo-data.json`).
 
@@ -61,10 +62,12 @@ Alle Daten in der Demo und nach `install.php --demo` sind **erfunden** (Beispiel
 - **Datenbank:** die vorhandene MySQL/MariaDB der Schule. Alle Tabellen haben den Präfix `tn_`, damit die App getrennt vom Lehrer-Dashboard bleibt. Beispieldaten lädt `php api/install.php --demo` oder der Lehrer über „Beispieldaten laden“ auf der Startseite (nur bei leerem Lager).
 - **Darstellung:** Dunkel ist Standard, Hell, Dichte und Schriftgröße lassen sich unter Einstellungen ändern (pro Gerät).
 - **BrickLink:** API-Antworten werden in der Datenbank zwischengespeichert, um das Tageslimit zu schonen.
+- **Teileerkennung:** Der Teile-Scanner schickt das Foto über den eigenen Server an den kostenlosen Dienst [Brickognize](https://brickognize.com). Der Server braucht dafür Internetzugang zu `api.brickognize.com`, die Kamera im Browser braucht HTTPS. Abschalten: `brickognize.url` in `api/config.php` auf `null`.
 
 ```
 api/        PHP-API, Installationsseite, BrickLink-Client und Cache
 frontend/   Vue-App (Dashboard, Module, Profile, Lehrer-Ansicht)
+CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
 docs/       Logo und Screenshots
 start.sh    lokal starten (Mac/Linux), start.bat für Windows
 ```

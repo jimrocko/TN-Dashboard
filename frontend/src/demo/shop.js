@@ -168,6 +168,32 @@ function createStocktake(db, locationId) {
   return s
 }
 
+// Entspricht Shop::part()
+function part(db, no) {
+  const lots = db.inventory.filter((i) => i.item_no === no).map((i) => lotRow(db, i))
+    .sort((a, b) => a.color_name.localeCompare(b.color_name) || String(a.location_code).localeCompare(String(b.location_code)))
+  const orders = db.orders.flatMap((o) => o.items.filter((x) => x.item_no === no).map((x) => ({
+    id: o.id, order_no: o.order_no, buyer: o.buyer, status: o.status, ordered_at: o.ordered_at,
+    color_name: x.color_name, qty: x.qty, active: ORDER_ACTIVE.includes(o.status) ? 1 : 0,
+  }))).sort((a, b) => b.ordered_at.localeCompare(a.ordered_at)).slice(0, 30)
+  const transfers = db.transfers.filter((t) => t.item_no === no).reverse().slice(0, 10)
+    .map((t) => ({ ...t, display_name: db.users.find((u) => u.id === t.user_id)?.display_name }))
+  return {
+    item_no: lots[0]?.item_no ?? no, name: lots[0]?.name ?? null, category: lots[0]?.category ?? null,
+    item_type: lots[0]?.item_type ?? 'PART', lots, orders, transfers,
+  }
+}
+
+/** Lose zu Teil-Nummern, gruppiert (entspricht Shop::lotsByItem). */
+export function lotsByItem(db, itemNos) {
+  const out = {}
+  for (const i of db.inventory) {
+    if (itemNos.includes(i.item_no)) (out[i.item_no] ??= []).push(lotRow(db, i))
+  }
+  for (const k in out) out[k].sort((a, b) => a.color_name.localeCompare(b.color_name) || String(a.location_code).localeCompare(String(b.location_code)))
+  return out
+}
+
 function analysis(db) {
   const group = (key) => {
     const m = {}
@@ -214,6 +240,12 @@ export function route(db, method, parts, params, body, requireUser, log) {
       locations: db.locations.filter((l) => like(l.code, term) || like(l.name, term)).slice(0, 20),
       orders: orders(db, null, term),
     }
+  }
+  if (method === 'GET' && a === 'part' && b) {
+    requireUser()
+    const no = decodeURIComponent(b)
+    if (!/^[A-Za-z0-9._-]{1,40}$/.test(no)) throw new DemoError('Ungültige Teil-Nr.', 400)
+    return { part: part(db, no) }
   }
   if (method === 'GET' && a === 'orders' && !b) { requireUser(); return { orders: orders(db, params.status, params.q) } }
   if (method === 'GET' && a === 'orders' && isId && !c) {

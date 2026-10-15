@@ -14,6 +14,7 @@ require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/ActivityLog.php';
 require __DIR__ . '/lib/Cache.php';
 require __DIR__ . '/lib/BrickLinkClient.php';
+require __DIR__ . '/lib/Brickognize.php';
 require __DIR__ . '/lib/Shop.php';
 require __DIR__ . '/lib/DemoData.php';
 
@@ -82,6 +83,43 @@ switch (true) {
             json_response(['parts' => [], 'locations' => [], 'orders' => []]);
         }
         json_response(Shop::search($term));
+
+    case count($parts) === 2 && $parts[0] === 'part' && $method === 'GET':
+        require_user();
+        $no = rawurldecode($parts[1]);
+        if (!preg_match('/^[A-Za-z0-9._-]{1,40}$/', $no)) {
+            json_error('Ungültige Teil-Nr.');
+        }
+        json_response(['part' => Shop::part($no)]);
+
+    case $route === 'recognize' && $method === 'POST':
+        // Teileerkennung per Foto: Bild an Brickognize weiterreichen, Treffer mit dem eigenen Lager verknüpfen.
+        $me = require_user();
+        $file = $_FILES['image'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            json_error('Kein Foto empfangen');
+        }
+        if ($file['size'] > 8 * 1024 * 1024) {
+            json_error('Foto ist zu groß (max. 8 MB)');
+        }
+        $mime = @getimagesize($file['tmp_name'])['mime'] ?? '';
+        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            json_error('Nur JPEG, PNG oder WebP');
+        }
+        try {
+            $items = Brickognize::predict($file['tmp_name'], $mime, config()['brickognize'] ?? []);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        $lots = Shop::lotsByItem(array_column(array_filter($items, fn ($i) => $i['type'] === 'part'), 'id'));
+        foreach ($items as &$it) {
+            $it['lots'] = $it['type'] === 'part' ? ($lots[$it['id']] ?? []) : [];
+        }
+        unset($it);
+        ActivityLog::log((int) $me['id'], 'recognize', 'scanner', $items
+            ? ['teil' => $items[0]['id'], 'name' => $items[0]['name'], 'sicherheit' => round($items[0]['score'] * 100) . ' %']
+            : ['ergebnis' => 'nichts erkannt']);
+        json_response(['items' => $items]);
 
     case $route === 'orders' && $method === 'GET':
         require_user();

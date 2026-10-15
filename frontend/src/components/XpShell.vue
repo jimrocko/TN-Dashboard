@@ -1,21 +1,25 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, History, Settings, GraduationCap, Code2, LogOut, Power } from 'lucide-vue-next'
-import { modules } from '../modules'
+import { Search, History, Settings, GraduationCap, Code2, Power } from 'lucide-vue-next'
+import { modules, moduleById } from '../modules'
 import { pageTitle } from '../router'
 import { useAuth } from '../stores/auth'
+import { windowKey } from '../utils/windowing'
+import XpWindowView from './XpWindowView.vue'
 import logo from '../assets/icon.svg'
 
-// Windows-XP-Oberfläche: Desktop mit App-Symbolen, Bereiche als Fenster, Start-Menü und Taskleiste.
+// Windows-XP-Oberfläche: Desktop mit App-Symbolen, mehrere Fenster gleichzeitig, Start-Menü und Taskleiste.
+// Die aktuelle Adresse (Router) ist immer das aktive Fenster; „/“ heißt: kein Fenster aktiv, nur Desktop.
+// Fenster lassen sich verschieben (Titelleiste), in der Größe ändern (Ecke unten rechts),
+// minimieren, maximieren (auch per Doppelklick auf die Titelleiste) und schließen.
+// Auf schmalen Bildschirmen (Handy, iPad hochkant) ist jedes Fenster bildschirmfüllend und nur das aktive sichtbar.
 const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
 
-const onDesktop = computed(() => route.path === '/')
+const TASKBAR = 44
 const startOpen = ref(false)
-const maximized = ref(false)
-const lastWindow = ref(null) // zuletzt geöffnetes Fenster, für „Minimieren“ und Taskleisten-Knopf
 const q = ref('')
 const time = ref('')
 
@@ -26,22 +30,114 @@ const extras = computed(() => [
   ...(auth.isStaff ? [{ id: 'lehrer', title: 'Lehrer-Ansicht', icon: GraduationCap, path: '/lehrer', xpColor: '#b5651d' }] : []),
 ])
 const desktopIcons = computed(() => [...modules, ...extras.value])
-const current = computed(() => desktopIcons.value.find((i) => route.path === i.path || route.path.startsWith(i.path + '/')) ?? null)
+const iconFor = (key) => (key.startsWith('/teil/') ? moduleById('inventar')
+  : desktopIcons.value.find((i) => key === i.path || key.startsWith(i.path + '/')) ?? null)
 
-watch(() => route.fullPath, (p) => {
+// Bildschirmbreite: schmal = Fenster immer bildschirmfüllend
+const compactMq = typeof matchMedia === 'function' ? matchMedia('(max-width: 900px)') : null
+const compact = ref(!!compactMq?.matches)
+const onCompact = (e) => { compact.value = e.matches }
+
+// ---- Fensterverwaltung ----
+const windows = ref([]) // { key, fullPath, title, x, y, w, h, z, min, max }
+let zTop = 0
+let opened = 0
+const activeKey = computed(() => (route.path === '/' || route.meta.public ? null : windowKey(route)))
+// Stapelreihenfolge als z-index 10, 11, … (bleibt unter Start-Menü und Taskleiste)
+const zIndex = (w) => 10 + [...windows.value].sort((a, b) => a.z - b.z).indexOf(w)
+
+function placeNew() {
+  const vw = window.innerWidth
+  const vh = window.innerHeight - TASKBAR
+  const step = (opened++ % 6) * 28
+  const w = Math.min(1080, vw - 160)
+  const h = Math.min(760, vh - 40)
+  return { x: Math.max(8, Math.min(128 + step, vw - w - 8)), y: Math.max(8, Math.min(16 + step, vh - h - 8)), w, h }
+}
+
+watch(() => route.fullPath, () => {
   startOpen.value = false
-  if (route.path !== '/') lastWindow.value = { path: p, title: pageTitle(route) }
-})
+  const key = activeKey.value
+  if (!key) return
+  let w = windows.value.find((x) => x.key === key)
+  if (!w) {
+    w = reactive({ key, fullPath: route.fullPath, title: '', z: 0, min: false, max: false, ...placeNew() })
+    windows.value.push(w)
+  }
+  w.fullPath = route.fullPath
+  w.title = pageTitle(route)
+  w.min = false
+  w.z = ++zTop
+}, { immediate: true })
 
-function minimize() { router.push('/') }
-function close() { lastWindow.value = null; router.push('/') }
-function restore() { if (lastWindow.value) router.push(lastWindow.value.path) }
+const topVisible = (except) => windows.value.filter((w) => w !== except && !w.min).sort((a, b) => b.z - a.z)[0]
+function activateNext(except) {
+  const next = topVisible(except)
+  router.push(next ? next.fullPath : '/')
+}
+function focus(w) {
+  if (activeKey.value !== w.key) router.push(w.fullPath)
+}
+function minimize(w) {
+  w.min = true
+  if (activeKey.value === w.key) activateNext(w)
+}
+function close(w) {
+  windows.value = windows.value.filter((x) => x !== w)
+  if (activeKey.value === w.key) activateNext(w)
+}
+function taskClick(w) {
+  if (activeKey.value === w.key && !w.min) minimize(w)
+  else focus(w)
+}
+function showDesktop() {
+  windows.value.forEach((w) => { w.min = true })
+  router.push('/')
+}
+
+// Verschieben und Größe ändern per Zeiger (Maus, Finger, Stift)
+function startDrag(e, w, mode) {
+  if (compact.value || w.max || e.button > 0) return
+  if (mode === 'move' && e.target.closest('.wbtns')) return
+  e.preventDefault()
+  focus(w)
+  const el = e.currentTarget
+  el.setPointerCapture?.(e.pointerId)
+  const start = { px: e.clientX, py: e.clientY, x: w.x, y: w.y, w: w.w, h: w.h }
+  const move = (ev) => {
+    const dx = ev.clientX - start.px
+    const dy = ev.clientY - start.py
+    const vw = window.innerWidth
+    const vh = window.innerHeight - TASKBAR
+    if (mode === 'move') {
+      // Titelleiste bleibt immer erreichbar
+      w.x = Math.min(vw - 80, Math.max(80 - w.w, start.x + dx))
+      w.y = Math.min(vh - 40, Math.max(0, start.y + dy))
+    } else {
+      w.w = Math.max(360, Math.min(vw - w.x, start.w + dx))
+      w.h = Math.max(240, Math.min(vh - w.y, start.h + dy))
+    }
+  }
+  const up = () => {
+    el.removeEventListener('pointermove', move)
+    el.removeEventListener('pointerup', up)
+    el.removeEventListener('pointercancel', up)
+  }
+  el.addEventListener('pointermove', move)
+  el.addEventListener('pointerup', up)
+  el.addEventListener('pointercancel', up)
+}
+const frameStyle = (w) => (compact.value || w.max
+  ? { zIndex: zIndex(w) }
+  : { zIndex: zIndex(w), left: `${w.x}px`, top: `${w.y}px`, width: `${w.w}px`, height: `${w.h}px` })
+
 function search() {
   const term = q.value.trim()
   if (term) { router.push({ path: '/suche', query: { q: term } }); q.value = '' }
 }
 async function logout() {
   startOpen.value = false
+  windows.value = []
   await auth.logout()
   router.push('/login')
 }
@@ -49,8 +145,16 @@ async function logout() {
 const tick = () => { time.value = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }
 const onKey = (e) => { if (e.key === 'Escape') startOpen.value = false }
 let timer
-onMounted(() => { tick(); timer = setInterval(tick, 15000); window.addEventListener('keydown', onKey) })
-onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydown', onKey) })
+onMounted(() => {
+  tick(); timer = setInterval(tick, 15000)
+  window.addEventListener('keydown', onKey)
+  compactMq?.addEventListener?.('change', onCompact)
+})
+onBeforeUnmount(() => {
+  clearInterval(timer)
+  window.removeEventListener('keydown', onKey)
+  compactMq?.removeEventListener?.('change', onCompact)
+})
 </script>
 
 <template>
@@ -66,17 +170,20 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
     </nav>
 
     <!-- Fenster -->
-    <section v-if="!onDesktop" class="window" :class="{ max: maximized }" role="dialog" :aria-label="pageTitle(route)">
-      <header class="titlebar" @dblclick="maximized = !maximized">
-        <span class="ticon" :style="{ '--c': current?.xpColor ?? '#2b6fd6' }"><component :is="current?.icon ?? Code2" :size="14" :stroke-width="2.4" /></span>
-        <span class="ttext">{{ pageTitle(route) }}</span>
+    <section v-for="w in windows" :key="w.key" v-show="!w.min && (!compact || activeKey === w.key)"
+      class="window" :class="{ max: w.max, active: activeKey === w.key }" :style="frameStyle(w)"
+      role="dialog" :aria-label="w.title" @pointerdown="focus(w)">
+      <header class="titlebar" @pointerdown="startDrag($event, w, 'move')" @dblclick="w.max = !w.max">
+        <span class="ticon" :style="{ '--c': iconFor(w.key)?.xpColor ?? '#2b6fd6' }"><component :is="iconFor(w.key)?.icon ?? Code2" :size="14" :stroke-width="2.4" /></span>
+        <span class="ttext">{{ w.title }}</span>
         <span class="wbtns">
-          <button class="wbtn" title="Minimieren" aria-label="Minimieren" @click="minimize"><span class="i-min"></span></button>
-          <button class="wbtn" :title="maximized ? 'Wiederherstellen' : 'Maximieren'" :aria-label="maximized ? 'Wiederherstellen' : 'Maximieren'" @click="maximized = !maximized"><span :class="maximized ? 'i-restore' : 'i-max'"></span></button>
-          <button class="wbtn close" title="Schließen" aria-label="Schließen" @click="close"><span class="i-close"></span></button>
+          <button class="wbtn" title="Minimieren" aria-label="Minimieren" @click.stop="minimize(w)"><span class="i-min"></span></button>
+          <button class="wbtn" :title="w.max ? 'Wiederherstellen' : 'Maximieren'" :aria-label="w.max ? 'Wiederherstellen' : 'Maximieren'" @click.stop="w.max = !w.max"><span :class="w.max ? 'i-restore' : 'i-max'"></span></button>
+          <button class="wbtn close" title="Schließen" aria-label="Schließen" @click.stop="close(w)"><span class="i-close"></span></button>
         </span>
       </header>
-      <div class="wbody"><RouterView /></div>
+      <div class="wbody"><XpWindowView :full-path="w.fullPath" :visible="!w.min" /></div>
+      <span v-if="!w.max && !compact" class="grip" aria-hidden="true" @pointerdown.stop="startDrag($event, w, 'resize')"></span>
     </section>
 
     <!-- Start-Menü -->
@@ -117,13 +224,15 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
         <img :src="logo" alt="" /> <span>Start</span>
       </button>
       <div class="tasks">
-        <button v-if="lastWindow" class="task" :class="{ on: !onDesktop }" @click="onDesktop ? restore() : minimize()">
-          <img :src="logo" alt="" /> <span>{{ lastWindow.title }}</span>
+        <button v-for="w in windows" :key="w.key" class="task" :class="{ on: activeKey === w.key && !w.min }" :title="w.title" @click="taskClick(w)">
+          <span class="ticon sm" :style="{ '--c': iconFor(w.key)?.xpColor ?? '#2b6fd6' }"><component :is="iconFor(w.key)?.icon ?? Code2" :size="11" :stroke-width="2.6" /></span>
+          <span>{{ w.title }}</span>
         </button>
       </div>
       <div class="tray">
         <span class="who">{{ auth.user?.display_name }}</span>
         <span class="clock">{{ time }}</span>
+        <button v-if="windows.length" class="showdesk" title="Desktop anzeigen" aria-label="Desktop anzeigen" @click="showDesktop"></button>
       </div>
     </div>
   </div>
@@ -164,17 +273,24 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
 
 /* Fenster */
 .window {
-  position: absolute; z-index: 5; display: flex; flex-direction: column;
-  top: 16px; left: 128px; right: 24px; bottom: 60px;
+  position: absolute; display: flex; flex-direction: column;
   border: 3px solid var(--xp-frame); border-top: 0; border-radius: 8px 8px 3px 3px;
   background: var(--bg); box-shadow: 4px 6px 18px rgba(0, 0, 0, 0.45); overflow: hidden;
 }
 .window.max { top: 0; left: 0; right: 0; bottom: 44px; border-radius: 0; border-width: 0; }
+.window:not(.active) { border-color: var(--xp-frame-inactive); box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.3); }
+.window:not(.active) .titlebar { background: var(--xp-title-inactive); }
+.window:not(.active) .ttext { opacity: 0.85; }
+.grip {
+  position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; touch-action: none;
+  background: repeating-linear-gradient(135deg, transparent 0 5px, var(--text-3) 5px 6px, transparent 6px 8px);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
 @media (max-width: 900px) { .window { top: 0; left: 0; right: 0; bottom: 44px; border-radius: 0; border-width: 0; } }
 .titlebar {
   display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 10px; flex: none;
   background: var(--xp-title); color: #fff; user-select: none; -webkit-user-select: none;
-  padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box;
+  padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box; touch-action: none; cursor: default;
 }
 .window:not(.max) .titlebar { border-radius: 7px 7px 0 0; }
 @media (max-width: 900px) { .window .titlebar { border-radius: 0 !important; } }
@@ -240,7 +356,7 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
 .start:hover, .start.on { filter: brightness(1.1); }
 .start.on { box-shadow: inset 1px 2px 4px rgba(0, 0, 0, 0.5); }
 .start img { width: 22px; height: 22px; border-radius: 4px; }
-.tasks { flex: 1; min-width: 0; display: flex; align-items: center; padding: 0 10px; }
+.tasks { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 0 10px; overflow-x: auto; scrollbar-width: none; }
 .task {
   display: flex; align-items: center; gap: 8px; max-width: 240px; height: 34px; padding: 0 12px; border-radius: 3px;
   border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; font-family: inherit;
@@ -248,7 +364,9 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
 }
 .task span { overflow: hidden; text-overflow: ellipsis; }
 .task.on { background: rgba(0, 0, 0, 0.25); box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.5); }
-.task img { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+.ticon.sm { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+.showdesk { align-self: stretch; width: 12px; margin-right: -16px; border: 0; border-left: 1px solid rgba(255, 255, 255, 0.35); background: transparent; }
+.showdesk:hover { background: rgba(255, 255, 255, 0.2); }
 .tray {
   display: flex; align-items: center; gap: 14px; padding: 0 16px 0 18px; color: #fff; font-size: 13px;
   background: var(--xp-tray); border-left: 1px solid #0a3b8f; box-shadow: inset 1px 0 1px rgba(255, 255, 255, 0.25);
@@ -256,7 +374,7 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('keydow
 }
 @media (max-width: 640px) {
   .who { display: none; }
-  .task { max-width: 150px; }
+  .task { max-width: 150px; flex: none; }
   .desktop { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-template-rows: none; grid-auto-columns: auto; }
 }
 </style>

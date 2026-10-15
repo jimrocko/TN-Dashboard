@@ -18,7 +18,7 @@ function submit() {
     <Search :size="30" class="icon" />
     <input id="global-search" v-model="q" type="search" enterkeyhint="search"
       placeholder="Suche nach Teil-ID, Farbe, Name, Kategorie, Lagerort, Auftrag …" aria-label="Suche" />
-    <RouterLink to="/modul/scanner" class="scan" title="Scannen"><ScanLine :size="30" /></RouterLink>
+    <RouterLink to="/scanner" class="scan" title="Scannen"><ScanLine :size="30" /></RouterLink>
   </form>
 </template>
 

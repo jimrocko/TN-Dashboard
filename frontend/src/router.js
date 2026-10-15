@@ -12,6 +12,8 @@ import OrdersView from './views/OrdersView.vue'
 import TransferView from './views/TransferView.vue'
 import StocktakeView from './views/StocktakeView.vue'
 import AnalysisView from './views/AnalysisView.vue'
+import ScannerView from './views/ScannerView.vue'
+import PartView from './views/PartView.vue'
 import ProfileView from './views/ProfileView.vue'
 import SettingsView from './views/SettingsView.vue'
 import DevView from './views/DevView.vue'
@@ -30,6 +32,8 @@ const router = createRouter({
     { path: '/umlagern', component: TransferView, meta: { title: 'Umlagern', module: 'umlagern' } },
     { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur & Bestandsprüfung', module: 'inventur' } },
     { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
+    { path: '/scanner', component: ScannerView, meta: { title: 'Teile-Scanner', module: 'scanner' } },
+    { path: '/teil/:no', component: PartView, meta: { title: 'Teil', module: 'inventar' } },
     {
       path: '/modul/:id', component: ModuleView, meta: { title: 'Modul' },
       beforeEnter: (to) => {
@@ -61,6 +65,7 @@ router.afterEach((to, from) => {
 })
 
 /** Seitentitel, auch für die Modul-Platzhalter (/modul/:id). */
-export const pageTitle = (r) => (r.path.startsWith('/modul/') ? moduleById(r.params.id)?.title : r.meta.title) ?? ''
+export const pageTitle = (r) => (r.path.startsWith('/modul/') ? moduleById(r.params.id)?.title
+  : r.params.no ? `Teil ${r.params.no}` : r.meta.title) ?? ''
 
 export default router

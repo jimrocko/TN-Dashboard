@@ -3,6 +3,7 @@
 // Gleiche Beispieldaten und gleiche Regeln wie api/lib/Shop.php.
 import seed from '../../../api/sql/demo-data.json'
 import * as shop from './shop.js'
+import { predict } from '../utils/brickognize.js'
 
 const KEY = 'tn-dashboard-demo-v2'
 
@@ -78,12 +79,30 @@ function requireUser(db) {
 }
 
 export async function handle(method, route, params = {}, body = {}) {
+  if (method === 'POST' && route === 'recognize') return recognize(body)
   const db = load()
   try {
     return dispatch(db, method, route, params, body ?? {})
   } finally {
     save(db)
   }
+}
+
+// Teileerkennung: in der Demo direkt beim Erkennungsdienst, danach mit den Demo-Lagerdaten verknüpft.
+async function recognize(form) {
+  const me = requireUser(load())
+  const image = form?.get?.('image')
+  if (!image) throw new DemoError('Kein Foto empfangen', 400)
+  let items
+  try { items = await predict(image) } catch (e) { throw new DemoError(e.message, 502) }
+  const db = load()
+  const lots = shop.lotsByItem(db, items.filter((i) => i.type === 'part').map((i) => i.id))
+  for (const it of items) it.lots = it.type === 'part' ? lots[it.id] ?? [] : []
+  log(db, me.id, 'recognize', 'scanner', items.length
+    ? { teil: items[0].id, name: items[0].name, sicherheit: `${Math.round(items[0].score * 100)} %` }
+    : { ergebnis: 'nichts erkannt' })
+  save(db)
+  return { items }
 }
 
 function dispatch(db, method, route, params, body) {

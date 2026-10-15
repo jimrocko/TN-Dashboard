@@ -94,7 +94,7 @@ async function setStatus(s) {
             <tbody>
               <tr v-for="it in current.items" :key="it.id">
                 <td><LocationTag :code="it.location_code" /></td>
-                <td><span class="mono">{{ it.item_no }}</span> <span class="muted small">{{ it.name }}</span></td>
+                <td><RouterLink class="mono" :to="`/teil/${it.item_no}`" @click.stop>{{ it.item_no }}</RouterLink> <span class="muted small">{{ it.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="it.color_name" /></td>
                 <td class="num">{{ num(it.qty) }}</td>
                 <td class="num" :class="{ short: it.stock !== null && it.stock < it.qty }">{{ num(it.stock) }}</td>

@@ -46,7 +46,7 @@ watch(() => route.query.q, async (q) => {
           <thead><tr><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th><th class="num">Wert</th></tr></thead>
           <tbody>
             <tr v-for="i in r.parts" :key="i.id">
-              <td class="mono">{{ i.item_no }}</td>
+              <td class="mono"><RouterLink :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
               <td><LocationTag :code="i.location_code" :kind="i.location_kind" /></td>

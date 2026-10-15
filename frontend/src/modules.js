@@ -1,4 +1,4 @@
-import { Smile, ClipboardList, Boxes, RefreshCw, ScanBarcode, Truck, ClipboardCheck, BarChart3 } from 'lucide-vue-next'
+import { Smile, ClipboardList, Boxes, RefreshCw, ScanSearch, Truck, ClipboardCheck, BarChart3 } from 'lucide-vue-next'
 
 // Zentrale Liste der Bereiche: Kacheln, XP-Desktop und Protokoll-Bezeichnungen kommen von hier.
 // status: 'aktiv' = in dieser App, 'extern' = bestehendes Programm wird integriert, 'geplant' = kommt noch.
@@ -14,8 +14,8 @@ export const modules = [
     text: 'Bestände, Lagerorte und Bestandsverlauf verwalten.', tile: (d) => `Gesamtbestand: ${n(d?.inventar?.total_parts)} Teile` },
   { id: 'umlagern', title: 'Umlagern', icon: RefreshCw, path: '/umlagern', status: 'aktiv', xpColor: '#1d9fa8',
     text: 'Mischkisten analysieren, Sortierungsvorschläge erhalten und Bestände optimieren.', tile: (d) => `Offene Vorschläge: ${n(d?.umlagern?.suggestions)}` },
-  { id: 'scanner', title: 'Teile-Scanner', icon: ScanBarcode, path: '/modul/scanner', status: 'geplant', xpColor: '#5d6b7a',
-    text: 'Teile, Barcodes und Lagerplatzcodes scannen und direkt verarbeiten.', tile: () => 'Geplant' },
+  { id: 'scanner', title: 'Teile-Scanner', icon: ScanSearch, path: '/scanner', status: 'aktiv', xpColor: '#5d6b7a',
+    text: 'Teil fotografieren, automatisch erkennen lassen und im Lager finden.', tile: () => 'Teil fotografieren und erkennen' },
   { id: 'auftraege', title: 'Auftragszentrale', icon: Truck, path: '/auftraege', status: 'aktiv', xpColor: '#2b6fd6',
     text: 'Bestellungen importieren, verfolgen und Auftragsstatus prüfen.', tile: (d) => `Aktive Aufträge: ${n(d?.auftraege?.active)}` },
   { id: 'inventur', title: 'Inventur & Bestandsprüfung', icon: ClipboardCheck, path: '/inventur', status: 'aktiv', xpColor: '#3c9b3c',

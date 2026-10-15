@@ -275,6 +275,43 @@ final class Shop
         return ['location' => $s['location_code'], 'corrections' => $corrections];
     }
 
+    /** Alles Wichtige zu einem Teil: Bestand je Farbe und Lagerort, Aufträge mit dem Teil, letzte Umlagerungen. */
+    public static function part(string $itemNo): array
+    {
+        $lots = typed(q(self::LOT_SELECT . ' WHERE i.item_no = ? ORDER BY i.color_name, l.code', [$itemNo])->fetchAll(), LOT_INTS, ['price']);
+        $in = implode(',', array_fill(0, count(ORDER_ACTIVE), '?'));
+        $orders = typed(q("SELECT o.id, o.order_no, o.buyer, o.status, o.ordered_at, x.color_name, x.qty,
+                CASE WHEN o.status IN ($in) THEN 1 ELSE 0 END AS active
+            FROM {order_items} x JOIN {orders} o ON o.id = x.order_id
+            WHERE x.item_no = ? ORDER BY o.ordered_at DESC LIMIT 30", [...ORDER_ACTIVE, $itemNo])->fetchAll(), ['id', 'qty', 'active']);
+        $transfers = typed(q('SELECT t.id, t.color_name, t.qty, t.created_at, lf.code AS from_code, lt.code AS to_code, u.display_name
+            FROM {transfers} t LEFT JOIN {locations} lf ON lf.id = t.from_location_id
+            LEFT JOIN {locations} lt ON lt.id = t.to_location_id LEFT JOIN {users} u ON u.id = t.user_id
+            WHERE t.item_no = ? ORDER BY t.id DESC LIMIT 10', [$itemNo])->fetchAll(), ['id', 'qty']);
+        return [
+            'item_no'   => $lots[0]['item_no'] ?? $itemNo,
+            'name'      => $lots[0]['name'] ?? null,
+            'category'  => $lots[0]['category'] ?? null,
+            'item_type' => $lots[0]['item_type'] ?? 'PART',
+            'lots'      => $lots,
+            'orders'    => $orders,
+            'transfers' => $transfers,
+        ];
+    }
+
+    /** Alle Lose zu den angegebenen Teil-Nummern, gruppiert nach Nummer (für die Teileerkennung). */
+    public static function lotsByItem(array $itemNos): array
+    {
+        $itemNos = array_values(array_unique(array_filter(array_map('strval', $itemNos))));
+        if (!$itemNos) return [];
+        $in = implode(',', array_fill(0, count($itemNos), '?'));
+        $out = [];
+        foreach (typed(q(self::LOT_SELECT . " WHERE i.item_no IN ($in) ORDER BY i.color_name, l.code", $itemNos)->fetchAll(), LOT_INTS, ['price']) as $lot) {
+            $out[$lot['item_no']][] = $lot;
+        }
+        return $out;
+    }
+
     public static function analysis(): array
     {
         $byCategory = typed(q('SELECT category AS label, COUNT(*) AS lots, SUM(qty) AS qty, SUM(qty * price) AS value

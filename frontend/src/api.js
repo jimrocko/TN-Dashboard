@@ -18,10 +18,10 @@ export function apiUrl(route, params = {}) {
   return `${BASE}?${qs}`
 }
 
-async function request(method, route, { body, params } = {}) {
+async function request(method, route, { body, params, form } = {}) {
   if (IS_DEMO) {
     try {
-      return await demoBackend.handle(method, route, params, body)
+      return await demoBackend.handle(method, route, params, form ?? body)
     } catch (e) {
       throw new ApiError(e.message, e.status)
     }
@@ -30,7 +30,7 @@ async function request(method, route, { body, params } = {}) {
     method,
     credentials: 'same-origin',
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    body: form ?? (body ? JSON.stringify(body) : undefined),
   })
   let data = null
   try {
@@ -45,6 +45,8 @@ async function request(method, route, { body, params } = {}) {
 export const api = {
   get: (route, params) => request('GET', route, { params }),
   post: (route, body) => request('POST', route, { body }),
+  /** Datei-Upload als multipart/form-data, z. B. ein Foto für die Teileerkennung. */
+  upload: (route, form) => request('POST', route, { form }),
 }
 
 /** Aktion ins Protokoll schreiben, das der Lehrer einsehen kann. Fehler blockieren die Bedienung nicht. */

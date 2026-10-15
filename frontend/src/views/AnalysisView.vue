@@ -59,7 +59,7 @@ onMounted(async () => {
             <thead><tr><th>Teil</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th></tr></thead>
             <tbody>
               <tr v-for="i in a.low_stock" :key="i.id">
-                <td><span class="mono">{{ i.item_no }}</span> <span class="muted small">{{ i.name }}</span></td>
+                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td><LocationTag :code="i.location_code" /></td>
                 <td class="num low">{{ num(i.qty) }}</td>
