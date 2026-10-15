@@ -58,6 +58,23 @@ function pick(l) {
 }
 const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?.location_id))
 
+// Lagerplan: alle Fächer nach Regal gruppiert (Präfix vor dem Bindestrich), Mischkisten zuletzt.
+const openByCode = computed(() => {
+  const m = {}
+  for (const s of suggestions.value) m[s.lot.location_code] = (m[s.lot.location_code] ?? 0) + 1
+  return m
+})
+const plan = computed(() => {
+  const groups = {}
+  for (const l of locations.value) {
+    const name = l.kind === 'mischkiste' ? 'Mischkisten' : `Regal ${l.code.split('-')[0]}`
+    ;(groups[name] ??= []).push(l)
+  }
+  return Object.entries(groups)
+    .sort(([a], [b]) => (a === 'Mischkisten') - (b === 'Mischkisten') || a.localeCompare(b))
+    .map(([name, items]) => ({ name, items }))
+})
+
 onMounted(async () => {
   await load()
   if (route.query.lot) {
@@ -95,6 +112,27 @@ onMounted(async () => {
             <tr v-if="!suggestions.length"><td colspan="8" class="empty">Keine Vorschläge. Die Mischkisten enthalten nur Teile ohne festen Platz.</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Lagerplan</h2>
+        <span class="faint small">Fach antippen, um den Inhalt zu sehen</span>
+      </div>
+      <div class="panel-body plan">
+        <div v-for="g in plan" :key="g.name" class="shelf">
+          <div class="shelf-name">{{ g.name }}</div>
+          <div class="bins">
+            <RouterLink v-for="l in g.items" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="bin"
+              :class="{ mixed: l.kind === 'mischkiste', empty: !l.lots }" :title="`${l.name}: ${l.lots} Lose, ${num(l.qty)} Teile`">
+              <span class="code mono">{{ l.code }}</span>
+              <span class="meta">{{ l.lots }} {{ l.lots === 1 ? 'Los' : 'Lose' }}</span>
+              <span class="meta">{{ num(l.qty) }} Teile</span>
+              <span v-if="openByCode[l.code]" class="badge" :title="`${openByCode[l.code]} Umlagerungsvorschläge`">{{ openByCode[l.code] }}</span>
+            </RouterLink>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -167,4 +205,23 @@ onMounted(async () => {
 .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chosen { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; }
 .row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.plan { display: flex; flex-direction: column; gap: 14px; }
+.shelf { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: start; }
+.shelf-name { font-size: 0.85rem; color: var(--text-2); padding-top: 10px; }
+.bins { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.bin {
+  position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text);
+}
+.bin:hover { border-color: var(--accent); background: var(--accent-soft); }
+.bin .code { font-weight: 600; }
+.bin .meta { font-size: 0.78rem; color: var(--text-3); }
+.bin.mixed { border-style: dashed; }
+.bin.mixed .code { color: var(--warn); }
+.bin.empty { opacity: 0.55; }
+.badge {
+  position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+  display: grid; place-items: center; font-size: 0.75rem; font-weight: 600; background: var(--warn); color: #111;
+}
+@media (max-width: 640px) { .shelf { grid-template-columns: minmax(0, 1fr); gap: 6px; } .shelf-name { padding-top: 0; } }
 </style>
