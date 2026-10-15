@@ -9,6 +9,7 @@ import { windowKey } from '../utils/windowing'
 import { useSettings } from '../stores/settings'
 import { leaveXp, xpTouch, xpIdleFor, XP_IDLE_MS } from '../utils/cheats'
 import XpWindowView from './XpWindowView.vue'
+import { xpApps } from '../xp/apps'
 import logo from '../assets/icon.svg'
 
 // Windows-XP-Oberfläche: Desktop mit App-Symbolen, mehrere Fenster gleichzeitig, Start-Menü und Taskleiste.
@@ -31,7 +32,7 @@ const extras = computed(() => [
   { id: 'einstellungen', title: 'Einstellungen', icon: Settings, path: '/einstellungen', xpColor: '#7a7a7a' },
   ...(auth.isStaff ? [{ id: 'lehrer', title: 'Lehrer-Ansicht', icon: GraduationCap, path: '/lehrer', xpColor: '#b5651d' }] : []),
 ])
-const desktopIcons = computed(() => [...modules, ...extras.value])
+const desktopIcons = computed(() => [...xpApps, ...modules, ...extras.value])
 const iconFor = (key) => (key.startsWith('/teil/') || key.startsWith('/lagerort/') ? moduleById('inventar')
   : desktopIcons.value.find((i) => key === i.path || key.startsWith(i.path + '/')) ?? null)
 
@@ -225,6 +226,11 @@ onBeforeUnmount(() => {
             <input id="start-search" v-model="q" type="search" enterkeyhint="search" placeholder="Teile, Lagerorte, Aufträge suchen" aria-label="Suchen" />
           </form>
           <RouterLink v-for="m in modules" :key="m.id" :to="m.path" class="sm-item">
+            <span class="glyph sm" :style="{ '--c': m.xpColor }"><component :is="m.icon" :size="18" :stroke-width="2" /></span>
+            <span>{{ m.title }}</span>
+          </RouterLink>
+          <div class="sm-sep"></div>
+          <RouterLink v-for="m in xpApps" :key="m.id" :to="m.path" class="sm-item">
             <span class="glyph sm" :style="{ '--c': m.xpColor }"><component :is="m.icon" :size="18" :stroke-width="2" /></span>
             <span>{{ m.title }}</span>
           </RouterLink>

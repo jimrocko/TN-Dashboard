@@ -130,6 +130,7 @@ const byteCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
  *  1. 'falsch' – gleiches Teil + Farbe im selben Bereich in mehreren Kästchen → ins Kästchen mit der größten Menge
  *  2. 'farben' – gleiches Teil in anderen Farben verstreut → in ein Kästchen, das nur dieses Teil enthält
  *     (Ziel höchstens SLOT_MAX_LOTS Lose; Quelle enthält auch andere Teile)
+ *  3. 'art' – gleiche Teile-Art (Kategorie) verstreut → in ein Kästchen, das nur diese Art enthält (gleiche Grenzen)
  */
 function suggestions(db) {
   const all = db.inventory.map((i) => lotRow(db, i)).filter((l) => l.location_code).sort((a, b) => a.id - b.id)
@@ -156,6 +157,7 @@ function suggestions(db) {
   }
 
   // 2. Farben zusammenlegen
+  const planned = new Map() // Los-ID → Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
   const boxLots = new Map()
   const boxItems = new Map()
   for (const l of all) {
@@ -194,8 +196,53 @@ function suggestions(db) {
         if (pureSource || purity(sid, item) >= purity(tid, item)) continue
         const colors = lots.filter((x) => x.location_id === tid && !moved.has(x.id)).map((x) => x.color_name)
         add(src, t, 'farben', { target_colors: colors })
+        planned.set(src.id, tid)
         boxLots.set(tid, (boxLots.get(tid) ?? 0) + 1); boxItems.get(tid).set(item, cnt(tid, item) + 1)
         boxLots.set(sid, boxLots.get(sid) - 1); boxItems.get(sid).set(item, cnt(sid, item) - 1)
+      }
+    }
+  }
+
+  // 3. Gleiche Teile-Art (Kategorie): in ein Kästchen, das nur diese Art enthält
+  const catLots = new Map()
+  const catCount = new Map()
+  const namesIn = new Map()
+  for (const l of all) {
+    if (moved.has(l.id) && !planned.has(l.id)) continue // zusammengeführt (falsch)
+    const loc = planned.get(l.id) ?? l.location_id
+    catLots.set(loc, (catLots.get(loc) ?? 0) + 1)
+    const m = catCount.get(loc) ?? new Map()
+    m.set(l.category, (m.get(l.category) ?? 0) + 1)
+    catCount.set(loc, m)
+    namesIn.set(loc, [...(namesIn.get(loc) ?? []), l.name])
+  }
+  const ccnt = (loc, cat) => catCount.get(loc)?.get(cat) ?? 0
+  const catPure = (loc, cat) => (catLots.get(loc) ?? 0) > 0 && ccnt(loc, cat) === catLots.get(loc)
+  const byCat = new Map()
+  for (const l of all) {
+    if (moved.has(l.id)) continue
+    const k = `${areaOf(l.location_code)}|${l.category}`
+    if (!byCat.has(k)) byCat.set(k, [])
+    byCat.get(k).push(l)
+  }
+  for (const k of [...byCat.keys()].sort(byteCmp)) {
+    const lots = byCat.get(k)
+    const cat = lots[0].category
+    const boxes = new Map()
+    for (const l of lots) if (!boxes.has(l.location_id)) boxes.set(l.location_id, l)
+    if (boxes.size < 2) continue
+    const targets = [...boxes.values()].filter((b) => catPure(b.location_id, cat))
+      .sort((a, b) => ccnt(b.location_id, cat) - ccnt(a.location_id, cat) || cmpCode(a, b))
+    const sources = [...lots].sort(cmpCode)
+    for (const t of targets) {
+      const tid = t.location_id
+      for (const src of sources) {
+        if ((catLots.get(tid) ?? 0) >= SLOT_MAX_LOTS) break
+        const sid = src.location_id
+        if (moved.has(src.id) || sid === tid || catPure(sid, cat)) continue
+        add(src, t, 'art', { target_parts: [...new Set(namesIn.get(tid) ?? [])] })
+        catLots.set(tid, (catLots.get(tid) ?? 0) + 1); catCount.get(tid).set(cat, ccnt(tid, cat) + 1); namesIn.get(tid).push(src.name)
+        catLots.set(sid, catLots.get(sid) - 1); catCount.get(sid).set(cat, ccnt(sid, cat) - 1)
       }
     }
   }

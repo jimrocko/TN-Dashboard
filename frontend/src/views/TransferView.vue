@@ -61,7 +61,8 @@ function pick(l) {
 const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?.location_id))
 
 // Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Losen kann die Liste lang werden).
-const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen' }
+const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }
+const reasonClass = { falsch: 'warn', farben: 'accent', art: 'ok' }
 const reason = ref('alle')
 const PAGE = 30
 const shown = ref(PAGE)
@@ -70,6 +71,7 @@ const reasonOptions = computed(() => [
   { value: 'alle', label: `Alle (${suggestions.value.length})` },
   { value: 'falsch', label: `${REASONS.falsch} (${count('falsch')})` },
   { value: 'farben', label: `${REASONS.farben} (${count('farben')})` },
+  { value: 'art', label: `${REASONS.art} (${count('art')})` },
 ])
 const filtered = computed(() => (reason.value === 'alle' ? suggestions.value : suggestions.value.filter((s) => s.reason === reason.value)))
 watch(reason, () => { shown.value = PAGE })
@@ -92,7 +94,7 @@ onMounted(async () => {
 
 <template>
   <div class="page stack">
-    <PageHead title="Umlagern" sub="Falsch einsortierte Teile zurückbringen und gleiche Teile in anderen Farben in ein Kästchen zusammenlegen, damit die Slots sauberer werden. Immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht)." />
+    <PageHead title="Umlagern" sub="Falsch einsortierte Teile zurückbringen, gleiche Teile in anderen Farben und Teile derselben Art (z. B. Bricks, Plates, Tiles) zusammenlegen, damit die Slots sauberer werden. Immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht)." />
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -106,7 +108,7 @@ onMounted(async () => {
           <thead><tr><th>Grund</th><th>Teil</th><th>Farbe</th><th>Von</th><th></th><th>Nach</th><th class="num">Menge</th><th>Am Ziel</th><th></th></tr></thead>
           <tbody>
             <tr v-for="s in filtered.slice(0, shown)" :key="s.lot.id">
-              <td><span class="pill" :class="s.reason === 'falsch' ? 'warn' : 'accent'">{{ REASONS[s.reason] }}</span></td>
+              <td><span class="pill" :class="reasonClass[s.reason]">{{ REASONS[s.reason] }}</span></td>
               <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
               <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
               <td><LocationTag :code="s.lot.location_code" /></td>
@@ -115,7 +117,8 @@ onMounted(async () => {
               <td class="num">{{ num(s.lot.qty) }}</td>
               <td class="small muted">
                 <template v-if="s.reason === 'falsch'">{{ num(s.target_qty) }} Stück gleiche Farbe</template>
-                <template v-else>schon da: {{ s.target_colors?.join(', ') }}</template>
+                <template v-else-if="s.reason === 'farben'">schon da: {{ s.target_colors?.join(', ') }}</template>
+                <template v-else>schon da: {{ s.target_parts?.join(', ') }}</template>
               </td>
               <td class="num"><button class="btn btn-sm" :disabled="busy" @click="book(s.lot.id, s.to_location_id, s.lot.qty)">Übernehmen</button></td>
             </tr>

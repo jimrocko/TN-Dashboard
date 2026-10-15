@@ -132,7 +132,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
           <table class="table">
             <tbody>
               <tr v-for="s in [...outgoing, ...incoming]" :key="s.lot.id">
-                <td><span class="pill" :class="s.reason === 'falsch' ? 'warn' : 'accent'">{{ s.reason === 'falsch' ? 'Falsch einsortiert' : 'Farben zusammenlegen' }}</span></td>
+                <td><span class="pill" :class="{ falsch: 'warn', farben: 'accent', art: 'ok' }[s.reason]">{{ { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }[s.reason] }}</span></td>
                 <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
                 <td class="nowrap"><LocationTag :code="s.lot.location_code" :kind="s.lot.location_kind" /> <ArrowRight :size="13" class="faint" /> <LocationTag :code="s.to_location_code" /></td>

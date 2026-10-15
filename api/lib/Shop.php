@@ -155,6 +155,8 @@ final class Shop
      *  2. 'farben'   – gleiches Teil in anderen Farben liegt verstreut: in ein Kästchen legen, das nur dieses Teil enthält,
      *                  damit Slots „reiner“ werden. Ziel bekommt höchstens SLOT_MAX_LOTS Lose,
      *                  Quelle muss auch andere Teile enthalten.
+     *  3. 'art'      – gleiche Teile-Art (Kategorie, z. B. Brick, Plate) verstreut: in ein Kästchen, das nur diese Art
+     *                  enthält, höchstens SLOT_MAX_LOTS Lose; Quelle enthält auch andere Arten.
      * Gleiche Regeln und Reihenfolge wie suggestions() in frontend/src/demo/shop.js.
      */
     public static function suggestions(): array
@@ -181,6 +183,7 @@ final class Shop
         }
 
         // 2. Farben zusammenlegen
+        $planned = []; // Los-ID => Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
         $boxLots = [];   // location_id => Anzahl Lose
         $boxItems = [];  // location_id => [item_no => Anzahl Lose]
         foreach ($all as $l) {
@@ -219,8 +222,50 @@ final class Shop
                     $colors = [];
                     foreach ($lots as $x) if ($x['location_id'] === $tid && !isset($moved[$x['id']])) $colors[] = $x['color_name'];
                     $add($src, $t, 'farben', ['target_colors' => $colors]);
+                    $planned[$src['id']] = $tid;
                     $boxLots[$tid]++; $boxItems[$tid][$item] = ($boxItems[$tid][$item] ?? 0) + 1;
                     $boxLots[$sid]--; $boxItems[$sid][$item]--;
+                }
+            }
+        }
+
+        // 3. Gleiche Teile-Art (Kategorie, z. B. Brick, Plate, Tile): in ein Kästchen, das nur diese Art enthält
+        $catLots = [];  // location_id => Anzahl Lose (nach den Vorschlägen aus 1 und 2)
+        $catCount = []; // location_id => [Kategorie => Anzahl Lose]
+        $namesIn = [];  // location_id => [Teil-Namen]
+        foreach ($all as $l) {
+            if (isset($moved[$l['id']]) && !isset($planned[$l['id']])) continue; // zusammengeführt (falsch)
+            $loc = $planned[$l['id']] ?? $l['location_id'];
+            $catLots[$loc] = ($catLots[$loc] ?? 0) + 1;
+            $catCount[$loc][$l['category']] = ($catCount[$loc][$l['category']] ?? 0) + 1;
+            $namesIn[$loc][] = $l['name'];
+        }
+        $catPure = function ($loc, $cat) use (&$catLots, &$catCount) {
+            return ($catLots[$loc] ?? 0) > 0 && ($catCount[$loc][$cat] ?? 0) === $catLots[$loc];
+        };
+        $byCat = [];
+        foreach ($all as $l) {
+            if (!isset($moved[$l['id']])) $byCat[self::areaOf($l['location_code']) . '|' . $l['category']][] = $l;
+        }
+        ksort($byCat, SORT_STRING);
+        foreach ($byCat as $lots) {
+            $cat = $lots[0]['category'];
+            $boxes = [];
+            foreach ($lots as $l) $boxes[$l['location_id']] ??= $l;
+            if (count($boxes) < 2) continue;
+            $targets = array_values(array_filter($boxes, fn ($b) => $catPure($b['location_id'], $cat)));
+            usort($targets, fn ($a, $b) => ($catCount[$b['location_id']][$cat] ?? 0) <=> ($catCount[$a['location_id']][$cat] ?? 0) ?: $cmpCode($a, $b));
+            $sources = $lots;
+            usort($sources, $cmpCode);
+            foreach ($targets as $t) {
+                $tid = $t['location_id'];
+                foreach ($sources as $src) {
+                    if (($catLots[$tid] ?? 0) >= SLOT_MAX_LOTS) break;
+                    $sid = $src['location_id'];
+                    if (isset($moved[$src['id']]) || $sid === $tid || $catPure($sid, $cat)) continue;
+                    $add($src, $t, 'art', ['target_parts' => array_values(array_unique($namesIn[$tid] ?? []))]);
+                    $catLots[$tid]++; $catCount[$tid][$cat] = ($catCount[$tid][$cat] ?? 0) + 1; $namesIn[$tid][] = $src['name'];
+                    $catLots[$sid]--; $catCount[$sid][$cat]--;
                 }
             }
         }

@@ -37,10 +37,10 @@ const stats = (ids) => {
 }
 const fIds = AREAS.filter((a) => a.group === 'F').map((a) => a.id)
 const zones = computed(() => [
-  { key: 'G', title: `${formatCode('G', 100)}–${formatCode('G', 999)}`, sub: 'Gebraucht', color: areaById('G').color, s: stats(['G']) },
-  { key: 'H', title: `${formatCode('H', 0)}–${formatCode('H', 999)}`, sub: 'Regal H', color: areaById('H').color, s: stats(['H']) },
-  { key: 'N', title: `${formatCode('N', 0)}–${formatCode('N', 999)}`, sub: 'Neu', color: areaById('N').color, s: stats(['N']) },
-  { key: 'F', title: 'FG · FN · FT · Plate', sub: 'Figuren & Plates', color: areaById('FG').color, s: stats(fIds) },
+  { key: 'G', title: `${formatCode('G', 100)}–${formatCode('G', 999)}`, sub: 'Gebraucht', color: 'var(--text-3)', s: stats(['G']) },
+  { key: 'H', title: `${formatCode('H', 0)}–${formatCode('H', 999)}`, sub: 'Regal H', color: 'var(--text-3)', s: stats(['H']) },
+  { key: 'N', title: `${formatCode('N', 0)}–${formatCode('N', 999)}`, sub: 'Neu', color: 'var(--text-3)', s: stats(['N']) },
+  { key: 'F', title: 'FG · FN · FT · Plate', sub: 'Figuren & Plates', color: 'var(--text-3)', s: stats(fIds) },
 ])
 const zone = computed(() => zones.value.find((z) => z.key === selected.value))
 
@@ -82,6 +82,9 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
   <div class="roomplan">
     <div class="room" role="group" aria-label="Lagerzimmer">
       <!-- Wände mit Regalen, Lage wie auf der Skizze -->
+      <!-- Bereiche als gestrichelte Flächen, damit man sie klar unterscheidet -->
+      <button v-for="z in zones" :key="'r' + z.key" type="button" class="region" :class="[`r-${z.key}`, { on: selected === z.key }]"
+        :aria-label="`Bereich ${z.title}`" tabindex="-1" @click="pick(z.key)"></button>
       <button type="button" class="wall w-g" :class="{ on: selected === 'G' }" :style="{ '--c': zones[0].color }" aria-label="Regal G" @click="pick('G')"></button>
       <button type="button" class="wall w-h" :class="{ on: selected === 'H' }" :style="{ '--c': zones[1].color }" aria-label="Regal H" @click="pick('H')"></button>
       <button type="button" class="wall w-n" :class="{ on: selected === 'N' }" :style="{ '--c': zones[2].color }" aria-label="Regal N" @click="pick('N')"></button>
@@ -151,30 +154,40 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
 
 /* Zimmer von oben */
 .room {
-  position: relative; width: 100%; max-width: 760px; aspect-ratio: 4 / 3.3; margin: 0 auto;
-  border: 3px solid var(--text-3); border-radius: 4px; background: var(--surface-2);
+  position: relative; width: 100%; max-width: 520px; aspect-ratio: 4 / 3.3; margin: 0 auto;
+  border: 2px solid var(--text-3); border-radius: 4px; background: var(--surface-2);
 }
-.wall { position: absolute; padding: 0; border: 0; border-radius: 4px; background: var(--c); opacity: 0.85; cursor: pointer; }
-.wall:hover, .wall.on { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
-.w-g { left: 2%; top: 3%; width: 4%; height: 58%; }
-.w-h { right: 2%; top: 3%; width: 4%; height: 25%; }
-.w-n { right: 2%; top: 31%; width: 4%; height: 59%; }
-.w-f1 { left: 2%; top: 64%; width: 4%; height: 10%; }
-.w-f2 { left: 2%; top: 70%; width: 40%; height: 4%; }
+.region {
+  position: absolute; padding: 0; border: 1.5px dashed var(--border-strong); border-radius: 10px;
+  background: color-mix(in srgb, var(--text-3) 6%, transparent); cursor: pointer;
+}
+.region:hover { background: color-mix(in srgb, var(--text-3) 12%, transparent); }
+.region.on { border-style: solid; border-color: var(--accent-text); background: var(--accent-soft); }
+.r-G { left: 1%; top: 2%; width: 45%; height: 57%; }
+.r-H { right: 1%; top: 2%; width: 45%; height: 27%; }
+.r-N { right: 1%; top: 32%; width: 45%; height: 64%; }
+.r-F { left: 1%; top: 62%; width: 45%; height: 34%; }
+.wall { position: absolute; padding: 0; border: 0; border-radius: 3px; background: var(--text-3); opacity: 0.55; cursor: pointer; }
+.wall:hover, .wall.on { opacity: 0.9; }
+.w-g { left: 2.5%; top: 5%; width: 3%; height: 51%; }
+.w-h { right: 2.5%; top: 5%; width: 3%; height: 21%; }
+.w-n { right: 2.5%; top: 35%; width: 3%; height: 58%; }
+.w-f1 { left: 2.5%; top: 66%; width: 3%; height: 26%; }
+.w-f2 { left: 2.5%; top: 89%; width: 40%; height: 3%; }
 
 .zone {
-  position: absolute; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  padding: 10px 14px; border-radius: 999px; border: 2px solid var(--c); background: var(--surface);
-  color: var(--text); text-align: left; min-width: 0; max-width: 46%;
+  position: absolute; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--text); text-align: left; min-width: 0; max-width: 40%;
 }
-.zone:hover, .zone.on { background: color-mix(in srgb, var(--c) 18%, var(--surface)); }
-.zone.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent); }
-.zt { font-weight: 700; font-size: clamp(0.85rem, 2.2vw, 1.15rem); white-space: nowrap; }
-.zs { font-size: 0.75rem; color: var(--text-2); }
-.z-G { left: 10%; top: 14%; }
-.z-H { right: 9%; top: 9%; }
-.z-N { right: 9%; top: 40%; }
-.z-F { left: 10%; top: 55%; }
+.zone:hover { border-color: var(--text-2); }
+.zone.on { border-color: var(--accent-text); background: var(--accent-soft); }
+.zt { font-weight: 600; font-size: clamp(0.78rem, 1.6vw, 0.92rem); white-space: nowrap; }
+.zs { font-size: 0.7rem; color: var(--text-2); }
+.z-G { left: 9%; top: 8%; }
+.z-H { right: 8%; top: 7%; }
+.z-N { right: 8%; top: 38%; }
+.z-F { left: 9%; top: 67%; }
 
 .badge {
   position: absolute; top: -8px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
@@ -183,18 +196,18 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
 .hint { text-align: center; margin: 0; }
 
 /* Auswahl */
-.detail { border: 2px solid var(--c); border-radius: var(--radius-sm); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.detail { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .dhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
 .blk {
-  position: relative; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; min-height: 52px; text-align: left;
+  position: relative; display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; min-height: 44px; text-align: left; font-size: 0.9rem;
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text);
 }
 .blk:hover, .blk.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 15%, var(--surface)); }
 .blk.empty { opacity: 0.55; }
-.cells { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; width: 100%; max-width: 620px; }
+.cells { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; width: 100%; max-width: 460px; }
 .cell {
-  position: relative; display: grid; place-items: center; aspect-ratio: 1; min-height: 34px; border-radius: 5px;
+  position: relative; display: grid; place-items: center; aspect-ratio: 1; min-height: 30px; border-radius: 4px;
   font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--text-3); border: 1px dashed var(--border);
 }
 .cell.used { border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 30%, var(--surface)); color: var(--text); font-weight: 600; }
@@ -220,12 +233,9 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
 
 @media (max-width: 640px) {
   .room { aspect-ratio: 3 / 4; }
-  .zone { padding: 6px 10px; max-width: 60%; }
+  .zone { padding: 4px 8px; max-width: 42%; }
   .zs { display: none; }
-  .z-G { left: 9%; top: 8%; }
-  .z-H { right: 8%; top: 5%; }
-  .z-N { right: 8%; top: 42%; }
-  .z-F { left: 9%; top: 58%; }
+  .zt { white-space: normal; }
   .cells { gap: 3px; }
   .cell { min-height: 28px; font-size: 0.68rem; }
 }

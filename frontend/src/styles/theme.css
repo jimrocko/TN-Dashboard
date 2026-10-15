@@ -75,6 +75,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* Kein Zoomen per Doppeltipp (iPad), Zwei-Finger-Zoom bleibt möglich */
+html { touch-action: manipulation; }
 body {
   background: radial-gradient(120% 80% at 50% 0%, var(--bg-glow) 0%, var(--bg) 60%) fixed, var(--bg);
   color: var(--text);

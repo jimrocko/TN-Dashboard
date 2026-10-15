@@ -19,6 +19,12 @@ import ProfileView from './views/ProfileView.vue'
 import SettingsView from './views/SettingsView.vue'
 import DevView from './views/DevView.vue'
 import TeacherView from './views/teacher/TeacherView.vue'
+import XpBrowser from './views/xp/XpBrowser.vue'
+import XpMail from './views/xp/XpMail.vue'
+import XpCalendar from './views/xp/XpCalendar.vue'
+import XpNotepad from './views/xp/XpNotepad.vue'
+import XpRecycleBin from './views/xp/XpRecycleBin.vue'
+import { useSettings } from './stores/settings'
 
 // Hash-Routing (#/…): funktioniert auf jedem Webserver ohne Rewrite-Regeln.
 // Die Demo läuft eingebettet und hält die Navigation nur im Speicher.
@@ -47,6 +53,12 @@ const router = createRouter({
     { path: '/einstellungen', component: SettingsView, meta: { title: 'Einstellungen' } },
     { path: '/dev', component: DevView, meta: { title: 'Dev-Bereich', dev: true } },
     { path: '/lehrer', component: TeacherView, meta: { title: 'Lehrer-Ansicht', staff: true } },
+    // Spaß-Apps nur im (geheimen) XP-Stil; sonst zurück zur Startseite
+    { path: '/xp/internet', component: XpBrowser, meta: { title: 'Internet', xpOnly: true } },
+    { path: '/xp/mail', component: XpMail, meta: { title: 'E-Mail', xpOnly: true } },
+    { path: '/xp/kalender', component: XpCalendar, meta: { title: 'Kalender', xpOnly: true } },
+    { path: '/xp/editor', component: XpNotepad, meta: { title: 'Editor', xpOnly: true } },
+    { path: '/xp/papierkorb', component: XpRecycleBin, meta: { title: 'Papierkorb', xpOnly: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
@@ -57,6 +69,7 @@ router.beforeEach(async (to) => {
   if (!to.meta.public && !auth.user) return { path: '/login', query: { next: to.fullPath } }
   if (to.path === '/login' && auth.user) return '/'
   if (to.meta.staff && !auth.isStaff) return '/'
+  if (to.meta.xpOnly && useSettings().style !== 'xp') return '/'
   if (to.meta.dev && !auth.canDev) return '/'
 })
 
