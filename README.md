@@ -15,10 +15,11 @@
 
 <a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
 <a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Tutorial.html"><img src="https://img.shields.io/badge/%F0%9F%A7%B1%20Tutorial%20starten-Klemmi%20zeigt%20dir%20alles-d01c0a?style=for-the-badge" alt="Tutorial starten" height="44"></a>
+<img src="docs/images/klemmi.png" alt="Klemmi winkt" height="96" align="absmiddle">
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
 <sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
-Im **Tutorial** führt dich Klemmi, eine rote Lego-Figur, in ein paar Minuten durch alle Bereiche. Du tippst selbst: suchen, Kästchen öffnen, Bestand zählen, umlagern, Auftrag weiterschieben.<br>
+Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch jeden Bereich der App. Du tippst selbst: suchen, Kästchen öffnen, Bestand zählen, Teil erkennen, umlagern, Auftrag weiterschieben.<br>
 Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
@@ -164,8 +165,21 @@ Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `00
 
 Öffnen: im Repo oben auf **Demo starten** klicken, oder die Datei herunterladen und per Doppelklick öffnen. Bei jedem Push auf den Standard-Branch wird sie außerdem auf [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) veröffentlicht (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen).
 
-### Tutorial
-`TN-Dashboard-Tutorial.html` ist dieselbe Demo mit einer geführten Tour: Klemmi, eine animierte rote Minifigur, erklärt in Sprechblasen Suche, Inventar mit Lagerplan, Lagerort, Inventur, Umlagern, Aufträge, Analyse und das Aktivitätsprotokoll. Man klickt jeden Schritt selbst, alles andere ist währenddessen abgedunkelt. Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn; mit dem X oben in der Sprechblase kann man jederzeit aufhören und frei weiterprobieren. Neu bauen mit `cd frontend && npm run build:tutorial`.
+### Tutorial mit Klemmi
+<img src="docs/images/klemmi-jubelt.png" alt="Klemmi jubelt" width="110" align="right">
+
+**Klemmi** ist das Maskottchen des TN Dashboards: eine klassische rote Lego-Figur, die winkt, zeigt, blinzelt, beim Sprechen den Mund bewegt und am Ende jubelt. In `TN-Dashboard-Tutorial.html` zeigt er Teilnehmern, wie man die App bedient, und lässt dabei **jeden Bereich mindestens einmal öffnen**: Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“.
+
+- Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
+- Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben steht das aktuelle Kapitel, darunter ein Fortschrittsbalken als Lego-Stein.
+- Wer sich verläuft, wird zurück zur Startseite gelotst; „Ich finde es nicht“ hilft, wenn ein Ziel fehlt. Mit dem X kann man jederzeit aufhören und frei weiterprobieren.
+- Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn. Neu bauen mit `cd frontend && npm run build:tutorial`.
+
+<img src="docs/images/tutorial.png" alt="Tutorial: Klemmi zeigt auf die Kachel Minifig-Finder" width="720">
+
+| <img src="docs/images/klemmi.png" alt="Klemmi winkt" height="140"> | <img src="docs/images/klemmi-zeigt.png" alt="Klemmi zeigt" height="140"> | <img src="docs/images/klemmi-jubelt.png" alt="Klemmi jubelt" height="140"> |
+|:---:|:---:|:---:|
+| winkt zur Begrüßung | zeigt, wohin du tippen sollst | jubelt, wenn du fertig bist |
 
 ### Entwicklung mit Hot-Reload
 ```sh

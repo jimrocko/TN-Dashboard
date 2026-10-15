@@ -1,9 +1,9 @@
 <script setup>
-// Tutorial-Begleiter: dunkelt alles ab außer dem Element, das man antippen soll, und lässt Klemmi erklären.
-// Nur im Tutorial-Build (npm run build:tutorial) eingebunden.
+// Tutorial-Begleiter: dunkelt alles ab außer dem Element, das man antippen soll, zeigt mit einem Pfeil darauf
+// und lässt Klemmi erklären. Nur im Tutorial-Build (npm run build:tutorial) eingebunden.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { X } from 'lucide-vue-next'
+import { X, ArrowRight, RotateCcw, Compass } from 'lucide-vue-next'
 import Klemmi from './Klemmi.vue'
 import { steps, homeTab } from './steps'
 
@@ -25,6 +25,7 @@ const text = computed(() => detour.value
 // ---------- Ziel finden und hervorheben ----------
 const target = ref(null)
 const rect = ref(null)
+const view = ref({ w: innerWidth, h: innerHeight })
 const missingSince = ref(0)
 const stuck = ref(false)
 let timer = null
@@ -37,6 +38,7 @@ function findTarget() {
 
 function tick() {
   if (!active.value) return
+  view.value = { w: innerWidth, h: innerHeight }
   const el = findTarget()
   target.value = el
   if (el) {
@@ -44,11 +46,13 @@ function tick() {
       scrolledFor = el
       const r = el.getBoundingClientRect()
       // auch seitlich, z. B. Knöpfe am Ende breiter Tabellen auf dem Handy
-      if (r.top < 70 || r.bottom > innerHeight - 190 || r.left < 0 || r.right > innerWidth) el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
+      if (r.top < 90 || r.bottom > innerHeight - 200 || r.left < 0 || r.right > innerWidth) el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
     }
     const r = el.getBoundingClientRect()
     const pad = 6
-    rect.value = { top: r.top - pad, left: r.left - pad, width: r.width + pad * 2, height: r.height + pad * 2 }
+    const next = { top: r.top - pad, left: r.left - pad, width: r.width + pad * 2, height: r.height + pad * 2 }
+    const old = rect.value
+    if (!old || Math.abs(old.top - next.top) + Math.abs(old.left - next.left) + Math.abs(old.width - next.width) + Math.abs(old.height - next.height) > 0.5) rect.value = next
     missingSince.value = 0
     stuck.value = false
   } else {
@@ -82,6 +86,13 @@ function onApi(e) {
   if (!active.value || !w?.api) return
   if (w.api.test(`${e.detail.method} ${e.detail.route}`)) advance(600)
 }
+// Erklärschritte auch mit Enter oder Leertaste weiter (PC)
+function onKey(e) {
+  if (!active.value || !isInfo.value || isEnd.value || !['Enter', ' '].includes(e.key)) return
+  e.preventDefault()
+  if (talking.value) finishTyping()
+  else advance()
+}
 
 // ---------- Sprechblase mit Schreibmaschinen-Effekt ----------
 const shown = ref('')
@@ -94,24 +105,31 @@ function type(full) {
     n += 2
     shown.value = full.slice(0, n)
     if (n >= full.length) clearInterval(typer)
-  }, 28)
+  }, 26)
 }
 const talking = computed(() => shown.value.length < text.value.length)
 const finishTyping = () => { clearInterval(typer); shown.value = text.value }
 watch(text, (t) => type(t))
-watch(index, () => { scrolledFor = null; missingSince.value = 0; stuck.value = false; nextTick(tick) })
+watch(index, () => { scrolledFor = null; missingSince.value = 0; stuck.value = false; confirmQuit.value = false; nextTick(tick) })
 
-const mood = computed(() => (detour.value ? 'point' : step.value.mood ?? 'idle'))
 const isEnd = computed(() => step.value.wait === 'end')
 const isInfo = computed(() => !detour.value && (step.value.wait === 'next' || isEnd.value))
+const isAction = computed(() => !isInfo.value && !!rect.value)
+// Bei Tipp-Schritten zeigt Klemmi mit dem Arm aufs Ziel
+const mood = computed(() => (isAction.value ? 'point' : step.value.mood ?? 'idle'))
 
 // Klemmi oben, wenn das Ziel unten liegt, sonst unten
-const placeTop = computed(() => !!rect.value && rect.value.top + rect.value.height / 2 > innerHeight * 0.55)
+const placeTop = computed(() => !!rect.value && rect.value.top + rect.value.height / 2 > view.value.h * 0.55)
 
-// Abdunkeln: vier Flächen um das Loch herum. Bei reinen Erklärschritten ist auch das Loch gesperrt.
-const shades = computed(() => {
+// Lichtkegel: ein Loch mit riesigem Schatten drumherum; ohne Ziel schrumpft das Loch in der Mitte zusammen.
+const spot = computed(() => {
+  const r = rect.value ?? { top: view.value.h / 2, left: view.value.w / 2, width: 0, height: 0 }
+  return { top: `${r.top}px`, left: `${r.left}px`, width: `${r.width}px`, height: `${r.height}px` }
+})
+// Sperrflächen (unsichtbar): nur das Loch ist bei Tipp-Schritten antippbar.
+const blockers = computed(() => {
   const r = rect.value
-  if (!r) return [{ top: 0, left: 0, width: '100vw', height: '100vh' }]
+  if (!r || isInfo.value) return [{ top: 0, left: 0, width: '100vw', height: '100vh' }]
   const px = (n) => `${Math.max(0, n)}px`
   return [
     { top: 0, left: 0, width: '100vw', height: px(r.top) },
@@ -120,8 +138,25 @@ const shades = computed(() => {
     { top: px(r.top), left: px(r.left + r.width), width: `calc(100vw - ${px(r.left + r.width)})`, height: px(r.height) },
   ]
 })
-const ring = computed(() => rect.value && {
-  top: `${rect.value.top}px`, left: `${rect.value.left}px`, width: `${rect.value.width}px`, height: `${rect.value.height}px`,
+
+// Pfeil mit Schild „Hier tippen!“: über dem Ziel nach unten zeigend, sonst darunter nach oben.
+const ARROW = 64
+const arrow = computed(() => {
+  if (!isAction.value) return null
+  const r = rect.value
+  const roomAbove = r.top > ARROW + 46
+  const roomBelow = r.top + r.height + ARROW + 46 < view.value.h
+  const down = placeTop.value ? !roomBelow && roomAbove : roomAbove || !roomBelow
+  const x = Math.min(Math.max(r.left + r.width / 2, 70), view.value.w - 70)
+  const y = down ? r.top - 8 : r.top + r.height + 8
+  return { down, style: { left: `${x}px`, top: `${y}px` } }
+})
+const hint = computed(() => (detour.value ? 'Hier tippen!' : step.value.hint ?? 'Hier tippen!'))
+// Tipp-Wellen nur auf kleinen Zielen (Knöpfe, Kacheln), nicht auf ganzen Flächen
+const ripple = computed(() => {
+  const r = rect.value
+  if (!isAction.value || r.width > 360 || r.height > 200) return null
+  return { left: `${r.left + r.width / 2}px`, top: `${r.top + r.height / 2}px` }
 })
 
 function rescue() {
@@ -139,57 +174,66 @@ const confetti = Array.from({ length: 70 }, (_, i) => ({
   delay: `${(i % 14) * 0.12}s`,
   duration: `${2.4 + (i % 5) * 0.35}s`,
   color: ['#d01c0a', '#f6d43c', '#0d5ccc', '#2e9b3e', '#ffffff', '#f08a24'][i % 6],
-  w: `${8 + (i % 3) * 4}px`,
+  w: `${10 + (i % 3) * 5}px`,
 }))
 
 onMounted(() => {
   type(text.value)
-  timer = setInterval(tick, 120)
+  timer = setInterval(tick, 100)
   document.addEventListener('click', onClick, true)
+  document.addEventListener('keydown', onKey)
   window.addEventListener('tn-api', onApi)
 })
 onBeforeUnmount(() => {
   clearInterval(timer)
   clearInterval(typer)
   document.removeEventListener('click', onClick, true)
+  document.removeEventListener('keydown', onKey)
   window.removeEventListener('tn-api', onApi)
 })
 </script>
 
 <template>
-  <div v-if="active" class="tutorial" :class="{ info: isInfo }">
-    <div v-for="(s, i) in shades" :key="i" class="shade" :style="s"></div>
-    <div v-if="ring" class="ring" :class="{ action: !isInfo }" :style="ring"></div>
-    <!-- Erklärschritt: das hervorgehobene Element ist zu sehen, aber nicht antippbar -->
-    <div v-if="isInfo && ring" class="block" :style="ring"></div>
+  <div v-if="active" class="tutorial">
+    <div class="spot" :class="{ action: isAction, none: !rect }" :style="spot" aria-hidden="true"></div>
+    <div v-for="(b, i) in blockers" :key="i" class="blocker" :style="b"></div>
+
+    <div v-if="ripple" class="ripple" :style="ripple" aria-hidden="true"><i></i><i></i></div>
+    <div v-if="arrow" :key="`a${index}-${detour}`" class="arrow" :class="arrow.down ? 'down' : 'up'" :style="arrow.style" aria-hidden="true">
+      <span class="tag">{{ hint }}</span>
+      <svg width="46" :height="ARROW - 10" viewBox="0 0 46 54">
+        <path d="M15 2 H31 V30 H44 L23 52 L2 30 H15 Z" fill="#f6d43c" stroke="#3a2a00" stroke-width="3" stroke-linejoin="round" />
+        <path d="M19 6 H23 V32" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.55" />
+      </svg>
+    </div>
 
     <div v-if="isEnd" class="confetti" aria-hidden="true">
       <i v-for="(c, i) in confetti" :key="i" :style="{ left: c.left, animationDelay: c.delay, animationDuration: c.duration, background: c.color, width: c.w }"></i>
     </div>
 
-    <div class="coach" :class="{ top: placeTop, end: isEnd }" role="dialog" aria-live="polite" aria-label="Tutorial">
-      <Klemmi :talking="talking" :mood="mood" :size="isEnd ? 150 : 112" class="fig" />
-      <div class="bubble" @click="finishTyping">
+    <div class="coach" :class="{ top: placeTop, end: isEnd }" role="dialog" aria-live="polite" aria-label="Tutorial mit Klemmi">
+      <Klemmi :talking="talking" :mood="mood" :size="isEnd ? 160 : 118" class="fig" />
+      <div :key="index" class="bubble" @click="finishTyping">
         <div class="who">
-          <strong>Klemmi</strong>
-          <span class="faint small">Schritt {{ index + 1 }} von {{ total }}</span>
+          <span class="chapter">{{ step.chapter }}</span>
+          <span class="stepno">{{ index + 1 }} / {{ total }}</span>
           <button class="close" type="button" title="Tutorial beenden" aria-label="Tutorial beenden" @click.stop="confirmQuit = !confirmQuit"><X :size="18" /></button>
         </div>
-        <p class="say">{{ shown }}<span v-if="talking" class="caret">▍</span></p>
-        <div class="progress"><i :style="{ width: `${((index + 1) / total) * 100}%` }"></i></div>
+        <p class="say"><strong class="name">Klemmi:</strong> {{ shown }}<span v-if="talking" class="caret">▍</span></p>
+        <div class="brick" :style="{ '--p': `${((index + 1) / total) * 100}%` }"><i></i></div>
         <div v-if="confirmQuit" class="actions">
-          <span class="small">Wirklich aufhören? Du kannst danach frei herumprobieren.</span>
+          <span class="note">Wirklich aufhören? Danach kannst du frei herumprobieren.</span>
           <button class="btn btn-sm" type="button" @click.stop="confirmQuit = false">Weitermachen</button>
           <button class="btn btn-sm btn-primary" type="button" @click.stop="quit">Beenden</button>
         </div>
         <div v-else-if="isEnd" class="actions">
-          <button class="btn" type="button" @click.stop="restart">Nochmal von vorn</button>
-          <button class="btn btn-primary" type="button" @click.stop="quit">Demo frei erkunden</button>
+          <button class="btn" type="button" @click.stop="restart"><RotateCcw :size="16" /> Nochmal von vorn</button>
+          <button class="btn btn-primary" type="button" @click.stop="quit"><Compass :size="16" /> Frei erkunden</button>
         </div>
         <div v-else class="actions">
           <button v-if="stuck" class="btn btn-sm" type="button" @click.stop="rescue">Ich finde es nicht</button>
-          <span v-else-if="!isInfo" class="faint small hint">Du bist dran: Tipp auf das Leuchtende.</span>
-          <button v-if="isInfo" class="btn btn-primary" type="button" :disabled="talking" @click.stop="advance()">Weiter</button>
+          <span v-else-if="!isInfo" class="note turn"><i></i> Du bist dran!</span>
+          <button v-if="isInfo" class="btn btn-primary next" type="button" :disabled="talking" @click.stop="advance()">Weiter <ArrowRight :size="16" /></button>
         </div>
       </div>
     </div>
@@ -197,56 +241,96 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.tutorial { position: fixed; inset: 0; z-index: 9000; pointer-events: none; }
-.shade { position: fixed; background: rgba(4, 8, 14, 0.62); pointer-events: auto; transition: all 0.25s ease; }
-.ring { position: fixed; border-radius: 12px; box-shadow: 0 0 0 3px #f6d43c, 0 0 22px 4px rgba(246, 212, 60, 0.55); transition: all 0.25s ease; }
-.ring.action { animation: pulse 1.3s ease-in-out infinite; }
-.block { position: fixed; pointer-events: auto; }
+.tutorial { position: fixed; inset: 0; z-index: 9000; pointer-events: none; --dim: rgba(3, 7, 14, 0.66); --yellow: #f6d43c; --red: #d01c0a; }
 
+/* Lichtkegel: gleitet weich von Ziel zu Ziel */
+.spot {
+  position: fixed; border-radius: 14px; box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 3px var(--yellow), 0 0 26px 6px rgba(246, 212, 60, 0.45);
+  transition: top 0.45s cubic-bezier(0.22, 1, 0.36, 1), left 0.45s cubic-bezier(0.22, 1, 0.36, 1), width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
+}
+.spot.none { box-shadow: 0 0 0 200vmax var(--dim); }
+.spot.action { animation: glow 1.4s ease-in-out infinite; }
+.blocker { position: fixed; pointer-events: auto; }
+
+/* Pfeil, hüpft aufs Ziel zu */
+.arrow { position: fixed; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%); animation: arrow-in 0.35s ease-out; }
+.arrow.up { transform: translate(-50%, 0); flex-direction: column-reverse; }
+.arrow.up svg { transform: rotate(180deg); }
+.arrow svg { display: block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
+.arrow.down svg { animation: bounce-down 0.8s ease-in-out infinite; }
+.arrow.up svg { animation: bounce-up 0.8s ease-in-out infinite; }
+.tag {
+  background: var(--red); color: #fff; font-weight: 700; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  box-shadow: 0 3px 0 #8f1206, 0 6px 14px rgba(0, 0, 0, 0.4); margin: 4px 0;
+}
+
+/* Tipp-Wellen in der Mitte des Ziels */
+.ripple { position: fixed; width: 0; height: 0; }
+.ripple i { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--yellow); animation: ripple 1.6s ease-out infinite; }
+.ripple i:nth-child(2) { animation-delay: 0.8s; }
+
+/* Klemmi und Sprechblase */
 .coach {
-  position: fixed; left: 12px; right: 12px; bottom: 12px; margin: 0 auto; max-width: 640px;
-  display: flex; align-items: flex-end; gap: 6px; pointer-events: auto;
-  animation: pop 0.35s ease-out;
+  position: fixed; left: 12px; right: 12px; bottom: 12px; margin: 0 auto; max-width: 660px;
+  display: flex; align-items: flex-end; gap: 4px; pointer-events: auto; animation: slide-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .coach.top { bottom: auto; top: 12px; align-items: flex-start; }
-.coach.end { bottom: max(12px, calc(50vh - 110px)); }
+.coach.end { bottom: max(12px, calc(50vh - 120px)); }
 .fig { flex: none; }
 .bubble {
-  position: relative; flex: 1; min-width: 0; background: #fffdf3; color: #1d1d1d; border-radius: 16px; padding: 12px 14px 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); border: 3px solid #f6d43c; cursor: default;
+  position: relative; flex: 1; min-width: 0; background: #fffdf3; color: #1d1d1d; border-radius: 18px; padding: 10px 14px 12px;
+  box-shadow: 0 6px 0 #d9b622, 0 14px 34px rgba(0, 0, 0, 0.5); border: 3px solid var(--yellow); animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.bubble::before {
-  content: ''; position: absolute; left: -14px; bottom: 26px; border: 8px solid transparent; border-right: 8px solid #f6d43c; border-right-width: 10px;
-}
+.bubble::before { content: ''; position: absolute; left: -15px; bottom: 34px; border: 9px solid transparent; border-right: 12px solid var(--yellow); }
 .coach.top .bubble::before { bottom: auto; top: 30px; }
-.who { display: flex; align-items: center; gap: 10px; }
-.who strong { color: #c91a09; font-size: 1.02rem; }
-.who .faint { color: #6d6a5e; }
-.close { margin-left: auto; background: none; border: 0; color: #6d6a5e; padding: 4px; border-radius: 6px; min-width: 32px; min-height: 32px; display: grid; place-items: center; }
+.who { display: flex; align-items: center; gap: 8px; }
+.chapter { background: var(--red); color: #fff; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.02em; padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 0 #8f1206; }
+.stepno { color: #6d6a5e; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.close { margin-left: auto; background: none; border: 0; color: #6d6a5e; padding: 4px; border-radius: 8px; min-width: 34px; min-height: 34px; display: grid; place-items: center; }
 .close:hover { background: rgba(0, 0, 0, 0.06); }
-.say { margin: 6px 0 10px; font-size: 1rem; line-height: 1.45; min-height: 3em; }
-.caret { color: #c91a09; animation: caret 0.8s steps(1) infinite; }
-.progress { height: 5px; background: #eee6c4; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
-.progress i { display: block; height: 100%; background: #d01c0a; transition: width 0.4s ease; }
+.say { margin: 8px 0 10px; font-size: 1.02rem; line-height: 1.5; min-height: 3em; }
+.name { color: var(--red); }
+.caret { color: var(--red); animation: caret 0.8s steps(1) infinite; }
+
+/* Fortschritt als Lego-Stein mit Noppen */
+.brick { position: relative; height: 12px; background: #ece3bf; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+.brick i {
+  position: absolute; inset: 0 auto 0 0; width: var(--p); border-radius: 4px; transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35) 0 3px, transparent 3.5px) 0 0 / 14px 12px, linear-gradient(#e2311d, #b81707);
+}
 .actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.actions .small, .hint { margin-right: auto; color: #57544a; }
+.note { margin-right: auto; color: #57544a; font-size: 0.88rem; }
+.turn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #8f1206; }
+.turn i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: blink 1s ease-in-out infinite; }
 .bubble .btn:not(.btn-primary) { background: #fff; color: #1d1d1d; border-color: #d8d2b8; }
+.next { gap: 6px; }
 
 .confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
-.confetti i { position: absolute; top: -20px; height: 10px; border-radius: 2px; animation: fall linear infinite; opacity: 0.9; }
+.confetti i { position: absolute; top: -20px; height: 10px; border-radius: 2px; animation: fall linear infinite; opacity: 0.95;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 2px, transparent 2.5px) !important; background-size: 6px 10px !important; }
 
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 3px #f6d43c, 0 0 14px 2px rgba(246, 212, 60, 0.45); } 50% { box-shadow: 0 0 0 5px #f6d43c, 0 0 30px 8px rgba(246, 212, 60, 0.7); } }
-@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 3px var(--yellow), 0 0 14px 2px rgba(246, 212, 60, 0.4); } 50% { box-shadow: 0 0 0 200vmax var(--dim), 0 0 0 5px var(--yellow), 0 0 34px 10px rgba(246, 212, 60, 0.7); } }
+@keyframes bounce-down { 0%, 100% { transform: translateY(-6px); } 50% { transform: translateY(4px); } }
+@keyframes bounce-up { 0%, 100% { transform: rotate(180deg) translateY(-6px); } 50% { transform: rotate(180deg) translateY(4px); } }
+@keyframes arrow-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ripple { from { transform: scale(0.4); opacity: 1; } to { transform: scale(2.4); opacity: 0; } }
+@keyframes slide-in { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
 @keyframes caret { 50% { opacity: 0; } }
+@keyframes blink { 50% { opacity: 0.3; } }
 @keyframes fall { from { transform: translateY(0) rotate(0); } to { transform: translateY(110vh) rotate(720deg); } }
 
 @media (max-width: 560px) {
-  .coach { left: 8px; right: 8px; bottom: 8px; gap: 2px; }
+  .coach { left: 6px; right: 6px; bottom: 8px; gap: 0; }
   .coach.top { top: 8px; }
-  .fig { width: 58px; height: 80px; }
+  .fig { width: 60px; height: 84px; }
   .say { font-size: 0.95rem; }
+  .bubble::before { display: none; }
 }
-:global([data-tn-motion='reduced']) .ring.action { animation: none; }
+:global([data-tn-motion='reduced']) .spot, :global([data-tn-motion='reduced']) .arrow svg, :global([data-tn-motion='reduced']) .ripple i { animation: none; transition: none; }
 :global([data-tn-motion='reduced']) .confetti { display: none; }
-@media (prefers-reduced-motion: reduce) { .ring.action { animation: none; } .confetti { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .spot, .arrow svg, .ripple i, .bubble, .coach { animation: none; transition: none; }
+  .confetti { display: none; }
+}
 </style>
