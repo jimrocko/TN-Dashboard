@@ -1,0 +1,5 @@
+node_modules/
+dist/
+api/config.php
+api/data/*.sqlite
+.DS_Store
