@@ -53,6 +53,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 
 - Auf dem Schulserver legt ein Lehrer den Code beim ersten Öffnen fest (4 bis 8 Ziffern). Er wird nur verschlüsselt (gehasht) in der Datenbank gespeichert. Ändert der Lehrer den Code, müssen ihn alle anderen neu eingeben.
 - Im Testbetrieb (lokal mit `./start.sh` und in der Demo) lautet der Code `0000`, solange kein eigener gesetzt ist.
+- Der Bereich sperrt sich von selbst nach **15 Minuten ohne Aktivität** (einstellbar mit `dev_lock_minutes` in `api/config.php`) und immer beim **Abmelden** oder wenn sich jemand anderes am Gerät anmeldet.
 - Nach 5 falschen Versuchen ist die Eingabe für 60 Sekunden gesperrt. Jede Eingabe steht im Protokoll.
 
 | Reiter | Inhalt |

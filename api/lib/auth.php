@@ -75,6 +75,8 @@ function login(string $username, string $password): ?array
     }
     start_session();
     session_regenerate_id(true);
+    // Neue Anmeldung: nichts aus einer früheren Sitzung übernehmen (z. B. einen entsperrten Dev-Bereich).
+    $_SESSION = [];
     $_SESSION['user_id'] = (int) $user['id'];
     return $user;
 }

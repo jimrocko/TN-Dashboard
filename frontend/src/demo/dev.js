@@ -3,6 +3,7 @@
 import { DemoError } from './backend.js'
 
 const TEST_PIN = '0000'
+const LOCK_MS = 15 * 60 * 1000 // automatische Sperre nach 15 Minuten ohne Aktivität (wie dev_lock_minutes)
 const TABLES = ['users', 'log', 'locations', 'inventory', 'orders', 'transfers', 'stocktakes']
 const TABLE_LABEL = { log: 'activity_log' }
 const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
@@ -11,12 +12,28 @@ const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 const dev = (db) => (db.dev ??= { access: [], pin: null, version: 0, unlocked: null, tries: 0, lockedUntil: 0 })
 
 export const devAllowed = (db, u) => isStaff(u) || dev(db).access.includes(u.id)
-const unlocked = (db) => dev(db).unlocked === dev(db).version + 1
+function unlocked(db) {
+  const d = dev(db)
+  if (d.unlocked !== d.version + 1) return false
+  if (Date.now() - (d.seen ?? 0) >= LOCK_MS) { d.unlocked = null; return false }
+  return true
+}
+const touch = (db) => { dev(db).seen = Date.now() }
+
+/** Beim Abmelden und Anmelden: Dev-Bereich wieder sperren. */
+export function devLock(db) {
+  const d = dev(db)
+  d.unlocked = null
+  d.tries = 0
+}
 
 function status(db, u) {
   const d = dev(db)
+  const open = unlocked(db)
+  if (open) touch(db)
   return {
-    allowed: devAllowed(db, u), unlocked: unlocked(db), pin_set: d.pin !== null, test_mode: true,
+    allowed: devAllowed(db, u), unlocked: open, expires_in: open ? LOCK_MS / 1000 : 0, lock_minutes: LOCK_MS / 60000,
+    pin_set: d.pin !== null, test_mode: true,
     can_set_pin: isStaff(u), locked_for: Math.max(0, Math.ceil((d.lockedUntil - Date.now()) / 1000)),
   }
 }
@@ -24,6 +41,7 @@ function status(db, u) {
 function requireDev(db, u) {
   if (!devAllowed(db, u)) throw new DemoError('Kein Zugang zum Dev-Bereich', 403)
   if (!unlocked(db)) throw new DemoError('Dev-Bereich ist gesperrt. Bitte Dev-Code eingeben.', 423)
+  touch(db)
 }
 
 function system(db) {
@@ -106,7 +124,7 @@ export function route(db, method, parts, params, body, me, log) {
       if (d.lockedUntil > Date.now()) throw new DemoError(`Zu viele Fehlversuche. Bitte ${status(db, u).locked_for} Sekunden warten.`, 429)
       const ok = String(body.pin ?? '').trim() === (d.pin ?? TEST_PIN)
       log(u.id, ok ? 'dev_unlock' : 'dev_unlock_failed')
-      if (ok) { d.unlocked = d.version + 1; d.tries = 0; return status(db, u) }
+      if (ok) { d.unlocked = d.version + 1; d.tries = 0; touch(db); return status(db, u) }
       if (++d.tries >= 5) { d.tries = 0; d.lockedUntil = Date.now() + 60000 }
       throw new DemoError('Falscher Dev-Code', 401)
     }
@@ -119,6 +137,7 @@ export function route(db, method, parts, params, body, me, log) {
       d.pin = pin
       d.version++
       d.unlocked = d.version + 1
+      touch(db)
       log(u.id, 'dev_pin_changed')
       return status(db, u)
     }

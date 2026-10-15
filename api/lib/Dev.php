@@ -90,6 +90,7 @@ final class Dev
         self::setSetting('dev_pin_version', (string) ((int) self::setting('dev_pin_version') + 1));
         start_session();
         $_SESSION['dev_unlocked'] = self::pinVersion() + 1;
+        self::touch();
     }
 
     private static function pinVersion(): int
@@ -97,19 +98,40 @@ final class Dev
         return (int) (self::setting('dev_pin_version') ?? 0);
     }
 
+    /** Minuten ohne Aktivität im Dev-Bereich, bis er sich wieder sperrt (config: dev_lock_minutes, Standard 15). */
+    public static function lockSeconds(): int
+    {
+        return max(1, (int) (config()['dev_lock_minutes'] ?? 15)) * 60;
+    }
+
     public static function unlocked(): bool
     {
         start_session();
         // Gespeichert ist die Code-Version beim Entsperren (+1, damit Version 0 nicht als „leer“ gilt).
-        return isset($_SESSION['dev_unlocked']) && $_SESSION['dev_unlocked'] === self::pinVersion() + 1;
+        if (!isset($_SESSION['dev_unlocked']) || $_SESSION['dev_unlocked'] !== self::pinVersion() + 1) return false;
+        if (time() - (int) ($_SESSION['dev_seen'] ?? 0) >= self::lockSeconds()) {
+            self::lock(); // Zeit abgelaufen
+            return false;
+        }
+        return true;
+    }
+
+    /** Aktivität im Dev-Bereich: verlängert die Zeit bis zur automatischen Sperre. */
+    private static function touch(): void
+    {
+        $_SESSION['dev_seen'] = time();
     }
 
     public static function status(array $user): array
     {
         start_session();
+        $unlocked = self::unlocked();
+        if ($unlocked) self::touch();
         return [
             'allowed'     => self::allowed($user),
-            'unlocked'    => self::unlocked(),
+            'unlocked'    => $unlocked,
+            'expires_in'  => $unlocked ? self::lockSeconds() : 0,
+            'lock_minutes' => intdiv(self::lockSeconds(), 60),
             'pin_set'     => self::pinSet(),
             'test_mode'   => self::testMode(),
             'can_set_pin' => in_array($user['role'], ROLES_STAFF, true),
@@ -132,6 +154,7 @@ final class Dev
         if ($ok) {
             $_SESSION['dev_unlocked'] = self::pinVersion() + 1;
             $_SESSION['dev_tries'] = 0;
+            self::touch();
             return true;
         }
         $_SESSION['dev_tries'] = ($_SESSION['dev_tries'] ?? 0) + 1;
@@ -145,7 +168,7 @@ final class Dev
     public static function lock(): void
     {
         start_session();
-        unset($_SESSION['dev_unlocked']);
+        unset($_SESSION['dev_unlocked'], $_SESSION['dev_seen']);
     }
 
     /** Für alle Dev-Routen: Dev-Rolle und eingegebener Code. */
@@ -154,6 +177,7 @@ final class Dev
         $user = require_user();
         if (!self::allowed($user)) json_error('Kein Zugang zum Dev-Bereich', 403);
         if (!self::unlocked()) json_error('Dev-Bereich ist gesperrt. Bitte Dev-Code eingeben.', 423);
+        self::touch();
         return $user;
     }
 

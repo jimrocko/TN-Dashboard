@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Lock } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import SegControl from '../components/SegControl.vue'
@@ -12,6 +12,7 @@ import DevSettings from './dev/DevSettings.vue'
 import { api, IS_DEMO } from '../api'
 import { useSettings } from '../stores/settings'
 import { applyCheat } from '../utils/cheats'
+import { apiLog } from '../utils/devtools'
 
 // Dev-Bereich: nur für Lehrer und Teilnehmer mit Dev-Rolle, zusätzlich durch den Dev-Code gesichert.
 const status = ref(null)
@@ -32,8 +33,31 @@ function setTab(t) {
   try { sessionStorage.setItem('tn-dev-tab', t) } catch { /* egal */ }
 }
 
-onMounted(async () => {
+async function refresh() {
   try { status.value = await api.get('dev/status') } catch (e) { error.value = e.message }
+}
+onMounted(refresh)
+
+// Automatische Sperre: Der Server sperrt nach lock_minutes ohne Aktivität (und beim Abmelden).
+// Hier läuft ein Timer bis dahin; Tippen oder Tasten im Dev-Bereich verlängern ihn (höchstens einmal pro Minute nachfragen).
+let timer = null
+let lastPing = 0
+watch(status, (s) => {
+  clearTimeout(timer)
+  if (s?.unlocked && s.expires_in) timer = setTimeout(refresh, s.expires_in * 1000 + 500)
+})
+function onActivity() {
+  if (!status.value?.unlocked || Date.now() - lastPing < 60000) return
+  lastPing = Date.now()
+  refresh()
+}
+// Antwortet der Server irgendwo mit „gesperrt“ (423), sofort wieder die Code-Eingabe zeigen.
+watch(() => apiLog[0], (l) => { if (l?.status === 423 && status.value?.unlocked) refresh() })
+onMounted(() => { addEventListener('pointerdown', onActivity); addEventListener('keydown', onActivity) })
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  removeEventListener('pointerdown', onActivity)
+  removeEventListener('keydown', onActivity)
 })
 // Versteckt: Versionszeile 5× schnell antippen öffnet die Code-Eingabe (nirgends beschriftet).
 const settings = useSettings()
@@ -81,6 +105,7 @@ async function lock() {
           <span v-if="cheatMsg" class="small" :class="cheatMsg.startsWith('Unbekannt') ? 'error' : 'success'">{{ cheatMsg }}</span>
         </div>
       </form>
+      <p class="faint small center">Sperrt sich nach {{ status.lock_minutes }} Minuten ohne Aktivität und beim Abmelden.</p>
       <button type="button" class="version" @click="tap">TN Dashboard · Version 0.4{{ IS_DEMO ? ' · Demo' : '' }}</button>
     </template>
   </div>
@@ -89,4 +114,5 @@ async function lock() {
 <style scoped>
 .version { align-self: center; background: none; border: 0; padding: 12px; color: var(--text-3); font-size: 0.8rem; cursor: default; user-select: none; -webkit-user-select: none; }
 .cheat { max-width: 520px; }
+.center { text-align: center; margin: 0; }
 </style>
