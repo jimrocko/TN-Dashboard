@@ -38,6 +38,7 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 ```
 
 ## Wichtige Regeln und Entscheidungen
+- **Zuerst `git pull`:** Mehrere Sitzungen arbeiten parallel auf demselben Branch (`claude/charming-einstein-8qzsen`). Vor jeder Arbeit den Remote-Stand holen und prüfen, ob der Wunsch schon umgesetzt ist (ist in Sitzung 4 passiert: Lagerort-Seite und XP-Fenster gab es schon).
 - **Jede Backend-Funktion doppelt:** Was in `api/lib/Shop.php` / `api/index.php` neu ist, muss auch in `frontend/src/demo/shop.js` bzw. `demo/backend.js` nachgebaut werden, sonst bricht die Demo-Version.
 - **Tabellen-Präfix `tn_`** für alles (getrennt vom Lehrer-Dashboard in derselben DB). Schema-Änderungen immer in **beiden** Dateien `schema.mysql.sql` und `schema.sqlite.sql`.
 - **Protokoll:** Jede schreibende Aktion ruft `ActivityLog::log(userId, action, module, details)` auf. `module` muss in `MODULES` (api/index.php) stehen. Details-Schlüssel auf Deutsch (`teil`, `menge`, `lagerort`).
@@ -85,7 +86,7 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Nach Änderungen: `cd frontend && npm run build` und `npm run build:demo` müssen fehlerfrei laufen; `php -l` für geänderte PHP-Dateien.
 - Demo: `npm run build:demo` schreibt `demo-dist/tn-dashboard-demo.html` (Artifact-Format) und **`TN-Dashboard-Demo.html` im Hauptordner** (vollständige Datei, wird eingecheckt; nach Frontend-Änderungen neu bauen und committen). Die Demo hat **alle Funktionen**, nur mit Fake-Daten (Wunsch des Inhabers, keine „eingeschränkte“ Demo); einzig BrickLink-Abrufe brauchen den Server.
 - Ein-Klick-Demo im README: https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html (braucht öffentliches Repo).
-- Weitere Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifact https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R (privat; dieselbe Datei erneut veröffentlichen, Link bleibt).
+- Weitere Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifacts (privat, gehören zu verschiedenen Sitzungen; zum Aktualisieren `demo-dist/tn-dashboard-demo.html` mit der jeweiligen URL erneut veröffentlichen, Link bleibt): https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R und https://claude.ai/artifact/29wfoDHbYM184kcHwZECaP.
 - Browser-Tests mit Playwright: Chromium liegt in `/opt/pw-browsers/chromium` (Cloud-Umgebung). XP-Stil im Test aktivieren: `localStorage['tn-dashboard-settings'] = '{"style":"xp"}'`.
 - In der Cloud-Sandbox sind Brickognize und BrickLink-Bilder gesperrt; Erkennung dort nur über den Demo-Knopf testbar.
 
