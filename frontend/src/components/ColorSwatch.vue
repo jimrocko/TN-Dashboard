@@ -6,6 +6,8 @@ const colors = {
   Tan: '#e4cd9e', Green: '#237841', Orange: '#fe8a18',
   'Dark Tan': '#958a73', 'Dark Red': '#720e0f', 'Dark Blue': '#0a3463', 'Dark Green': '#184632',
   Lime: '#bbe90b', 'Sand Green': '#a0bcac', 'Medium Blue': '#5a93db',
+  'Dark Orange': '#a95500', 'Medium Azure': '#36aebf', 'Olive Green': '#9b9a5a', 'Pearl Gold': '#aa7f2e',
+  'Flat Silver': '#898788', 'Bright Pink': '#e4adc8', 'Dark Purple': '#3f3691', 'Medium Nougat': '#aa7d55', Magenta: '#923978',
 }
 defineProps({ name: String })
 </script>

@@ -6,6 +6,7 @@ import PageHead from '../components/PageHead.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
 import RoomPlan from '../components/RoomPlan.vue'
+import SegControl from '../components/SegControl.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
 
@@ -59,6 +60,20 @@ function pick(l) {
 }
 const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?.location_id))
 
+// Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Losen kann die Liste lang werden).
+const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen' }
+const reason = ref('alle')
+const PAGE = 30
+const shown = ref(PAGE)
+const count = (r) => suggestions.value.filter((s) => s.reason === r).length
+const reasonOptions = computed(() => [
+  { value: 'alle', label: `Alle (${suggestions.value.length})` },
+  { value: 'falsch', label: `${REASONS.falsch} (${count('falsch')})` },
+  { value: 'farben', label: `${REASONS.farben} (${count('farben')})` },
+])
+const filtered = computed(() => (reason.value === 'alle' ? suggestions.value : suggestions.value.filter((s) => s.reason === reason.value)))
+watch(reason, () => { shown.value = PAGE })
+
 // Raumplan: Zähler offener Vorschläge je Kästchen.
 const openByCode = computed(() => {
   const m = {}
@@ -77,32 +92,40 @@ onMounted(async () => {
 
 <template>
   <div class="page stack">
-    <PageHead title="Umlagern" sub="Mischkisten aufteilen (G-Kästchen mit mehr als 3 Losen): Lose dorthin bringen, wo das Teil schon liegt, oder frei umbuchen." />
+    <PageHead title="Umlagern" sub="Falsch einsortierte Teile zurückbringen und gleiche Teile in anderen Farben in ein Kästchen zusammenlegen, damit die Slots sauberer werden. Immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht)." />
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
 
     <section class="panel">
       <div class="panel-head">
-        <h2>Vorschläge aus Mischkisten</h2>
-        <span class="faint small">{{ suggestions.length }} offen</span>
+        <h2>Vorschläge</h2>
+        <SegControl v-model="reason" :options="reasonOptions" label="Art der Vorschläge" />
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Teil</th><th>Farbe</th><th>Von</th><th></th><th>Nach</th><th class="num">Menge</th><th class="num">Am Ziel</th><th></th></tr></thead>
+          <thead><tr><th>Grund</th><th>Teil</th><th>Farbe</th><th>Von</th><th></th><th>Nach</th><th class="num">Menge</th><th>Am Ziel</th><th></th></tr></thead>
           <tbody>
-            <tr v-for="s in suggestions" :key="s.lot.id">
+            <tr v-for="s in filtered.slice(0, shown)" :key="s.lot.id">
+              <td><span class="pill" :class="s.reason === 'falsch' ? 'warn' : 'accent'">{{ REASONS[s.reason] }}</span></td>
               <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
               <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
-              <td><LocationTag :code="s.lot.location_code" kind="mischkiste" /></td>
+              <td><LocationTag :code="s.lot.location_code" /></td>
               <td class="faint"><ArrowRight :size="14" /></td>
               <td><LocationTag :code="s.to_location_code" /></td>
               <td class="num">{{ num(s.lot.qty) }}</td>
-              <td class="num faint">{{ num(s.target_qty) }}</td>
+              <td class="small muted">
+                <template v-if="s.reason === 'falsch'">{{ num(s.target_qty) }} Stück gleiche Farbe</template>
+                <template v-else>schon da: {{ s.target_colors?.join(', ') }}</template>
+              </td>
               <td class="num"><button class="btn btn-sm" :disabled="busy" @click="book(s.lot.id, s.to_location_id, s.lot.qty)">Übernehmen</button></td>
             </tr>
-            <tr v-if="!suggestions.length"><td colspan="8" class="empty">Keine Vorschläge. Es gibt keine Mischkisten, oder ihre Teile liegen sonst nirgends.</td></tr>
+            <tr v-if="!filtered.length"><td colspan="9" class="empty">Keine Vorschläge. Alles liegt dort, wo es hingehört.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="filtered.length > shown" class="more">
+        <span class="faint small">{{ shown }} von {{ filtered.length }} angezeigt</span>
+        <button class="btn btn-sm" @click="shown += PAGE">Weitere {{ Math.min(PAGE, filtered.length - shown) }} anzeigen</button>
       </div>
     </section>
 
@@ -177,6 +200,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.more { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px var(--pad); border-top: 1px solid var(--border); }
 .nowrap { white-space: nowrap; }
 .results { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; overflow: hidden; }
 .res { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: none; border: 0; border-bottom: 1px solid var(--border); text-align: left; }

@@ -28,6 +28,8 @@ const ORDER_STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen
 // Mischkiste: Kästchen in Bereich G mit mehr als 3 verschiedenen Losen (Regel des Inhabers)
 const MIXED_AREA_PATTERN = '/^G\\d+$/i';
 const MIXED_MAX_LOTS = 3;
+// Beim Zusammenlegen von Farben bekommt ein Kästchen höchstens so viele Lose
+const SLOT_MAX_LOTS = 3;
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt'];
 
 final class Shop
@@ -141,43 +143,87 @@ final class Shop
         }
     }
 
-    /**
-     * Mischkisten = G-Kästchen mit mehr als MIXED_MAX_LOTS verschiedenen Losen (noch nicht aufgeteilt).
-     * Liefert [location_id => Anzahl Lose] dieser Kästchen. Entspricht isMixedBox() in frontend/src/utils/areas.js.
-     */
-    public static function mixedBoxes(): array
+    /** Bereich eines Kästchens (G, H, N, FG, FN, FT, Plate); sonst der Code selbst. Entspricht parseCode() in utils/areas.js. */
+    public static function areaOf(string $code): string
     {
-        $out = [];
-        foreach (q('SELECT l.id, l.code, COUNT(i.id) AS lots FROM {locations} l JOIN {inventory} i ON i.location_id = l.id
-                GROUP BY l.id, l.code')->fetchAll() as $r) {
-            if (preg_match(MIXED_AREA_PATTERN, $r['code']) && (int) $r['lots'] > MIXED_MAX_LOTS) {
-                $out[(int) $r['id']] = (int) $r['lots'];
-            }
-        }
-        return $out;
+        return preg_match('/^(FG|FN|FT|Plate|G|H|N)\d+$/i', $code, $m) ? strtoupper($m[1]) : strtoupper($code);
     }
 
-    /** Lose aus Mischkisten, deren Teil (gleiche Nummer + Farbe) schon in einem anderen, nicht gemischten Kästchen liegt. */
+    /**
+     * Umlagerungsvorschläge, zwei Arten (immer nur innerhalb eines Bereichs, also gebraucht nie zu neu):
+     *  1. 'falsch'   – gleiches Teil in gleicher Farbe liegt in mehreren Kästchen: alles in das Kästchen mit der größten Menge.
+     *  2. 'farben'   – gleiches Teil in anderen Farben liegt verstreut: in ein Kästchen legen, das nur dieses Teil enthält,
+     *                  damit Slots „reiner“ werden. Ziel bekommt höchstens SLOT_MAX_LOTS Lose,
+     *                  Quelle muss auch andere Teile enthalten.
+     * Gleiche Regeln und Reihenfolge wie suggestions() in frontend/src/demo/shop.js.
+     */
     public static function suggestions(): array
     {
-        $mixed = self::mixedBoxes();
-        if (!$mixed) return [];
-        $all = typed(q(self::LOT_SELECT . ' ORDER BY i.qty DESC')->fetchAll(), LOT_INTS, ['price']);
-        $byKey = [];
-        foreach ($all as $l) {
-            if (!isset($mixed[$l['location_id']])) {
-                $byKey[$l['item_no'] . '|' . $l['color_id']] ??= $l;
-            }
-        }
+        $all = typed(q(self::LOT_SELECT . ' WHERE l.code IS NOT NULL ORDER BY i.id')->fetchAll(), LOT_INTS, ['price']);
         $out = [];
-        foreach ($all as $m) {
-            if (!isset($mixed[$m['location_id']])) continue;
-            $target = $byKey[$m['item_no'] . '|' . $m['color_id']] ?? null;
-            if ($target) {
-                $out[] = ['lot' => $m, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'], 'target_qty' => $target['qty']];
+        $moved = [];
+        $add = function (array $lot, array $target, string $reason, array $extra = []) use (&$out, &$moved) {
+            $out[] = ['lot' => $lot, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'],
+                'target_qty' => $target['qty'], 'reason' => $reason] + $extra;
+            $moved[$lot['id']] = true;
+        };
+        $cmpCode = fn ($a, $b) => strnatcasecmp($a['location_code'], $b['location_code']) ?: $a['id'] <=> $b['id'];
+
+        // 1. Falsch einsortiert: gleiche Nummer + Farbe im selben Bereich in mehreren Kästchen
+        $byCombo = [];
+        foreach ($all as $l) $byCombo[self::areaOf($l['location_code']) . '|' . $l['item_no'] . '|' . $l['color_id']][] = $l;
+        ksort($byCombo, SORT_STRING);
+        foreach ($byCombo as $lots) {
+            if (count($lots) < 2) continue;
+            usort($lots, fn ($a, $b) => $b['qty'] <=> $a['qty'] ?: $cmpCode($a, $b));
+            $home = $lots[0];
+            foreach (array_slice($lots, 1) as $l) $add($l, $home, 'falsch');
+        }
+
+        // 2. Farben zusammenlegen
+        $boxLots = [];   // location_id => Anzahl Lose
+        $boxItems = [];  // location_id => [item_no => Anzahl Lose]
+        foreach ($all as $l) {
+            if (isset($moved[$l['id']])) continue;
+            $boxLots[$l['location_id']] = ($boxLots[$l['location_id']] ?? 0) + 1;
+            $boxItems[$l['location_id']][$l['item_no']] = ($boxItems[$l['location_id']][$l['item_no']] ?? 0) + 1;
+        }
+        // Per Referenz, damit die Reinheit nach jedem Vorschlag aktuell ist (fn () => würde eine Kopie einfrieren)
+        $purity = function ($loc, $item) use (&$boxItems, &$boxLots) {
+            return ($boxItems[$loc][$item] ?? 0) / max(1, $boxLots[$loc] ?? 0);
+        };
+        $byPart = [];
+        foreach ($all as $l) {
+            if (!isset($moved[$l['id']])) $byPart[self::areaOf($l['location_code']) . '|' . $l['item_no']][] = $l;
+        }
+        ksort($byPart, SORT_STRING);
+        foreach ($byPart as $lots) {
+            $item = $lots[0]['item_no'];
+            $boxes = [];
+            foreach ($lots as $l) $boxes[$l['location_id']] ??= $l;
+            if (count($boxes) < 2) continue;
+            $targets = array_values($boxes);
+            usort($targets, fn ($a, $b) => $purity($b['location_id'], $item) <=> $purity($a['location_id'], $item)
+                ?: ($boxItems[$b['location_id']][$item] ?? 0) <=> ($boxItems[$a['location_id']][$item] ?? 0) ?: $cmpCode($a, $b));
+            $sources = $lots;
+            usort($sources, $cmpCode);
+            foreach ($targets as $t) {
+                $tid = $t['location_id'];
+                if ($purity($tid, $item) < 1) continue; // Ziel enthält nur dieses Teil (sauberer Slot)
+                foreach ($sources as $src) {
+                    if (($boxLots[$tid] ?? 0) >= SLOT_MAX_LOTS) break;
+                    $sid = $src['location_id'];
+                    if (isset($moved[$src['id']]) || $sid === $tid) continue;
+                    $pureSource = ($boxItems[$sid][$item] ?? 0) === ($boxLots[$sid] ?? 0);
+                    if ($pureSource || $purity($sid, $item) >= $purity($tid, $item)) continue;
+                    $colors = [];
+                    foreach ($lots as $x) if ($x['location_id'] === $tid && !isset($moved[$x['id']])) $colors[] = $x['color_name'];
+                    $add($src, $t, 'farben', ['target_colors' => $colors]);
+                    $boxLots[$tid]++; $boxItems[$tid][$item] = ($boxItems[$tid][$item] ?? 0) + 1;
+                    $boxLots[$sid]--; $boxItems[$sid][$item]--;
+                }
             }
         }
-        usort($out, fn ($a, $b) => strnatcasecmp($a['lot']['location_code'], $b['lot']['location_code']) ?: strcmp($a['lot']['item_no'], $b['lot']['item_no']));
         return $out;
     }
 

@@ -120,30 +120,86 @@ function order(db, id) {
   return { ...o, items }
 }
 
-// Mischkisten = G-Kästchen mit mehr als 3 verschiedenen Losen (isMixedBox, wie Shop::mixedBoxes)
-function mixedBoxes(db) {
-  const t = totalsByLocation(db)
-  const out = new Set()
-  for (const l of db.locations) if (isMixedBox(l.code, t.get(l.id)?.lots ?? 0)) out.add(l.id)
-  return out
-}
+// Bereich eines Kästchens (G, H, N, FG, FN, FT, PLATE); sonst der Code selbst – wie Shop::areaOf
+const areaOf = (code) => (/^(FG|FN|FT|Plate|G|H|N)\d+$/i.exec(code)?.[1] ?? code).toUpperCase()
+const SLOT_MAX_LOTS = 3
+const byteCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
-/** Lose aus Mischkisten, deren Teil (gleiche Nummer + Farbe) schon in einem anderen, nicht gemischten Kästchen liegt. */
+/**
+ * Umlagerungsvorschläge, gleiche Regeln und Reihenfolge wie Shop::suggestions():
+ *  1. 'falsch' – gleiches Teil + Farbe im selben Bereich in mehreren Kästchen → ins Kästchen mit der größten Menge
+ *  2. 'farben' – gleiches Teil in anderen Farben verstreut → in ein Kästchen, das nur dieses Teil enthält
+ *     (Ziel höchstens SLOT_MAX_LOTS Lose; Quelle enthält auch andere Teile)
+ */
 function suggestions(db) {
-  const mixed = mixedBoxes(db)
-  if (!mixed.size) return []
-  const byKey = {}
-  for (const s of [...db.inventory].sort((a, b) => b.qty - a.qty)) {
-    if (!mixed.has(s.location_id)) byKey[`${s.item_no}|${s.color_id}`] ??= s
+  const all = db.inventory.map((i) => lotRow(db, i)).filter((l) => l.location_code).sort((a, b) => a.id - b.id)
+  const out = []
+  const moved = new Set()
+  const add = (lot, t, reason, extra = {}) => {
+    out.push({ lot, to_location_id: t.location_id, to_location_code: t.location_code, target_qty: t.qty, reason, ...extra })
+    moved.add(lot.id)
   }
-  return db.inventory
-    .filter((i) => mixed.has(i.location_id))
-    .map((i) => lotRow(db, i))
-    .sort((a, b) => natural(a.location_code, b.location_code) || a.item_no.localeCompare(b.item_no))
-    .flatMap((m) => {
-      const t = byKey[`${m.item_no}|${m.color_id}`]
-      return t ? [{ lot: m, to_location_id: t.location_id, to_location_code: loc(db, t.location_id).code, target_qty: t.qty }] : []
-    })
+  const cmpCode = (a, b) => natural(a.location_code, b.location_code) || a.id - b.id
+
+  // 1. Falsch einsortiert
+  const byCombo = new Map()
+  for (const l of all) {
+    const k = `${areaOf(l.location_code)}|${l.item_no}|${l.color_id}`
+    if (!byCombo.has(k)) byCombo.set(k, [])
+    byCombo.get(k).push(l)
+  }
+  for (const k of [...byCombo.keys()].sort(byteCmp)) {
+    const lots = byCombo.get(k)
+    if (lots.length < 2) continue
+    lots.sort((a, b) => b.qty - a.qty || cmpCode(a, b))
+    for (const l of lots.slice(1)) add(l, lots[0], 'falsch')
+  }
+
+  // 2. Farben zusammenlegen
+  const boxLots = new Map()
+  const boxItems = new Map()
+  for (const l of all) {
+    if (moved.has(l.id)) continue
+    boxLots.set(l.location_id, (boxLots.get(l.location_id) ?? 0) + 1)
+    const m = boxItems.get(l.location_id) ?? new Map()
+    m.set(l.item_no, (m.get(l.item_no) ?? 0) + 1)
+    boxItems.set(l.location_id, m)
+  }
+  const cnt = (loc, item) => boxItems.get(loc)?.get(item) ?? 0
+  const purity = (loc, item) => cnt(loc, item) / Math.max(1, boxLots.get(loc) ?? 0)
+  const byPart = new Map()
+  for (const l of all) {
+    if (moved.has(l.id)) continue
+    const k = `${areaOf(l.location_code)}|${l.item_no}`
+    if (!byPart.has(k)) byPart.set(k, [])
+    byPart.get(k).push(l)
+  }
+  for (const k of [...byPart.keys()].sort(byteCmp)) {
+    const lots = byPart.get(k)
+    const item = lots[0].item_no
+    const boxes = new Map()
+    for (const l of lots) if (!boxes.has(l.location_id)) boxes.set(l.location_id, l)
+    if (boxes.size < 2) continue
+    const targets = [...boxes.values()].sort((a, b) => purity(b.location_id, item) - purity(a.location_id, item)
+      || cnt(b.location_id, item) - cnt(a.location_id, item) || cmpCode(a, b))
+    const sources = [...lots].sort(cmpCode)
+    for (const t of targets) {
+      const tid = t.location_id
+      if (purity(tid, item) < 1) continue // Ziel enthält nur dieses Teil (sauberer Slot)
+      for (const src of sources) {
+        if ((boxLots.get(tid) ?? 0) >= SLOT_MAX_LOTS) break
+        const sid = src.location_id
+        if (moved.has(src.id) || sid === tid) continue
+        const pureSource = cnt(sid, item) === (boxLots.get(sid) ?? 0)
+        if (pureSource || purity(sid, item) >= purity(tid, item)) continue
+        const colors = lots.filter((x) => x.location_id === tid && !moved.has(x.id)).map((x) => x.color_name)
+        add(src, t, 'farben', { target_colors: colors })
+        boxLots.set(tid, (boxLots.get(tid) ?? 0) + 1); boxItems.get(tid).set(item, cnt(tid, item) + 1)
+        boxLots.set(sid, boxLots.get(sid) - 1); boxItems.get(sid).set(item, cnt(sid, item) - 1)
+      }
+    }
+  }
+  return out
 }
 
 function transfer(db, lotId, toId, qty, userId) {
