@@ -12,6 +12,8 @@ declare(strict_types=1);
 require __DIR__ . '/lib/response.php';
 require __DIR__ . '/lib/env.php';
 require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/Shop.php';
+require __DIR__ . '/lib/DemoData.php';
 
 $cli = PHP_SAPI === 'cli';
 
@@ -43,6 +45,10 @@ if ($cli) {
         create_user('max', 'Max Mustermann', 'max12345', 'teilnehmer');
         create_user('erika', 'Erika Musterfrau', 'erika123', 'teilnehmer');
         echo "Demo-Konten: lehrer/lehrer123, max/max12345, erika/erika123\n";
+    }
+    if (in_array('--demo', $argv, true) && DemoData::isEmpty()) {
+        $r = DemoData::seed();
+        echo "Beispieldaten: {$r['locations']} Lagerorte, {$r['lots']} Lose, {$r['orders']} Aufträge\n";
     }
     exit;
 }

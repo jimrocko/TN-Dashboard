@@ -1,0 +1,1419 @@
+{
+ "_hinweis": "Erfundene Beispieldaten für Demo und Tests. Keine echten Bestellungen oder Kunden.",
+ "locations": [
+  {
+   "code": "A-01",
+   "name": "Regal A, Fach 01",
+   "kind": "regal"
+  },
+  {
+   "code": "A-02",
+   "name": "Regal A, Fach 02",
+   "kind": "regal"
+  },
+  {
+   "code": "A-03",
+   "name": "Regal A, Fach 03",
+   "kind": "regal"
+  },
+  {
+   "code": "A-04",
+   "name": "Regal A, Fach 04",
+   "kind": "regal"
+  },
+  {
+   "code": "A-05",
+   "name": "Regal A, Fach 05",
+   "kind": "regal"
+  },
+  {
+   "code": "A-06",
+   "name": "Regal A, Fach 06",
+   "kind": "regal"
+  },
+  {
+   "code": "B-01",
+   "name": "Regal B, Fach 01",
+   "kind": "regal"
+  },
+  {
+   "code": "B-02",
+   "name": "Regal B, Fach 02",
+   "kind": "regal"
+  },
+  {
+   "code": "B-03",
+   "name": "Regal B, Fach 03",
+   "kind": "regal"
+  },
+  {
+   "code": "B-04",
+   "name": "Regal B, Fach 04",
+   "kind": "regal"
+  },
+  {
+   "code": "B-05",
+   "name": "Regal B, Fach 05",
+   "kind": "regal"
+  },
+  {
+   "code": "B-06",
+   "name": "Regal B, Fach 06",
+   "kind": "regal"
+  },
+  {
+   "code": "C-01",
+   "name": "Regal C, Fach 01",
+   "kind": "regal"
+  },
+  {
+   "code": "C-02",
+   "name": "Regal C, Fach 02",
+   "kind": "regal"
+  },
+  {
+   "code": "C-03",
+   "name": "Regal C, Fach 03",
+   "kind": "regal"
+  },
+  {
+   "code": "C-04",
+   "name": "Regal C, Fach 04",
+   "kind": "regal"
+  },
+  {
+   "code": "MK-1",
+   "name": "Mischkiste 1",
+   "kind": "mischkiste"
+  },
+  {
+   "code": "MK-2",
+   "name": "Mischkiste 2",
+   "kind": "mischkiste"
+  },
+  {
+   "code": "MK-3",
+   "name": "Mischkiste 3",
+   "kind": "mischkiste"
+  }
+ ],
+ "inventory": [
+  {
+   "item_type": "PART",
+   "item_no": "3001",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Brick 2 x 4",
+   "category": "Brick",
+   "location": "B-02",
+   "qty": 756,
+   "price": 0.159,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3001",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Brick 2 x 4",
+   "category": "Brick",
+   "location": "A-03",
+   "qty": 2469,
+   "price": 0.029,
+   "updated_days_ago": 12
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3001",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Brick 2 x 4",
+   "category": "Brick",
+   "location": "C-02",
+   "qty": 19,
+   "price": 0.27,
+   "updated_days_ago": 10
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3001",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Brick 2 x 4",
+   "category": "Brick",
+   "location": "C-02",
+   "qty": 26,
+   "price": 0.336,
+   "updated_days_ago": 21
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3003",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Brick 2 x 2",
+   "category": "Brick",
+   "location": "A-04",
+   "qty": 27,
+   "price": 0.261,
+   "updated_days_ago": 34
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3003",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Brick 2 x 2",
+   "category": "Brick",
+   "location": "A-04",
+   "qty": 1600,
+   "price": 0.224,
+   "updated_days_ago": 23
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "B-04",
+   "qty": 179,
+   "price": 0.112,
+   "updated_days_ago": 40
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "B-06",
+   "qty": 15,
+   "price": 0.241,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "A-06",
+   "qty": 185,
+   "price": 0.145,
+   "updated_days_ago": 40
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 4,
+   "color_name": "Orange",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "B-02",
+   "qty": 48,
+   "price": 0.291,
+   "updated_days_ago": 20
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3010",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Brick 1 x 4",
+   "category": "Brick",
+   "location": "B-05",
+   "qty": 395,
+   "price": 0.312,
+   "updated_days_ago": 29
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3010",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Brick 1 x 4",
+   "category": "Brick",
+   "location": "A-05",
+   "qty": 1410,
+   "price": 0.205,
+   "updated_days_ago": 16
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3010",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Brick 1 x 4",
+   "category": "Brick",
+   "location": "C-02",
+   "qty": 42,
+   "price": 0.349,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3005",
+   "color_id": 88,
+   "color_name": "Reddish Brown",
+   "name": "Brick 1 x 1",
+   "category": "Brick",
+   "location": "A-05",
+   "qty": 2129,
+   "price": 0.041,
+   "updated_days_ago": 24
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3005",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Brick 1 x 1",
+   "category": "Brick",
+   "location": "C-03",
+   "qty": 447,
+   "price": 0.258,
+   "updated_days_ago": 34
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3005",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Brick 1 x 1",
+   "category": "Brick",
+   "location": "B-03",
+   "qty": 54,
+   "price": 0.117,
+   "updated_days_ago": 10
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3005",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Brick 1 x 1",
+   "category": "Brick",
+   "location": "C-03",
+   "qty": 5,
+   "price": 0.188,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3062b",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Brick, Round 1 x 1 Open Stud",
+   "category": "Brick, Round",
+   "location": "B-06",
+   "qty": 402,
+   "price": 0.127,
+   "updated_days_ago": 1
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3062b",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Brick, Round 1 x 1 Open Stud",
+   "category": "Brick, Round",
+   "location": "A-04",
+   "qty": 28,
+   "price": 0.099,
+   "updated_days_ago": 36
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3062b",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Brick, Round 1 x 1 Open Stud",
+   "category": "Brick, Round",
+   "location": "A-03",
+   "qty": 683,
+   "price": 0.273,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3062b",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Brick, Round 1 x 1 Open Stud",
+   "category": "Brick, Round",
+   "location": "C-04",
+   "qty": 1485,
+   "price": 0.308,
+   "updated_days_ago": 27
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3020",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Plate 2 x 4",
+   "category": "Plate",
+   "location": "B-04",
+   "qty": 392,
+   "price": 0.317,
+   "updated_days_ago": 28
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3020",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Plate 2 x 4",
+   "category": "Plate",
+   "location": "A-04",
+   "qty": 175,
+   "price": 0.027,
+   "updated_days_ago": 35
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3022",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Plate 2 x 2",
+   "category": "Plate",
+   "location": "A-01",
+   "qty": 9,
+   "price": 0.042,
+   "updated_days_ago": 2
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3022",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Plate 2 x 2",
+   "category": "Plate",
+   "location": "B-05",
+   "qty": 323,
+   "price": 0.241,
+   "updated_days_ago": 13
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3023",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Plate 1 x 2",
+   "category": "Plate",
+   "location": "C-04",
+   "qty": 56,
+   "price": 0.052,
+   "updated_days_ago": 27
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3023",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Plate 1 x 2",
+   "category": "Plate",
+   "location": "B-06",
+   "qty": 2312,
+   "price": 0.038,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3023",
+   "color_id": 88,
+   "color_name": "Reddish Brown",
+   "name": "Plate 1 x 2",
+   "category": "Plate",
+   "location": "A-02",
+   "qty": 30,
+   "price": 0.083,
+   "updated_days_ago": 34
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3023",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Plate 1 x 2",
+   "category": "Plate",
+   "location": "C-03",
+   "qty": 276,
+   "price": 0.173,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3024",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Plate 1 x 1",
+   "category": "Plate",
+   "location": "A-01",
+   "qty": 181,
+   "price": 0.18,
+   "updated_days_ago": 13
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3024",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Plate 1 x 1",
+   "category": "Plate",
+   "location": "C-01",
+   "qty": 8,
+   "price": 0.345,
+   "updated_days_ago": 16
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3024",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Plate 1 x 1",
+   "category": "Plate",
+   "location": "C-03",
+   "qty": 23,
+   "price": 0.083,
+   "updated_days_ago": 13
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3710",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Plate 1 x 4",
+   "category": "Plate",
+   "location": "A-02",
+   "qty": 52,
+   "price": 0.213,
+   "updated_days_ago": 32
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3710",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Plate 1 x 4",
+   "category": "Plate",
+   "location": "A-06",
+   "qty": 8,
+   "price": 0.043,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4073",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Plate, Round 1 x 1 Straight Side",
+   "category": "Plate, Round",
+   "location": "A-02",
+   "qty": 2117,
+   "price": 0.213,
+   "updated_days_ago": 33
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4073",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Plate, Round 1 x 1 Straight Side",
+   "category": "Plate, Round",
+   "location": "B-05",
+   "qty": 21,
+   "price": 0.108,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4073",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Plate, Round 1 x 1 Straight Side",
+   "category": "Plate, Round",
+   "location": "B-04",
+   "qty": 34,
+   "price": 0.171,
+   "updated_days_ago": 36
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4073",
+   "color_id": 4,
+   "color_name": "Orange",
+   "name": "Plate, Round 1 x 1 Straight Side",
+   "category": "Plate, Round",
+   "location": "A-04",
+   "qty": 1273,
+   "price": 0.108,
+   "updated_days_ago": 22
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3069b",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Tile 1 x 2 with Groove",
+   "category": "Tile",
+   "location": "B-04",
+   "qty": 1639,
+   "price": 0.345,
+   "updated_days_ago": 33
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3069b",
+   "color_id": 86,
+   "color_name": "Light Bluish Gray",
+   "name": "Tile 1 x 2 with Groove",
+   "category": "Tile",
+   "location": "A-01",
+   "qty": 1626,
+   "price": 0.054,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3068b",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Tile 2 x 2 with Groove",
+   "category": "Tile",
+   "location": "A-05",
+   "qty": 1262,
+   "price": 0.133,
+   "updated_days_ago": 40
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3068b",
+   "color_id": 4,
+   "color_name": "Orange",
+   "name": "Tile 2 x 2 with Groove",
+   "category": "Tile",
+   "location": "B-03",
+   "qty": 37,
+   "price": 0.05,
+   "updated_days_ago": 27
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3068b",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Tile 2 x 2 with Groove",
+   "category": "Tile",
+   "location": "B-03",
+   "qty": 7,
+   "price": 0.23,
+   "updated_days_ago": 16
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3070b",
+   "color_id": 88,
+   "color_name": "Reddish Brown",
+   "name": "Tile 1 x 1 with Groove",
+   "category": "Tile",
+   "location": "C-02",
+   "qty": 40,
+   "price": 0.332,
+   "updated_days_ago": 9
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3070b",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Tile 1 x 1 with Groove",
+   "category": "Tile",
+   "location": "A-02",
+   "qty": 249,
+   "price": 0.062,
+   "updated_days_ago": 19
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3040",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Slope 45 2 x 1",
+   "category": "Slope",
+   "location": "B-02",
+   "qty": 1848,
+   "price": 0.312,
+   "updated_days_ago": 26
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3040",
+   "color_id": 86,
+   "color_name": "Light Bluish Gray",
+   "name": "Slope 45 2 x 1",
+   "category": "Slope",
+   "location": "A-05",
+   "qty": 143,
+   "price": 0.028,
+   "updated_days_ago": 21
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3040",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Slope 45 2 x 1",
+   "category": "Slope",
+   "location": "C-02",
+   "qty": 56,
+   "price": 0.28,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3039",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Slope 45 2 x 2",
+   "category": "Slope",
+   "location": "B-01",
+   "qty": 295,
+   "price": 0.291,
+   "updated_days_ago": 14
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3039",
+   "color_id": 88,
+   "color_name": "Reddish Brown",
+   "name": "Slope 45 2 x 2",
+   "category": "Slope",
+   "location": "B-02",
+   "qty": 397,
+   "price": 0.128,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3039",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Slope 45 2 x 2",
+   "category": "Slope",
+   "location": "B-03",
+   "qty": 388,
+   "price": 0.244,
+   "updated_days_ago": 34
+  },
+  {
+   "item_type": "PART",
+   "item_no": "2780",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Technic, Pin with Friction Ridges",
+   "category": "Technic, Pin",
+   "location": "A-06",
+   "qty": 42,
+   "price": 0.217,
+   "updated_days_ago": 22
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 86,
+   "color_name": "Light Bluish Gray",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "C-01",
+   "qty": 41,
+   "price": 0.254,
+   "updated_days_ago": 0
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "B-01",
+   "qty": 686,
+   "price": 0.324,
+   "updated_days_ago": 39
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "B-05",
+   "qty": 1630,
+   "price": 0.122,
+   "updated_days_ago": 26
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "B-05",
+   "qty": 30,
+   "price": 0.159,
+   "updated_days_ago": 24
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "A-01",
+   "qty": 206,
+   "price": 0.279,
+   "updated_days_ago": 38
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "B-05",
+   "qty": 2211,
+   "price": 0.091,
+   "updated_days_ago": 30
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 3,
+   "color_name": "Yellow",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "A-06",
+   "qty": 1562,
+   "price": 0.239,
+   "updated_days_ago": 39
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "B-05",
+   "qty": 10,
+   "price": 0.286,
+   "updated_days_ago": 9
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4865b",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Panel 1 x 2 x 1 with Rounded Corners",
+   "category": "Panel",
+   "location": "C-04",
+   "qty": 97,
+   "price": 0.312,
+   "updated_days_ago": 36
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4865b",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Panel 1 x 2 x 1 with Rounded Corners",
+   "category": "Panel",
+   "location": "B-01",
+   "qty": 256,
+   "price": 0.101,
+   "updated_days_ago": 0
+  },
+  {
+   "item_type": "PART",
+   "item_no": "60592",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Window 1 x 2 x 2 Flat Front",
+   "category": "Window",
+   "location": "A-06",
+   "qty": 56,
+   "price": 0.204,
+   "updated_days_ago": 7
+  },
+  {
+   "item_type": "PART",
+   "item_no": "60592",
+   "color_id": 7,
+   "color_name": "Blue",
+   "name": "Window 1 x 2 x 2 Flat Front",
+   "category": "Window",
+   "location": "C-03",
+   "qty": 297,
+   "price": 0.222,
+   "updated_days_ago": 32
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 2,
+   "color_name": "Tan",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "MK-1",
+   "qty": 60,
+   "price": 0.122,
+   "updated_days_ago": 4
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 6,
+   "color_name": "Green",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "MK-1",
+   "qty": 34,
+   "price": 0.091,
+   "updated_days_ago": 10
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3062b",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Brick, Round 1 x 1 Open Stud",
+   "category": "Brick, Round",
+   "location": "MK-1",
+   "qty": 38,
+   "price": 0.308,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4865b",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Panel 1 x 2 x 1 with Rounded Corners",
+   "category": "Panel",
+   "location": "MK-1",
+   "qty": 65,
+   "price": 0.312,
+   "updated_days_ago": 10
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3022",
+   "color_id": 12,
+   "color_name": "Trans-Clear",
+   "name": "Plate 2 x 2",
+   "category": "Plate",
+   "location": "MK-1",
+   "qty": 22,
+   "price": 0.12,
+   "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3700",
+   "color_id": 5,
+   "color_name": "Red",
+   "name": "Technic, Brick 1 x 2 with Hole",
+   "category": "Technic, Brick",
+   "location": "MK-2",
+   "qty": 37,
+   "price": 0.279,
+   "updated_days_ago": 5
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 4,
+   "color_name": "Orange",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "MK-2",
+   "qty": 43,
+   "price": 0.291,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "4073",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Plate, Round 1 x 1 Straight Side",
+   "category": "Plate, Round",
+   "location": "MK-2",
+   "qty": 13,
+   "price": 0.171,
+   "updated_days_ago": 2
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3024",
+   "color_id": 1,
+   "color_name": "White",
+   "name": "Plate 1 x 1",
+   "category": "Plate",
+   "location": "MK-2",
+   "qty": 22,
+   "price": 0.345,
+   "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3069b",
+   "color_id": 12,
+   "color_name": "Trans-Clear",
+   "name": "Tile 1 x 2 with Groove",
+   "category": "Tile",
+   "location": "MK-2",
+   "qty": 14,
+   "price": 0.12,
+   "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3023",
+   "color_id": 88,
+   "color_name": "Reddish Brown",
+   "name": "Plate 1 x 2",
+   "category": "Plate",
+   "location": "MK-3",
+   "qty": 45,
+   "price": 0.083,
+   "updated_days_ago": 8
+  },
+  {
+   "item_type": "PART",
+   "item_no": "3004",
+   "color_id": 11,
+   "color_name": "Black",
+   "name": "Brick 1 x 2",
+   "category": "Brick",
+   "location": "MK-3",
+   "qty": 62,
+   "price": 0.145,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 85,
+   "color_name": "Dark Bluish Gray",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "MK-3",
+   "qty": 10,
+   "price": 0.324,
+   "updated_days_ago": 3
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 86,
+   "color_name": "Light Bluish Gray",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "MK-3",
+   "qty": 56,
+   "price": 0.254,
+   "updated_days_ago": 6
+  },
+  {
+   "item_type": "PART",
+   "item_no": "32523",
+   "color_id": 12,
+   "color_name": "Trans-Clear",
+   "name": "Technic, Liftarm Thick 1 x 3",
+   "category": "Technic, Liftarm",
+   "location": "MK-3",
+   "qty": 6,
+   "price": 0.12,
+   "updated_days_ago": 3
+  }
+ ],
+ "orders": [
+  {
+   "order_no": "28471068",
+   "buyer": "brickfan_92",
+   "status": "Neu",
+   "days_ago": 1,
+   "items": [
+    {
+     "lot": 48,
+     "qty": 25,
+     "price": 0.291
+    },
+    {
+     "lot": 30,
+     "qty": 13,
+     "price": 0.345
+    },
+    {
+     "lot": 0,
+     "qty": 28,
+     "price": 0.159
+    },
+    {
+     "lot": 60,
+     "qty": 29,
+     "price": 0.312
+    },
+    {
+     "lot": 22,
+     "qty": 27,
+     "price": 0.027
+    },
+    {
+     "lot": 19,
+     "qty": 14,
+     "price": 0.273
+    }
+   ]
+  },
+  {
+   "order_no": "28471188",
+   "buyer": "mocbuilder",
+   "status": "Neu",
+   "days_ago": 1,
+   "items": [
+    {
+     "lot": 28,
+     "qty": 13,
+     "price": 0.173
+    },
+    {
+     "lot": 34,
+     "qty": 11,
+     "price": 0.213
+    },
+    {
+     "lot": 55,
+     "qty": 22,
+     "price": 0.159
+    },
+    {
+     "lot": 62,
+     "qty": 22,
+     "price": 0.204
+    },
+    {
+     "lot": 3,
+     "qty": 26,
+     "price": 0.336
+    }
+   ]
+  },
+  {
+   "order_no": "28471307",
+   "buyer": "steinchenwelt",
+   "status": "Bezahlt",
+   "days_ago": 4,
+   "items": [
+    {
+     "lot": 16,
+     "qty": 5,
+     "price": 0.188
+    },
+    {
+     "lot": 3,
+     "qty": 28,
+     "price": 0.336
+    },
+    {
+     "lot": 50,
+     "qty": 15,
+     "price": 0.244
+    },
+    {
+     "lot": 10,
+     "qty": 6,
+     "price": 0.312
+    },
+    {
+     "lot": 54,
+     "qty": 2,
+     "price": 0.122
+    }
+   ]
+  },
+  {
+   "order_no": "28471507",
+   "buyer": "klemmbaustein_kai",
+   "status": "Bezahlt",
+   "days_ago": 4,
+   "items": [
+    {
+     "lot": 27,
+     "qty": 25,
+     "price": 0.083
+    },
+    {
+     "lot": 58,
+     "qty": 29,
+     "price": 0.239
+    },
+    {
+     "lot": 41,
+     "qty": 13,
+     "price": 0.05
+    },
+    {
+     "lot": 43,
+     "qty": 9,
+     "price": 0.332
+    }
+   ]
+  },
+  {
+   "order_no": "28471647",
+   "buyer": "bluebrick_de",
+   "status": "Verpackt",
+   "days_ago": 2,
+   "items": [
+    {
+     "lot": 10,
+     "qty": 12,
+     "price": 0.312
+    },
+    {
+     "lot": 60,
+     "qty": 8,
+     "price": 0.312
+    },
+    {
+     "lot": 2,
+     "qty": 21,
+     "price": 0.27
+    },
+    {
+     "lot": 6,
+     "qty": 3,
+     "price": 0.112
+    }
+   ]
+  },
+  {
+   "order_no": "28471764",
+   "buyer": "citybuilder77",
+   "status": "Versandt",
+   "days_ago": 5,
+   "items": [
+    {
+     "lot": 31,
+     "qty": 27,
+     "price": 0.083
+    },
+    {
+     "lot": 25,
+     "qty": 1,
+     "price": 0.052
+    }
+   ]
+  },
+  {
+   "order_no": "28471911",
+   "buyer": "technic_tom",
+   "status": "Versandt",
+   "days_ago": 6,
+   "items": [
+    {
+     "lot": 16,
+     "qty": 19,
+     "price": 0.188
+    },
+    {
+     "lot": 60,
+     "qty": 7,
+     "price": 0.312
+    },
+    {
+     "lot": 14,
+     "qty": 15,
+     "price": 0.258
+    }
+   ]
+  },
+  {
+   "order_no": "28471998",
+   "buyer": "lena_bricks",
+   "status": "Abgeschlossen",
+   "days_ago": 12,
+   "items": [
+    {
+     "lot": 21,
+     "qty": 4,
+     "price": 0.317
+    },
+    {
+     "lot": 14,
+     "qty": 19,
+     "price": 0.258
+    },
+    {
+     "lot": 20,
+     "qty": 1,
+     "price": 0.308
+    },
+    {
+     "lot": 39,
+     "qty": 30,
+     "price": 0.054
+    }
+   ]
+  },
+  {
+   "order_no": "28472168",
+   "buyer": "modulbau_hh",
+   "status": "Abgeschlossen",
+   "days_ago": 9,
+   "items": [
+    {
+     "lot": 25,
+     "qty": 28,
+     "price": 0.052
+    },
+    {
+     "lot": 9,
+     "qty": 22,
+     "price": 0.291
+    },
+    {
+     "lot": 31,
+     "qty": 20,
+     "price": 0.083
+    },
+    {
+     "lot": 13,
+     "qty": 26,
+     "price": 0.041
+    },
+    {
+     "lot": 38,
+     "qty": 4,
+     "price": 0.345
+    }
+   ]
+  },
+  {
+   "order_no": "28472295",
+   "buyer": "plate_collector",
+   "status": "Bezahlt",
+   "days_ago": 1,
+   "items": [
+    {
+     "lot": 54,
+     "qty": 1,
+     "price": 0.122
+    },
+    {
+     "lot": 47,
+     "qty": 28,
+     "price": 0.28
+    },
+    {
+     "lot": 8,
+     "qty": 14,
+     "price": 0.145
+    },
+    {
+     "lot": 43,
+     "qty": 27,
+     "price": 0.332
+    }
+   ]
+  },
+  {
+   "order_no": "28472438",
+   "buyer": "brickfan_92",
+   "status": "Neu",
+   "days_ago": 3,
+   "items": [
+    {
+     "lot": 46,
+     "qty": 24,
+     "price": 0.028
+    },
+    {
+     "lot": 58,
+     "qty": 17,
+     "price": 0.239
+    },
+    {
+     "lot": 19,
+     "qty": 21,
+     "price": 0.273
+    },
+    {
+     "lot": 55,
+     "qty": 9,
+     "price": 0.159
+    },
+    {
+     "lot": 22,
+     "qty": 20,
+     "price": 0.027
+    }
+   ]
+  },
+  {
+   "order_no": "28472566",
+   "buyer": "mocbuilder",
+   "status": "Verpackt",
+   "days_ago": 5,
+   "items": [
+    {
+     "lot": 55,
+     "qty": 9,
+     "price": 0.159
+    },
+    {
+     "lot": 34,
+     "qty": 29,
+     "price": 0.213
+    },
+    {
+     "lot": 41,
+     "qty": 15,
+     "price": 0.05
+    },
+    {
+     "lot": 31,
+     "qty": 8,
+     "price": 0.083
+    },
+    {
+     "lot": 11,
+     "qty": 25,
+     "price": 0.205
+    }
+   ]
+  }
+ ],
+ "stocktakes": [
+  {
+   "location": "A-02"
+  },
+  {
+   "location": "B-04"
+  },
+  {
+   "location": "MK-2"
+  }
+ ]
+}

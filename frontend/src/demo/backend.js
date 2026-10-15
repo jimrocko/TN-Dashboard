@@ -1,15 +1,19 @@
 // Demo-Backend: ersetzt die PHP-API im Browser, damit die App ohne Server ausprobiert werden kann.
 // Daten liegen nur im Browser (localStorage, sonst im Arbeitsspeicher).
-const KEY = 'tn-dashboard-demo-v1'
+// Gleiche Beispieldaten und gleiche Regeln wie api/lib/Shop.php.
+import seed from '../../../api/sql/demo-data.json'
+import * as shop from './shop.js'
 
-class DemoError extends Error {
+const KEY = 'tn-dashboard-demo-v2'
+
+export class DemoError extends Error {
   constructor(message, status) {
     super(message)
     this.status = status
   }
 }
 
-const now = () => {
+export const now = () => {
   const d = new Date()
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
@@ -27,6 +31,7 @@ function fresh() {
       { id: 3, username: 'erika', display_name: 'Erika Musterfrau', password: 'erika123', role: 'teilnehmer', created_at: t, last_seen: null },
     ],
     log: [],
+    ...shop.seedData(seed),
   }
 }
 
@@ -48,6 +53,17 @@ const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 
 function log(db, userId, action, module = null, details = null) {
   db.log.push({ id: db.nextLog++, user_id: userId, action, module, details: details && Object.keys(details).length ? details : null, created_at: now() })
+}
+
+function activityRows(db, userId, limit) {
+  return db.log
+    .filter((r) => userId === null || r.user_id === userId)
+    .map((r) => {
+      const u = db.users.find((x) => x.id === r.user_id)
+      return { ...r, username: u?.username, display_name: u?.display_name }
+    })
+    .sort((a, b) => b.id - a.id)
+    .slice(0, limit)
 }
 
 function current(db) {
@@ -90,13 +106,15 @@ function dispatch(db, method, route, params, body) {
       const u = current(db)
       return { user: u ? pub(u) : null }
     }
-    case 'GET dashboard':
-      requireUser(db)
+    case 'GET dashboard': {
+      const me = requireUser(db)
       return {
-        pickliste: { open: 0 }, inventar: { total_parts: 0 }, umlagern: { suggestions: 0 },
-        auftraege: { active: 0 }, inventur: { open: 0 }, analyse: { last_run: null },
+        ...shop.dashboard(db),
         bricklink: { configured: false },
+        recent: activityRows(db, isStaff(me) ? null : me.id, 8),
+        demo_seedable: false,
       }
+    }
     case 'POST activity': {
       const u = requireUser(db)
       if (!body.action) throw new DemoError('action fehlt', 400)
@@ -107,15 +125,7 @@ function dispatch(db, method, route, params, body) {
       const me = requireUser(db)
       let userId = params.user ? Number(params.user) : null
       if (!isStaff(me)) userId = me.id
-      const rows = db.log
-        .filter((r) => userId === null || r.user_id === userId)
-        .map((r) => {
-          const u = db.users.find((x) => x.id === r.user_id)
-          return { ...r, username: u?.username, display_name: u?.display_name }
-        })
-        .sort((a, b) => b.id - a.id)
-        .slice(0, Number(params.limit) || 200)
-      return { activity: rows }
+      return { activity: activityRows(db, userId, Number(params.limit) || 200) }
     }
     case 'GET users': {
       const me = requireUser(db)
@@ -141,6 +151,8 @@ function dispatch(db, method, route, params, body) {
       return { ok: true }
     }
   }
+  const result = shop.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
+  if (result !== undefined) return result
   if (method === 'GET' && parts[0] === 'bl' && parts[1] === 'item') {
     requireUser(db)
     throw new DemoError('In der Demo gibt es keine BrickLink-Verbindung. Auf dem Schulserver kommt sie aus der .env.', 503)

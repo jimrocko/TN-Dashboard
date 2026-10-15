@@ -14,6 +14,8 @@ require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/ActivityLog.php';
 require __DIR__ . '/lib/Cache.php';
 require __DIR__ . '/lib/BrickLinkClient.php';
+require __DIR__ . '/lib/Shop.php';
+require __DIR__ . '/lib/DemoData.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[tn-dashboard] ' . $e);
@@ -48,17 +50,103 @@ switch (true) {
         json_response(['user' => $user ? public_user($user) : null]);
 
     case $route === 'dashboard' && $method === 'GET':
-        require_user();
-        // Platzhalter-Kennzahlen – werden mit den Modulen durch echte Werte ersetzt.
-        json_response([
-            'pickliste' => ['open' => 0],
-            'inventar'  => ['total_parts' => 0],
-            'umlagern'  => ['suggestions' => 0],
-            'auftraege' => ['active' => 0],
-            'inventur'  => ['open' => 0],
-            'analyse'   => ['last_run' => null],
+        $me = require_user();
+        $isStaff = in_array($me['role'], ROLES_STAFF, true);
+        json_response(Shop::dashboard() + [
             'bricklink' => ['configured' => (new BrickLinkClient(config()['bricklink']))->isConfigured()],
+            'recent'    => ActivityLog::list($isStaff ? null : (int) $me['id'], 8),
+            'demo_seedable' => $isStaff && DemoData::isEmpty(),
         ]);
+
+    case $route === 'demo/seed' && $method === 'POST':
+        $staff = require_staff();
+        if (!DemoData::isEmpty()) {
+            json_error('Es sind bereits Lagerdaten vorhanden', 409);
+        }
+        $r = DemoData::seed();
+        ActivityLog::log((int) $staff['id'], 'demo_seed', null, $r);
+        json_response($r, 201);
+
+    case $route === 'inventory' && $method === 'GET':
+        require_user();
+        json_response(['items' => Shop::inventory($_GET)]);
+
+    case $route === 'inventory/meta' && $method === 'GET':
+        require_user();
+        json_response(Shop::meta());
+
+    case $route === 'search' && $method === 'GET':
+        $me = require_user();
+        $term = trim((string) ($_GET['q'] ?? ''));
+        if ($term === '') {
+            json_response(['parts' => [], 'locations' => [], 'orders' => []]);
+        }
+        json_response(Shop::search($term));
+
+    case $route === 'orders' && $method === 'GET':
+        require_user();
+        json_response(['orders' => Shop::orders($_GET['status'] ?? null, $_GET['q'] ?? null)]);
+
+    case count($parts) === 2 && $parts[0] === 'orders' && ctype_digit($parts[1]) && $method === 'GET':
+        require_user();
+        $o = Shop::order((int) $parts[1]);
+        $o ? json_response(['order' => $o]) : json_error('Auftrag nicht gefunden', 404);
+
+    case count($parts) === 3 && $parts[0] === 'orders' && ctype_digit($parts[1]) && $parts[2] === 'status' && $method === 'POST':
+        $me = require_user();
+        $status = (string) (request_json()['status'] ?? '');
+        Shop::setOrderStatus((int) $parts[1], $status);
+        $o = Shop::order((int) $parts[1]);
+        ActivityLog::log((int) $me['id'], 'order_status', 'auftraege', ['auftrag' => $o['order_no'], 'status' => $status]);
+        json_response(['order' => $o]);
+
+    case $route === 'transfers/suggestions' && $method === 'GET':
+        require_user();
+        json_response(['suggestions' => Shop::suggestions()]);
+
+    case $route === 'transfers' && $method === 'GET':
+        require_user();
+        json_response(['transfers' => Shop::transfers((int) ($_GET['limit'] ?? 30))]);
+
+    case $route === 'transfers' && $method === 'POST':
+        $me = require_user();
+        $in = request_json();
+        $r = Shop::transfer((int) ($in['lot_id'] ?? 0), (int) ($in['to_location_id'] ?? 0), (int) ($in['qty'] ?? 0), (int) $me['id']);
+        ActivityLog::log((int) $me['id'], 'transfer', 'umlagern', ['teil' => "{$r['item_no']} {$r['color']}", 'menge' => $r['qty'], 'von' => $r['from'], 'nach' => $r['to']]);
+        json_response(['transfer' => $r], 201);
+
+    case $route === 'stocktakes' && $method === 'GET':
+        require_user();
+        json_response(['stocktakes' => Shop::stocktakes()]);
+
+    case $route === 'stocktakes' && $method === 'POST':
+        $me = require_user();
+        $id = Shop::createStocktake((int) (request_json()['location_id'] ?? 0));
+        $s = Shop::stocktake($id);
+        ActivityLog::log((int) $me['id'], 'stocktake_created', 'inventur', ['lagerort' => $s['location_code']]);
+        json_response(['stocktake' => $s], 201);
+
+    case count($parts) === 2 && $parts[0] === 'stocktakes' && ctype_digit($parts[1]) && $method === 'GET':
+        require_user();
+        $s = Shop::stocktake((int) $parts[1]);
+        $s ? json_response(['stocktake' => $s]) : json_error('Prüfung nicht gefunden', 404);
+
+    case count($parts) === 3 && $parts[0] === 'stocktakes' && ctype_digit($parts[1]) && $parts[2] === 'count' && $method === 'POST':
+        require_user();
+        $in = request_json();
+        $counted = ($in['counted'] ?? null) === null || $in['counted'] === '' ? null : (int) $in['counted'];
+        Shop::count((int) $parts[1], (int) ($in['item_id'] ?? 0), $counted);
+        json_response(['ok' => true]);
+
+    case count($parts) === 3 && $parts[0] === 'stocktakes' && ctype_digit($parts[1]) && $parts[2] === 'close' && $method === 'POST':
+        $me = require_user();
+        $r = Shop::closeStocktake((int) $parts[1], (int) $me['id']);
+        ActivityLog::log((int) $me['id'], 'stocktake_closed', 'inventur', ['lagerort' => $r['location'], 'korrekturen' => count($r['corrections'])]);
+        json_response($r);
+
+    case $route === 'analysis' && $method === 'GET':
+        require_user();
+        json_response(Shop::analysis());
 
     case $route === 'activity' && $method === 'POST':
         $user = require_user();

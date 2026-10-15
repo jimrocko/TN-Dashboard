@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { Download } from 'lucide-vue-next'
+import PageHead from '../components/PageHead.vue'
 import ActivityTable from '../components/ActivityTable.vue'
 import { api, apiUrl, IS_DEMO } from '../api'
 import { useAuth } from '../stores/auth'
@@ -14,17 +15,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
-    <h1 class="page-title">Meine Aktivitäten</h1>
-    <p class="page-sub">{{ auth.user.display_name }} · Dieses Protokoll sieht auch dein Lehrer.</p>
-    <a v-if="!IS_DEMO" class="btn" :href="apiUrl('activity', { format: 'csv', limit: 5000 })"><Download :size="18" /> Als CSV herunterladen</a>
-    <div class="card spaced">
-      <p v-if="error" class="error">{{ error }}</p>
-      <ActivityTable :rows="rows" />
-    </div>
+  <div class="page stack">
+    <PageHead title="Meine Aktivitäten" :sub="`${auth.user.display_name} · Dieses Protokoll sieht auch dein Lehrer.`">
+      <a v-if="!IS_DEMO" class="btn" :href="apiUrl('activity', { format: 'csv', limit: 5000 })"><Download :size="16" /> CSV herunterladen</a>
+    </PageHead>
+    <p v-if="error" class="error">{{ error }}</p>
+    <section class="panel"><ActivityTable :rows="rows" /></section>
   </div>
 </template>
-
-<style scoped>
-.spaced { margin-top: 18px; }
-</style>

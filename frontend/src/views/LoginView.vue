@@ -13,7 +13,6 @@ const password = ref('')
 const error = ref('')
 const busy = ref(false)
 
-
 async function submit() {
   error.value = ''
   busy.value = true
@@ -26,27 +25,29 @@ async function submit() {
     busy.value = false
   }
 }
+const fill = (u, p) => { username.value = u; password.value = p }
 </script>
 
 <template>
   <div class="wrap">
-    <form class="card box" @submit.prevent="submit">
-      <img :src="logo" alt="" class="logo" />
-      <h1>TN Dashboard</h1>
-      <p class="muted">Melde dich mit deinem Teilnehmer-Konto an.</p>
+    <form class="panel box" @submit.prevent="submit">
+      <div class="brand">
+        <img :src="logo" alt="" />
+        <div><div class="name">TN Dashboard</div><div class="faint small">Lego-Shop · Teilnehmer-Zugang</div></div>
+      </div>
       <label class="field"><span>Benutzername</span>
-        <input class="input" v-model="username" autocomplete="username" autocapitalize="none" required />
+        <input id="login-user" class="input" v-model="username" autocomplete="username" autocapitalize="none" required />
       </label>
       <label class="field"><span>Passwort</span>
-        <input class="input" v-model="password" type="password" autocomplete="current-password" required />
+        <input id="login-pass" class="input" v-model="password" type="password" autocomplete="current-password" required />
       </label>
-      <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="error" class="error small">{{ error }}</p>
       <button class="btn btn-primary full" :disabled="busy">{{ busy ? 'Anmelden …' : 'Anmelden' }}</button>
       <div v-if="IS_DEMO" class="demo">
-        <strong>Demo-Version</strong>: läuft ohne Server, alle Daten bleiben in diesem Browser.
+        <div><strong>Demo-Version.</strong> Läuft ohne Server, alle Daten sind erfunden und bleiben in diesem Browser.</div>
         <div class="accounts">
-          <button type="button" @click="username = 'max'; password = 'max12345'">Teilnehmer: max / max12345</button>
-          <button type="button" @click="username = 'lehrer'; password = 'lehrer123'">Lehrer: lehrer / lehrer123</button>
+          <button type="button" class="btn btn-sm" @click="fill('max', 'max12345')">Teilnehmer: max / max12345</button>
+          <button type="button" class="btn btn-sm" @click="fill('lehrer', 'lehrer123')">Lehrer: lehrer / lehrer123</button>
         </div>
       </div>
     </form>
@@ -55,14 +56,14 @@ async function submit() {
 
 <style scoped>
 .wrap { min-height: 100dvh; display: grid; place-items: center; padding: 16px; }
-.box { width: 100%; max-width: 400px; padding: 32px; }
-.logo { width: 64px; height: 64px; border-radius: 14px; }
-h1 { margin: 16px 0 4px; }
-.muted { margin: 0 0 24px; }
-.demo { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+.box { width: 100%; max-width: 380px; padding: 28px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand img { width: 40px; height: 40px; border-radius: 9px; }
+.name { font-weight: 600; font-size: 1.05rem; }
+.full { width: 100%; height: 38px; margin-top: 4px; }
+.input { height: 38px; }
+.demo { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-2); }
 .demo strong { color: var(--text); }
-.accounts { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-.accounts button { text-align: left; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-hover); font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
-.accounts button:hover { border-color: var(--accent); }
-.full { width: 100%; justify-content: center; margin-top: 8px; padding: 12px; }
+.accounts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.accounts .btn { justify-content: flex-start; font-family: var(--mono); font-size: 0.8rem; }
 </style>

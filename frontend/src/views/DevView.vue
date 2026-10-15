@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import PageHead from '../components/PageHead.vue'
 import { api } from '../api'
 
 const status = ref(null)
@@ -8,7 +9,11 @@ const no = ref('3001')
 const result = ref('')
 
 onMounted(async () => {
-  try { status.value = await api.get('dashboard') } catch (e) { status.value = { error: e.message } }
+  try {
+    const d = await api.get('dashboard')
+    delete d.recent
+    status.value = d
+  } catch (e) { status.value = { error: e.message } }
 })
 
 async function lookup() {
@@ -23,35 +28,29 @@ async function lookup() {
 </script>
 
 <template>
-  <div class="page">
-    <h1 class="page-title">Dev-Bereich</h1>
-    <p class="page-sub">Werkzeuge zum Testen von API und BrickLink-Cache</p>
-    <div class="cols">
-      <div class="card">
-        <h2>Dashboard-API</h2>
-        <pre>{{ JSON.stringify(status, null, 2) }}</pre>
-      </div>
-      <div class="card">
-        <h2>BrickLink-Artikel abrufen</h2>
-        <p class="muted">Antworten werden in der Datenbank zwischengespeichert. <code>"cached": true</code> heißt, dass kein API-Aufruf nötig war.</p>
-        <form class="row" @submit.prevent="lookup">
-          <select class="input" v-model="type">
-            <option>PART</option><option>MINIFIG</option><option>SET</option>
-          </select>
-          <input class="input" v-model="no" placeholder="z. B. 3001" />
-          <button class="btn btn-primary">Abrufen</button>
-        </form>
-        <pre v-if="result">{{ result }}</pre>
-      </div>
+  <div class="page stack">
+    <PageHead title="Dev-Bereich" sub="Werkzeuge zum Testen von API und BrickLink-Cache." />
+    <div class="grid-2">
+      <section class="panel">
+        <div class="panel-head"><h2>Dashboard-API</h2></div>
+        <div class="panel-body"><pre>{{ JSON.stringify(status, null, 2) }}</pre></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>BrickLink-Artikel abrufen</h2></div>
+        <div class="panel-body">
+          <p class="muted small">Antworten werden in der Datenbank zwischengespeichert. <code>"cached": true</code> heißt: kein API-Aufruf nötig.</p>
+          <form class="toolbar" @submit.prevent="lookup">
+            <select class="select" v-model="type" aria-label="Typ"><option>PART</option><option>MINIFIG</option><option>SET</option></select>
+            <input class="input" v-model="no" placeholder="z. B. 3001" aria-label="Nummer" />
+            <button class="btn btn-primary">Abrufen</button>
+          </form>
+          <pre v-if="result">{{ result }}</pre>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
-h2 { font-size: 18px; margin: 0 0 12px; }
-.row { display: flex; gap: 10px; margin-top: 12px; }
-.row select { width: 130px; }
-pre { background: #0d131c; border: 1px solid var(--border); border-radius: 10px; padding: 12px; overflow: auto; max-height: 420px; font-size: 13px; }
+pre { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; overflow: auto; max-height: 420px; font-family: var(--mono); font-size: 0.8rem; margin: 12px 0 0; }
 </style>

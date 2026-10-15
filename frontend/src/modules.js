@@ -1,57 +1,33 @@
 import {
-  Smile, ClipboardList, Box, RefreshCw, ScanBarcode, Truck, ClipboardCheck, BarChart3,
+  LayoutDashboard, Search, Boxes, ArrowLeftRight, ClipboardCheck, Truck, BarChart3, ScanBarcode, Smile, ClipboardList,
 } from 'lucide-vue-next'
 
-// Zentrale Beschreibung aller Module. Dashboard-Kacheln und Platzhalterseiten werden daraus erzeugt.
+// Zentrale Liste der Bereiche: Navigation, Übersicht und Protokoll-Bezeichnungen kommen von hier.
+// status: 'aktiv' = in dieser App, 'extern' = bestehendes Programm wird integriert, 'geplant' = kommt noch.
 export const modules = [
-  {
-    id: 'minifig', title: 'Minifig-Finder', icon: Smile,
-    text: 'Minifiguren und ihre Varianten schnell finden und anzeigen.',
-    status: () => 'z. B. twn146, Figurenname …',
-    planned: ['Suche nach Minifig-Nummer und Name', 'Varianten und Bestandteile anzeigen', 'Lagerort und Bestand der Figur'],
-  },
-  {
-    id: 'pickliste', title: 'Pickliste', icon: ClipboardList,
-    text: 'Bestellungen kommissionieren, Fehlmengen melden und Fortschritt verfolgen.',
-    status: (d) => `Offene Picklisten: ${d?.pickliste?.open ?? '–'}`,
-    planned: ['Picklisten aus BrickLink-Bestellungen erzeugen', 'Positionen nach Lagerort sortiert abhaken', 'Fehlmengen melden'],
-  },
-  {
-    id: 'inventar', title: 'Inventar', icon: Box,
-    text: 'Bestände, Lagerorte und Bestandsverlauf verwalten.',
-    status: (d) => `Gesamtbestand: ${d?.inventar?.total_parts?.toLocaleString('de-DE') ?? '–'} Teile`,
-    planned: ['BrickLink-Inventar abgleichen (gecacht)', 'BrickStore-Dateien (.bsx) importieren', 'Bestandsverlauf je Teil'],
-  },
-  {
-    id: 'umlagern', title: 'Umlagern', icon: RefreshCw,
-    text: 'Mischkisten analysieren, Sortierungsvorschläge erhalten und Bestände optimieren.',
-    status: (d) => `Offene Vorschläge: ${d?.umlagern?.suggestions ?? '–'}`,
-    planned: ['Umlagerung von Lagerort A nach B buchen', 'Mischkisten erkennen', 'Automatische Sortierungsvorschläge'],
-  },
-  {
-    id: 'scanner', title: 'Teile-Scanner', icon: ScanBarcode,
-    text: 'Teile, Barcodes und Lagerplatzcodes scannen und direkt verarbeiten.',
-    status: () => 'Scanner bereit', statusDot: true,
-    planned: ['Barcode- und QR-Scan über die iPad-Kamera', 'Lagerplatzcodes erkennen', 'Import von Brickscanner-Listen'],
-  },
-  {
-    id: 'auftraege', title: 'Auftragszentrale', icon: Truck,
-    text: 'Bestellungen importieren, verfolgen und Auftragsstatus prüfen.',
-    status: (d) => `Aktive Aufträge: ${d?.auftraege?.active ?? '–'}`,
-    planned: ['BrickLink-Bestellungen abrufen', 'Status verfolgen', 'Aus Auftrag eine Pickliste erzeugen'],
-  },
-  {
-    id: 'inventur', title: 'Inventur & Bestandsprüfung', icon: ClipboardCheck,
-    text: 'Tatsächliche Mengen überprüfen, Abweichungen aufklären und Bestände korrigieren.',
-    status: (d) => `Offene Prüfungen: ${d?.inventur?.open ?? '–'}`,
-    planned: ['Zählaufträge je Lagerort', 'Abweichungen dokumentieren', 'Korrekturen buchen'],
-  },
-  {
-    id: 'analyse', title: 'Lager- & Auftragsanalyse', icon: BarChart3,
-    text: 'Engpässe, häufige Fehlmengen und wichtige Kennzahlen erkennen.',
-    status: (d) => `Letzte Analyse: ${d?.analyse?.last_run ?? '–'}`,
-    planned: ['Häufige Fehlmengen', 'Lagerauslastung', 'Kennzahlen pro Teilnehmer'],
-  },
+  { id: 'inventar', title: 'Inventar', icon: Boxes, path: '/inventar', status: 'aktiv', group: 'Lager',
+    text: 'Bestände, Lagerorte und Lose durchsuchen und filtern.' },
+  { id: 'umlagern', title: 'Umlagern', icon: ArrowLeftRight, path: '/umlagern', status: 'aktiv', group: 'Lager',
+    text: 'Mischkisten auflösen, Vorschläge übernehmen, Teile umbuchen.' },
+  { id: 'inventur', title: 'Inventur', icon: ClipboardCheck, path: '/inventur', status: 'aktiv', group: 'Lager',
+    text: 'Lagerorte zählen, Abweichungen erfassen und korrigieren.' },
+  { id: 'auftraege', title: 'Auftragszentrale', icon: Truck, path: '/auftraege', status: 'aktiv', group: 'Verkauf',
+    text: 'Bestellungen verfolgen und den Status weiterschalten.' },
+  { id: 'analyse', title: 'Analyse', icon: BarChart3, path: '/analyse', status: 'aktiv', group: 'Auswertung',
+    text: 'Bestand nach Kategorie, Lagerauslastung, Engpässe.' },
+  { id: 'minifig', title: 'Minifig-Finder', icon: Smile, path: '/modul/minifig', status: 'extern', group: 'In Integration',
+    text: 'Bestehender Minifig-Finder (eigener Server) wird eingebunden.' },
+  { id: 'pickliste', title: 'Pickliste', icon: ClipboardList, path: '/modul/pickliste', status: 'extern', group: 'In Integration',
+    text: 'Bestehende Pickliste wird eingebunden.' },
+  { id: 'scanner', title: 'Teile-Scanner', icon: ScanBarcode, path: '/modul/scanner', status: 'geplant', group: 'In Integration',
+    text: 'Teile, Barcodes und Lagerplatzcodes per Kamera scannen.' },
+]
+
+export const navTop = [
+  { title: 'Übersicht', icon: LayoutDashboard, path: '/' },
+  { title: 'Suche', icon: Search, path: '/suche' },
 ]
 
 export const moduleById = (id) => modules.find((m) => m.id === id)
+
+export const statusLabel = { aktiv: 'Aktiv', extern: 'Wird integriert', geplant: 'Geplant' }

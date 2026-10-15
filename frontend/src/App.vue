@@ -1,23 +1,28 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AppHeader from './components/AppHeader.vue'
-import BottomNav from './components/BottomNav.vue'
+import AppSidebar from './components/AppSidebar.vue'
+import AppTopbar from './components/AppTopbar.vue'
 
 const route = useRoute()
 const chrome = computed(() => !route.meta.public)
+const navOpen = ref(false)
+watch(() => route.fullPath, () => { navOpen.value = false })
 </script>
 
 <template>
-  <div class="shell" :class="{ bare: !chrome }">
-    <AppHeader v-if="chrome" />
-    <main class="main"><RouterView /></main>
-    <BottomNav v-if="chrome" />
+  <div v-if="chrome" class="shell">
+    <AppSidebar :open="navOpen" @close="navOpen = false" />
+    <div class="main">
+      <AppTopbar @menu="navOpen = true" />
+      <main><RouterView /></main>
+    </div>
   </div>
+  <RouterView v-else />
 </template>
 
 <style scoped>
-.shell { min-height: 100dvh; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
-.main { flex: 1; padding-bottom: 110px; }
-.bare .main { padding-bottom: 0; }
+.shell { display: flex; min-height: 100dvh; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+main { flex: 1; }
 </style>
