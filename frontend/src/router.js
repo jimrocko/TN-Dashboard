@@ -43,7 +43,7 @@ const router = createRouter({
     },
     { path: '/profil', component: ProfileView, meta: { title: 'Meine Aktivitäten' } },
     { path: '/einstellungen', component: SettingsView, meta: { title: 'Einstellungen' } },
-    { path: '/dev', component: DevView, meta: { title: 'Dev-Bereich' } },
+    { path: '/dev', component: DevView, meta: { title: 'Dev-Bereich', dev: true } },
     { path: '/lehrer', component: TeacherView, meta: { title: 'Lehrer-Ansicht', staff: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
@@ -55,6 +55,7 @@ router.beforeEach(async (to) => {
   if (!to.meta.public && !auth.user) return { path: '/login', query: { next: to.fullPath } }
   if (to.path === '/login' && auth.user) return '/'
   if (to.meta.staff && !auth.isStaff) return '/'
+  if (to.meta.dev && !auth.canDev) return '/'
 })
 
 // Jeder Modulaufruf landet im Protokoll (nur beim Wechsel des Moduls, nicht bei jedem Filter).

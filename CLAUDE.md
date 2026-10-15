@@ -18,6 +18,7 @@ api/                PHP 8.1+ ohne Framework
   lib/Shop.php      Lager, Aufträge, Umlagern, Inventur, Analyse, Teile-Seite (q() mit {tabelle}-Platzhaltern)
   lib/Brickognize.php  Teileerkennung per Foto (Proxy zu api.brickognize.com)
   lib/BrickLinkClient.php + Cache.php  BrickLink-API mit DB-Cache
+  lib/Dev.php       Dev-Bereich: Zugang (Dev-Rolle), Dev-Code, Systemdaten, Selbsttests, Tabellen-Ansicht
   lib/env.php       Liest die vorhandene .env der Schule (nur lesen, nie schreiben)
   sql/              Schemas (MySQL + SQLite), demo-data.json = erfundene Beispieldaten
 frontend/           Vue 3 + Vite + Pinia + vue-router (Hash-Routing)
@@ -27,7 +28,12 @@ frontend/           Vue 3 + Vite + Pinia + vue-router (Hash-Routing)
   src/demo/         Demo-Backend im Browser (gleiche Regeln wie Shop.php, Daten in localStorage)
   src/views/        Eine Ansicht pro Bereich
   src/components/XpShell.vue + XpWindowView.vue  Retro-Stil „Windows XP“ mit Fensterverwaltung
+  src/views/dev/    Reiter des Dev-Bereichs (DevGate = Code-Sperre, System, Tests, Daten, API, Einstellungen)
+  src/demo/dev.js   Dev-Bereich im Demo-Backend
+  src/utils/devtools.js  Dev-Optionen (Debug-Anzeige, Verzögerung) und API-Protokoll
   src/styles/theme.css  Normales Design (Tokens), xp.css = XP-Stil (nur mit data-tn-style="xp")
+docs/demo/         Demo als eine HTML-Datei (wird von npm run build:demo erzeugt und eingecheckt)
+.github/workflows/ build.yml = Build-Prüfung (PHP-Lint, Build, Demo, install.php), demo-pages.yml = Demo auf GitHub Pages
 start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 ```
 
@@ -38,7 +44,9 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - **Alle Lager-/Auftragsdaten sind erfunden** (`api/sql/demo-data.json`). Keine echten Kunden oder Bestellungen ins Repo.
 - **Keine Secrets ins Repo:** `.env`, `api/config.php`, `local-data/` sind in `.gitignore`.
 - **Hash-Routing** (`#/inventar`), damit es auf jedem Webserver ohne Rewrite-Regeln läuft.
-- **Designs:** Standard ist das Kachel-Design (dunkel). Der XP-Stil ist versteckt: im Dev-Bereich die Versionszeile 5× antippen und `WINXP` (zurück: `MODERN`) eingeben, oder am PC den Konami-Code (siehe `src/utils/cheats.js`). Nicht als offizielle Einstellung anbieten.
+- **Designs:** Standard ist das Kachel-Design (dunkel). Der XP-Stil ist nur im Dev-Bereich umschaltbar (Einstellungen → Stil, oder Code `WINXP`/`MODERN`) bzw. per Konami-Code (`src/utils/cheats.js`). Nicht in den normalen Einstellungen anbieten.
+- **Dev-Bereich ist gesichert:** nur Lehrer und Teilnehmer mit Dev-Rolle (Tabelle `tn_dev_access`, vergeben in der Lehrer-Ansicht) plus Dev-Code. Code gehasht in `tn_settings` (`dev_pin_hash`, `dev_pin_version`). **Testbetrieb (SQLite, Demo) = `0000`**, solange kein Code gesetzt ist; auf dem Server (MySQL) legt ein Lehrer ihn fest. Alle Dev-Routen über `Dev::require()`. Dev-Bereich ist nur lesend für Daten (keine Tabellen bearbeiten); Geheimnisse (Passwort-Hashes, settings-Werte) nie ausgeben.
+- **README als fertige Produkt-Doku:** Der Inhaber möchte, dass das Repo so beschrieben ist, als liefe die App schon auf dem Schulserver. Neue Bereiche im README unter „Die Bereiche“ erklären.
 - **Externe Programme:** Minifig-Finder und Pickliste existieren als eigene Programme und sollen eingebunden werden (Status `extern`). Ihr Code liegt nicht in diesem Repo; nicht neu erfinden, ohne den Inhaber zu fragen.
 - **Keine Etiketten / kein Etikettendruck.** Wurde gebaut und vom Inhaber ausdrücklich abgelehnt.
 - **Teile-Scanner = Teileerkennung per Foto** (wie Brickscanner), nicht Barcode/QR. Ausdrücklicher Wunsch des Inhabers. Nach dem Erkennen öffnet sich direkt die Teile-Seite.
@@ -55,6 +63,11 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Kennzahlen (Bestand, Farben, Wert, in offenen Aufträgen reserviert), Bestand nach Farbe und Lagerort mit Umlagern-Knopf, Aufträge mit dem Teil, letzte Umlagerungen, Alternativen aus der Erkennung.
 - Bilder: `PartImage.vue` nimmt das Erkennungsbild, sonst BrickLink (`img.bricklink.com/ItemImage/PN/<farbe>/<nr>.png`; `color_id` sind BrickLink-Farb-IDs), sonst Platzhalter.
 - Teil-Nummern in Inventar, Suche, Aufträgen und Analyse verlinken hierher.
+### Dev-Bereich (`/dev`, `DevView.vue`, `api/lib/Dev.php`)
+- `GET dev/status` → `allowed, unlocked, pin_set, test_mode, can_set_pin, locked_for`. `POST dev/unlock {pin}` (5 Fehlversuche → 60 s Sperre), `dev/lock`, `dev/pin {pin}` (nur Lehrer; ist schon ein Code gesetzt, muss entsperrt sein; neue Version sperrt alle anderen Sitzungen).
+- `GET dev/system`, `dev/tables`, `dev/table?name=&page=&per=`, `POST dev/test {name}` (db_read, db_write, session, tmp_write, bricklink, brickognize). `POST users/<id>/dev {enabled}` vergibt die Dev-Rolle.
+- `public_user()` liefert `can_dev`; Router-Guard `meta.dev`; Dev-Links (Leiste unten, XP-Startmenü) nur bei `auth.canDev`.
+- Neue Tabellen legt `Dev::ensureSchema()` selbst an, damit Updates ohne erneutes install.php laufen.
 ### XP-Fenster (`XpShell.vue`)
 - Mehrere Fenster gleichzeitig; verschieben (Titelleiste), Größe ändern (Ecke unten rechts), minimieren, maximieren (auch Doppelklick), schließen, Taskleiste mit allen Fenstern, Knopf „Desktop anzeigen“ rechts.
 - Die Router-Adresse ist immer das **aktive** Fenster; `/` = Desktop. Fenster-Schlüssel = Pfad (`utils/windowing.js`), Query gehört zum Fenster.
@@ -65,17 +78,20 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 ## Testen
 - Lokal: `./start.sh` (baut, legt SQLite + Test-Konten an, startet `php -S`). Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
 - Nach Änderungen: `cd frontend && npm run build` und `npm run build:demo` müssen fehlerfrei laufen; `php -l` für geänderte PHP-Dateien.
-- Demo-Datei: `demo-dist/tn-dashboard-demo.html` (eine Datei, ohne Server). Veröffentlicht als Artifact: https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R (privat; nach Änderungen dieselbe Datei erneut veröffentlichen, Link bleibt gleich).
+- Demo: `npm run build:demo` schreibt `demo-dist/tn-dashboard-demo.html` (Artifact-Format) und `docs/demo/tn-dashboard-demo.html` (vollständige Datei, wird **mit eingecheckt**, nach Frontend-Änderungen neu bauen und committen).
+- Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifact https://claude.ai/artifact/D8tjj1fC192NUEocyTMZ9R (privat; dieselbe Datei erneut veröffentlichen, Link bleibt).
 - Browser-Tests mit Playwright: Chromium liegt in `/opt/pw-browsers/chromium` (Cloud-Umgebung). XP-Stil im Test aktivieren: `localStorage['tn-dashboard-settings'] = '{"style":"xp"}'`.
 - In der Cloud-Sandbox sind Brickognize und BrickLink-Bilder gesperrt; Erkennung dort nur über den Demo-Knopf testbar.
 
 ## Offene Punkte
+- **Integration in den Schul-Webserver** macht der Inhaber später gemeinsam mit einem Agent (Hochladen von `dist/`, `.env`, HTTPS, Firewall für Brickognize).
+- Repo öffentlich machen (Inhaber) und unter Settings → Pages „GitHub Actions“ wählen, damit der Demo-Link funktioniert.
 - Minifig-Finder und Pickliste einbinden (Status `extern`). Braucht Zugang zu den bestehenden Programmen.
 - Teileerkennung im echten Schulnetz testen (Firewall für `api.brickognize.com`, HTTPS für Kamera).
 - Optional: Brickognize-Ergebnisse cachen (gleiche Fotos), Lizenz/Fair-Use von Brickognize beachten.
-- README-Screenshots für Scanner/Teile-Seite fehlen noch.
 
 ## Verlauf
 - **Sitzung 1** (`claude/charming-einstein-8qzsen`, `claude/eager-maxwell-hyvb72`): Grundgerüst (Vue-PWA, PHP-API, Login, Protokoll, BrickLink-Cache), App-Icons, .env der Schule einlesen, Startskripte, Demo-Version, README mit Screenshots.
 - **Sitzung 2**: Fake-Lagerdaten, Module Inventar/Umlagern/Inventur/Aufträge/Analyse/Suche, Firmen-Design, dann zurück zum ersten Kachel-Design als Standard plus versteckter XP-Stil.
 - **Sitzung 3** (2026-10-15): XP-Stil mit echter Fensterverwaltung; Teile-Scanner als Foto-Teileerkennung über Brickognize; neue Teile-Seite `/teil/:no`; Teil-Nummern überall verlinkt; diese Agent-Doku angelegt. Verworfen auf Wunsch: Code-/QR-Scanner für Lagerorte und Etikettendruck.
+- **Sitzung 3, Teil 2** (2026-10-15): Dev-Bereich gesichert (Dev-Rolle + Dev-Code, Test = 0000) und stark erweitert (System, Tests, Daten, API, Einstellungen, Debug-Anzeige); Lehrer-Ansicht mit Dev-Spalte; README als fertige Produkt-Doku mit Demo-Link; GitHub Actions für Build und Demo auf Pages; Demo-Datei in `docs/demo/`.

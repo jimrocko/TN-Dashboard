@@ -4,6 +4,7 @@
 import seed from '../../../api/sql/demo-data.json'
 import * as shop from './shop.js'
 import { predict } from '../utils/brickognize.js'
+import * as devRoutes from './dev.js'
 
 const KEY = 'tn-dashboard-demo-v2'
 
@@ -49,7 +50,7 @@ function save(db) {
   try { localStorage.setItem(KEY, JSON.stringify(db)) } catch { /* nur im Arbeitsspeicher */ }
 }
 
-const pub = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role, last_seen: u.last_seen })
+const pub = (u, db) => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role, last_seen: u.last_seen, can_dev: devRoutes.devAllowed(db, u) })
 const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 
 function log(db, userId, action, module = null, details = null) {
@@ -82,7 +83,7 @@ export async function handle(method, route, params = {}, body = {}) {
   if (method === 'POST' && route === 'recognize') return recognize(body)
   const db = load()
   try {
-    return dispatch(db, method, route, params, body ?? {})
+    return await dispatch(db, method, route, params, body ?? {})
   } finally {
     save(db)
   }
@@ -113,7 +114,7 @@ function dispatch(db, method, route, params, body) {
       if (!u || u.password !== body.password) throw new DemoError('Benutzername oder Passwort falsch', 401)
       db.session = u.id
       log(db, u.id, 'login')
-      return { user: pub(u) }
+      return { user: pub(u, db) }
     }
     case 'POST auth/logout': {
       const u = current(db)
@@ -123,7 +124,7 @@ function dispatch(db, method, route, params, body) {
     }
     case 'GET auth/me': {
       const u = current(db)
-      return { user: u ? pub(u) : null }
+      return { user: u ? pub(u, db) : null }
     }
     case 'GET dashboard': {
       const me = requireUser(db)
@@ -152,7 +153,7 @@ function dispatch(db, method, route, params, body) {
       const order = { admin: 0, lehrer: 1, teilnehmer: 2 }
       return {
         users: db.users
-          .map((u) => ({ ...pub(u), activity_count: db.log.filter((r) => r.user_id === u.id).length }))
+          .map((u) => ({ ...pub(u, db), dev_access: devRoutes.devAllowed(db, u), activity_count: db.log.filter((r) => r.user_id === u.id).length }))
           .sort((a, b) => order[a.role] - order[b.role] || a.display_name.localeCompare(b.display_name)),
       }
     }
@@ -170,6 +171,8 @@ function dispatch(db, method, route, params, body) {
       return { ok: true }
     }
   }
+  const devResult = devRoutes.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
+  if (devResult !== undefined) return devResult
   const result = shop.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (result !== undefined) return result
   if (method === 'GET' && parts[0] === 'bl' && parts[1] === 'item') {
@@ -177,4 +180,10 @@ function dispatch(db, method, route, params, body) {
     throw new DemoError('In der Demo gibt es keine BrickLink-Verbindung. Auf dem Schulserver kommt sie aus der .env.', 503)
   }
   throw new DemoError('Nicht gefunden', 404)
+}
+
+/** Demo-Daten auf den Anfangszustand zurücksetzen (Dev-Bereich). Danach ist man abgemeldet. */
+export function resetDemo() {
+  memory = null
+  try { localStorage.removeItem(KEY) } catch { /* egal */ }
 }

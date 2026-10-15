@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
           <RouterLink v-if="auth.isStaff" to="/lehrer" class="sm-link"><GraduationCap :size="18" /> Lehrer-Ansicht</RouterLink>
           <div class="sm-sep"></div>
           <RouterLink to="/einstellungen" class="sm-link"><Settings :size="18" /> Einstellungen</RouterLink>
-          <RouterLink to="/dev" class="sm-link"><Code2 :size="18" /> Dev-Bereich</RouterLink>
+          <RouterLink v-if="auth.canDev" to="/dev" class="sm-link"><Code2 :size="18" /> Dev-Bereich</RouterLink>
         </div>
       </div>
       <div class="sm-foot">

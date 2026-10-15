@@ -101,3 +101,15 @@ CREATE TABLE IF NOT EXISTS {p}stocktake_items (
   expected INTEGER NOT NULL,
   counted INTEGER NULL
 );
+
+CREATE TABLE IF NOT EXISTS {p}settings (
+  setting_key TEXT NOT NULL PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS {p}dev_access (
+  user_id INTEGER NOT NULL PRIMARY KEY,
+  granted_by INTEGER NULL,
+  granted_at TEXT NOT NULL
+);

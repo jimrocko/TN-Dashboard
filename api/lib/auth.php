@@ -27,6 +27,7 @@ function public_user(array $u): array
         'display_name' => $u['display_name'],
         'role'         => $u['role'],
         'last_seen'    => $u['last_seen'] ?? null,
+        'can_dev'      => Dev::allowed($u),
     ];
 }
 

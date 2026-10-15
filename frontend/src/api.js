@@ -1,4 +1,5 @@
 import * as demoBackend from './demo/backend.js'
+import { devFlags, recordApi } from './utils/devtools.js'
 
 // Demo-Version (npm run build:demo): läuft ohne Server, Daten nur im Browser.
 export const IS_DEMO = import.meta.env.MODE === 'demo'
@@ -18,7 +19,20 @@ export function apiUrl(route, params = {}) {
   return `${BASE}?${qs}`
 }
 
-async function request(method, route, { body, params, form } = {}) {
+async function request(method, route, opts = {}) {
+  const t0 = performance.now()
+  if (devFlags.delay > 0) await new Promise((r) => setTimeout(r, devFlags.delay))
+  try {
+    const data = await send(method, route, opts)
+    recordApi({ method, route, status: 200, ms: Math.round(performance.now() - t0) })
+    return data
+  } catch (e) {
+    recordApi({ method, route, status: e.status ?? 0, ms: Math.round(performance.now() - t0), error: e.message })
+    throw e
+  }
+}
+
+async function send(method, route, { body, params, form } = {}) {
   if (IS_DEMO) {
     try {
       return await demoBackend.handle(method, route, params, form ?? body)

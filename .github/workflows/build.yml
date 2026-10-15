@@ -1,0 +1,52 @@
+# Prüft bei jedem Push und Pull Request, dass Backend und App sauber bauen,
+# und stellt die fertige App (dist/) sowie die Demo-Datei zum Herunterladen bereit (Actions → Lauf → Artifacts).
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP-Syntax prüfen
+        run: |
+          php -v | head -1
+          find api -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: frontend
+        run: npm ci
+
+      - name: App bauen (dist/ mit PHP-Backend)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Demo bauen (eine HTML-Datei ohne Server)
+        working-directory: frontend
+        run: npm run build:demo
+
+      - name: Installation mit SQLite und Demo-Daten testen
+        run: |
+          printf 'TN_DB_DRIVER=sqlite\nTN_DB_PATH=%s/local-data/ci.sqlite\n' "$PWD" > .env
+          mkdir -p local-data
+          php dist/api/install.php --demo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tn-dashboard-dist
+          path: dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tn-dashboard-demo
+          path: docs/demo/tn-dashboard-demo.html

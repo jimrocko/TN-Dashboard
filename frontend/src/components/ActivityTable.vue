@@ -6,7 +6,9 @@ defineProps({ rows: Array, showUser: Boolean, compact: Boolean })
 const actionLabel = {
   login: 'Angemeldet', logout: 'Abgemeldet', open: 'Modul geöffnet', search: 'Gesucht', user_created: 'Konto angelegt',
   transfer: 'Umgelagert', order_status: 'Auftragsstatus geändert', stocktake_created: 'Inventur gestartet',
-  stocktake_closed: 'Inventur abgeschlossen', demo_seed: 'Beispieldaten geladen',
+  stocktake_closed: 'Inventur abgeschlossen', demo_seed: 'Beispieldaten geladen', recognize: 'Teil erkannt',
+  dev_unlock: 'Dev-Bereich entsperrt', dev_unlock_failed: 'Falscher Dev-Code', dev_pin_changed: 'Dev-Code geändert',
+  dev_test: 'Dev-Test ausgeführt', dev_granted: 'Dev-Rolle vergeben', dev_revoked: 'Dev-Rolle entzogen',
 }
 const moduleLabel = (id) => (id === 'suche' ? 'Suche' : moduleById(id)?.title ?? id ?? '')
 const details = (d) => (d ? Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(' · ') : '')
