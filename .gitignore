@@ -4,4 +4,5 @@ api/config.php
 api/data/*.sqlite
 .DS_Store
 .env
+local-data/
 .env.*

@@ -74,12 +74,12 @@ $env = config()['_env'];
 $labels = [
     'db.driver' => 'Datenbank-Typ', 'db.host' => 'Datenbank-Host', 'db.port' => 'Datenbank-Port',
     'db.name' => 'Datenbank-Name', 'db.user' => 'Datenbank-Benutzer', 'db.password' => 'Datenbank-Passwort',
-    'db.prefix' => 'Tabellen-Präfix', 'bricklink.consumer_key' => 'BrickLink Consumer Key',
+    'db.prefix' => 'Tabellen-Präfix', 'db.path' => 'SQLite-Datei (nur lokal)', 'bricklink.consumer_key' => 'BrickLink Consumer Key',
     'bricklink.consumer_secret' => 'BrickLink Consumer Secret', 'bricklink.token' => 'BrickLink Token',
     'bricklink.token_secret' => 'BrickLink Token Secret',
 ];
 // Optional: diese Werte haben sinnvolle Standards und müssen nicht in der .env stehen.
-$optional = ['db.driver', 'db.port', 'db.prefix'];
+$optional = ['db.driver', 'db.port', 'db.prefix', 'db.path'];
 ?>
 <!doctype html>
 <html lang="de">

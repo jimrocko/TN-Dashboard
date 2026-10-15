@@ -20,6 +20,7 @@ return [
         'db.user'                   => ['DB_USERNAME', 'DB_USER', 'MYSQL_USER'],
         'db.password'               => ['DB_PASSWORD', 'DB_PASS', 'MYSQL_PASSWORD'],
         'db.prefix'                 => ['TN_DB_PREFIX'],
+        'db.path'                   => ['TN_DB_PATH'],
         'bricklink.consumer_key'    => ['BRICKLINK_CONSUMER_KEY', 'BL_CONSUMER_KEY'],
         'bricklink.consumer_secret' => ['BRICKLINK_CONSUMER_SECRET', 'BL_CONSUMER_SECRET'],
         'bricklink.token'           => ['BRICKLINK_TOKEN', 'BRICKLINK_TOKEN_VALUE', 'BL_TOKEN'],

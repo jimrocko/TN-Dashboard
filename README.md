@@ -18,7 +18,15 @@ Die `.env` wird nur gelesen und nie verändert. Eine `.htaccess` im App-Ordner s
 
 Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB.
 
-## Lokale Entwicklung
+## Lokal testen (ein Befehl)
+- **Mac/Linux:** `./start.sh`
+- **Windows:** `start.bat`
+
+Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in `local-data/`), baut die App beim ersten Mal, erstellt Test-Konten und startet sie unter http://localhost:8000.
+Nach Code-Änderungen baust du mit `./start.sh --neu-bauen` neu, die Test-Daten bleiben dabei erhalten.
+Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
+
+## Lokale Entwicklung (mit Hot-Reload)
 ```sh
 cp api/config.example.php api/config.php   # dort 'driver' => 'sqlite' setzen
 php api/install.php --demo                 # Demo-Konten: lehrer/lehrer123, max/max12345
