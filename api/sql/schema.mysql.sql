@@ -105,3 +105,15 @@ CREATE TABLE IF NOT EXISTS {p}stocktake_items (
   counted INT NULL,
   CONSTRAINT {p}fk_si_st FOREIGN KEY (stocktake_id) REFERENCES {p}stocktakes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS {p}settings (
+  setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS {p}dev_access (
+  user_id INT UNSIGNED NOT NULL PRIMARY KEY,
+  granted_by INT UNSIGNED NULL,
+  granted_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -33,23 +33,23 @@ onMounted(async () => {
           </select>
         </div>
         <div class="panel-body">
-          <BarList :rows="a.by_category" :value-key="metric" :format="metric === 'value' ? eur : num" />
+          <BarList :rows="a.by_category" :value-key="metric" :format="metric === 'value' ? eur : num" :link="(r) => ({ path: '/inventar', query: { category: r.label } })" />
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Volle Regalplätze (Top 10)</h2><span class="faint small">Teile je Fach</span></div>
-        <div class="panel-body"><BarList :rows="a.by_location" value-key="qty" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.by_location" value-key="qty" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Aufträge nach Status</h2></div>
-        <div class="panel-body"><BarList :rows="a.orders_by_status" value-key="count" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.orders_by_status" value-key="count" :format="num" :link="(r) => ({ path: '/auftraege', query: { status: r.label } })" /></div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">Lose je Kiste</span></div>
-        <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" /></div>
+        <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 
       <section class="panel">
@@ -59,7 +59,7 @@ onMounted(async () => {
             <thead><tr><th>Teil</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th></tr></thead>
             <tbody>
               <tr v-for="i in a.low_stock" :key="i.id">
-                <td><span class="mono">{{ i.item_no }}</span> <span class="muted small">{{ i.name }}</span></td>
+                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td><LocationTag :code="i.location_code" /></td>
                 <td class="num low">{{ num(i.qty) }}</td>

@@ -29,6 +29,8 @@
   --xp-title: linear-gradient(180deg, #3d95ff 0%, #0a5fe8 9%, #0553de 45%, #0553de 85%, #0343c6 100%);
   --xp-title-text: #ffffff;
   --xp-frame: #0831d9;
+  --xp-frame-inactive: #7b98d9;
+  --xp-title-inactive: linear-gradient(180deg, #a8c3f7 0%, #7b9fe9 9%, #7a96df 50%, #6e8bd9 100%);
   --xp-pane: linear-gradient(180deg, #7ba2e7 0%, #6375d6 100%);
   --xp-pane-head: linear-gradient(90deg, #ffffff 0%, #c6d3f7 100%);
   --xp-pane-head-text: #215dc6;
@@ -72,6 +74,8 @@
 
   --xp-title: linear-gradient(180deg, #6a6a6a 0%, #2f2f2f 9%, #1b1b1b 50%, #111111 100%);
   --xp-frame: #000000;
+  --xp-frame-inactive: #3a3a3a;
+  --xp-title-inactive: linear-gradient(180deg, #6f6f6f 0%, #4a4a4a 9%, #3b3b3b 50%, #333333 100%);
   --xp-pane: linear-gradient(180deg, #3f3f3f 0%, #232323 100%);
   --xp-pane-head: linear-gradient(90deg, #5c5c5c 0%, #3a3a3a 100%);
   --xp-pane-head-text: #ffffff;
@@ -104,6 +108,7 @@
 :root[data-tn-style='xp'] .panel-head h2 { font-family: 'Trebuchet MS', Tahoma, sans-serif; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
 :root[data-tn-style='xp'] .panel-head .faint, :root[data-tn-style='xp'] .panel-head .muted { color: rgba(255, 255, 255, 0.85); }
 :root[data-tn-style='xp'] .panel-head .mono { color: inherit; }
+:root[data-tn-style='xp'] .panel-head .tag { color: var(--text); text-shadow: none; }
 :root[data-tn-style='xp'] .panel-head.toolbar { background: var(--bg); color: var(--text); border-bottom: 1px solid var(--border); }
 :root[data-tn-style='xp'] .panel-head .btn-ghost { color: #ffffff; }
 :root[data-tn-style='xp'] .panel-head .btn-ghost:hover { background: rgba(255, 255, 255, 0.18); }

@@ -14,6 +14,8 @@ require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/ActivityLog.php';
 require __DIR__ . '/lib/Cache.php';
 require __DIR__ . '/lib/BrickLinkClient.php';
+require __DIR__ . '/lib/Brickognize.php';
+require __DIR__ . '/lib/Dev.php';
 require __DIR__ . '/lib/Shop.php';
 require __DIR__ . '/lib/DemoData.php';
 
@@ -82,6 +84,48 @@ switch (true) {
             json_response(['parts' => [], 'locations' => [], 'orders' => []]);
         }
         json_response(Shop::search($term));
+
+    case count($parts) === 2 && $parts[0] === 'location' && $method === 'GET':
+        require_user();
+        $l = Shop::location(rawurldecode($parts[1]));
+        $l ? json_response(['location' => $l]) : json_error('Lagerort nicht gefunden', 404);
+
+    case count($parts) === 2 && $parts[0] === 'part' && $method === 'GET':
+        require_user();
+        $no = rawurldecode($parts[1]);
+        if (!preg_match('/^[A-Za-z0-9._-]{1,40}$/', $no)) {
+            json_error('Ungültige Teil-Nr.');
+        }
+        json_response(['part' => Shop::part($no)]);
+
+    case $route === 'recognize' && $method === 'POST':
+        // Teileerkennung per Foto: Bild an Brickognize weiterreichen, Treffer mit dem eigenen Lager verknüpfen.
+        $me = require_user();
+        $file = $_FILES['image'] ?? null;
+        if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            json_error('Kein Foto empfangen');
+        }
+        if ($file['size'] > 8 * 1024 * 1024) {
+            json_error('Foto ist zu groß (max. 8 MB)');
+        }
+        $mime = @getimagesize($file['tmp_name'])['mime'] ?? '';
+        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            json_error('Nur JPEG, PNG oder WebP');
+        }
+        try {
+            $items = Brickognize::predict($file['tmp_name'], $mime, config()['brickognize'] ?? []);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        $lots = Shop::lotsByItem(array_column(array_filter($items, fn ($i) => $i['type'] === 'part'), 'id'));
+        foreach ($items as &$it) {
+            $it['lots'] = $it['type'] === 'part' ? ($lots[$it['id']] ?? []) : [];
+        }
+        unset($it);
+        ActivityLog::log((int) $me['id'], 'recognize', 'scanner', $items
+            ? ['teil' => $items[0]['id'], 'name' => $items[0]['name'], 'sicherheit' => round($items[0]['score'] * 100) . ' %']
+            : ['ergebnis' => 'nichts erkannt']);
+        json_response(['items' => $items]);
 
     case $route === 'orders' && $method === 'GET':
         require_user();
@@ -188,6 +232,57 @@ switch (true) {
         }
         json_response(['activity' => $rows]);
 
+    // ---- Dev-Bereich ----
+    case $route === 'dev/status' && $method === 'GET':
+        json_response(Dev::status(require_user()));
+
+    case $route === 'dev/unlock' && $method === 'POST':
+        $me = require_user();
+        if (!Dev::allowed($me)) json_error('Kein Zugang zum Dev-Bereich', 403);
+        $ok = Dev::unlock(trim((string) (request_json()['pin'] ?? '')));
+        ActivityLog::log((int) $me['id'], $ok ? 'dev_unlock' : 'dev_unlock_failed');
+        $ok ? json_response(Dev::status($me)) : json_error('Falscher Dev-Code', 401);
+
+    case $route === 'dev/lock' && $method === 'POST':
+        Dev::lock();
+        json_response(Dev::status(require_user()));
+
+    case $route === 'dev/pin' && $method === 'POST':
+        // Code festlegen: nur Lehrer; ist schon einer gesetzt, muss der Bereich entsperrt sein.
+        $me = require_staff();
+        if (Dev::pinSet() && !Dev::unlocked()) json_error('Erst mit dem alten Dev-Code entsperren', 423);
+        Dev::setPin(trim((string) (request_json()['pin'] ?? '')));
+        ActivityLog::log((int) $me['id'], 'dev_pin_changed');
+        json_response(Dev::status($me));
+
+    case $route === 'dev/system' && $method === 'GET':
+        Dev::require();
+        json_response(Dev::system());
+
+    case $route === 'dev/tables' && $method === 'GET':
+        Dev::require();
+        json_response(['tables' => Dev::tables()]);
+
+    case $route === 'dev/table' && $method === 'GET':
+        Dev::require();
+        json_response(Dev::table((string) ($_GET['name'] ?? ''), (int) ($_GET['page'] ?? 1), (int) ($_GET['per'] ?? 50)));
+
+    case $route === 'dev/test' && $method === 'POST':
+        $me = Dev::require();
+        $r = Dev::test((string) (request_json()['name'] ?? ''));
+        ActivityLog::log((int) $me['id'], 'dev_test', null, ['test' => $r['name'], 'ok' => $r['ok']]);
+        json_response($r);
+
+    case count($parts) === 3 && $parts[0] === 'users' && ctype_digit($parts[1]) && $parts[2] === 'dev' && $method === 'POST':
+        // Dev-Rolle an Teilnehmer geben oder wegnehmen (nur Lehrer).
+        $staff = require_staff();
+        $on = !empty(request_json()['enabled']);
+        $target = q('SELECT id, username FROM {users} WHERE id = ? AND active = 1', [(int) $parts[1]])->fetch();
+        if (!$target) json_error('Benutzer nicht gefunden', 404);
+        Dev::grant((int) $target['id'], $on, (int) $staff['id']);
+        ActivityLog::log((int) $staff['id'], $on ? 'dev_granted' : 'dev_revoked', null, ['username' => $target['username']]);
+        json_response(['ok' => true]);
+
     case $route === 'users' && $method === 'GET':
         require_staff();
         $rows = db()->query(
@@ -195,9 +290,11 @@ switch (true) {
                     (SELECT COUNT(*) FROM ' . t('activity_log') . ' a WHERE a.user_id = u.id) AS activity_count
              FROM ' . t('users') . ' u WHERE u.active = 1 ORDER BY u.role, u.display_name'
         )->fetchAll();
+        $dev = Dev::accessIds();
         foreach ($rows as &$r) {
             $r['id'] = (int) $r['id'];
             $r['activity_count'] = (int) $r['activity_count'];
+            $r['dev_access'] = in_array($r['role'], ROLES_STAFF, true) || in_array($r['id'], $dev, true);
         }
         json_response(['users' => $rows]);
 

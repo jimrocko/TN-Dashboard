@@ -1,5 +1,7 @@
 <script setup>
 import { Home, Settings, Code2 } from 'lucide-vue-next'
+import { useAuth } from '../stores/auth'
+const auth = useAuth()
 </script>
 
 <template>
@@ -8,7 +10,7 @@ import { Home, Settings, Code2 } from 'lucide-vue-next'
       <RouterLink to="/" class="tab" exact-active-class="active"><Home :size="26" /><span>Home</span></RouterLink>
       <div class="spacer"></div>
       <RouterLink to="/einstellungen" class="tab" active-class="active"><Settings :size="24" /><span>Einstellungen</span></RouterLink>
-      <RouterLink to="/dev" class="tab" active-class="active"><Code2 :size="24" /><span>Dev-Bereich</span></RouterLink>
+      <RouterLink v-if="auth.canDev" to="/dev" class="tab" active-class="active"><Code2 :size="24" /><span>Dev-Bereich</span></RouterLink>
     </div>
   </nav>
 </template>

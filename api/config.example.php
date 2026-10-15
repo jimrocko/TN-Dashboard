@@ -52,6 +52,16 @@ return [
         'cache_ttl'       => 86400,
     ],
 
+    // Teileerkennung per Foto (Teile-Scanner) über den kostenlosen Dienst Brickognize (https://brickognize.com).
+    // Fotos werden zur Erkennung an diesen Dienst geschickt. 'url' = null schaltet die Erkennung ab.
+    'brickognize' => [
+        'url'     => 'https://api.brickognize.com/predict/',
+        'timeout' => 30,
+    ],
+
+    // Dev-Bereich sperrt sich nach so vielen Minuten ohne Aktivität (und immer beim Abmelden).
+    'dev_lock_minutes' => 15,
+
     // Sitzungsdauer in Sekunden (8 h = ein Kurstag)
     'session_lifetime' => 28800,
 ];

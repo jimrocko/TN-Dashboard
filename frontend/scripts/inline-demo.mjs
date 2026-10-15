@@ -18,3 +18,17 @@ const html = `<title>TN Dashboard</title>
 `
 writeFileSync(resolve(out, 'tn-dashboard-demo.html'), html)
 console.log(`Demo: demo-dist/tn-dashboard-demo.html (${Math.round(html.length / 1024)} KB)`)
+
+// Vollständige HTML-Datei im Hauptordner des Repos: herunterladen und per Doppelklick im Browser öffnen.
+const standalone = `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+${html.split('<div id="app">')[0]}</head>
+<body>
+<div id="app">${html.split('<div id="app">')[1]}</body>
+</html>
+`
+writeFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../TN-Dashboard-Demo.html'), standalone)
+console.log('Demo zum Herunterladen: TN-Dashboard-Demo.html (Hauptordner)')

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
+import LocationTag from '../components/LocationTag.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
@@ -86,7 +87,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
             <thead><tr><th>Lagerort</th><th>Status</th><th class="num">Gezählt</th><th class="num">Abweichungen</th><th>Erstellt</th></tr></thead>
             <tbody>
               <tr v-for="s in list" :key="s.id" class="clickable" :class="{ selected: current?.id === s.id }" @click="select(s.id)">
-                <td><span class="mono">{{ s.location_code }}</span> <span class="faint small">{{ s.location_name }}</span></td>
+                <td><LocationTag :code="s.location_code" /> <span class="faint small">{{ s.location_name }}</span></td>
                 <td><span class="pill" :class="s.status === 'offen' ? 'warn' : 'ok'">{{ s.status === 'offen' ? 'Offen' : 'Abgeschlossen' }}</span></td>
                 <td class="num">{{ s.counted }} / {{ s.positions }}</td>
                 <td class="num" :class="{ dev: s.deviations }">{{ s.deviations }}</td>
@@ -101,7 +102,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
       <section v-if="current" class="panel">
         <div class="panel-head">
           <div>
-            <h2>Inventur <span class="mono">{{ current.location_code }}</span></h2>
+            <h2>Inventur <LocationTag :code="current.location_code" /></h2>
             <div class="faint small">
               {{ progress }} von {{ current.items.length }} gezählt · {{ deviations }} Abweichung(en)
               <template v-if="current.status !== 'offen'"> · abgeschlossen {{ dateTime(current.closed_at) }}<template v-if="current.closed_by_name"> von {{ current.closed_by_name }}</template></template>
@@ -114,7 +115,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
             <thead><tr><th>Teil</th><th>Farbe</th><th class="num">Soll</th><th class="num">Gezählt</th><th class="num">Diff.</th></tr></thead>
             <tbody>
               <tr v-for="i in current.items" :key="i.id">
-                <td><span class="mono">{{ i.item_no }}</span> <span class="muted small">{{ i.name }}</span></td>
+                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td class="num">{{ num(i.expected) }}</td>
                 <td class="num">

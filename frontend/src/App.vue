@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import BottomNav from './components/BottomNav.vue'
 import XpShell from './components/XpShell.vue'
+import DebugOverlay from './components/DebugOverlay.vue'
 import { useSettings } from './stores/settings'
 
 const route = useRoute()
@@ -19,6 +20,7 @@ const chrome = computed(() => !route.meta.public)
     <main class="main"><RouterView /></main>
     <BottomNav />
   </div>
+  <DebugOverlay v-if="chrome" />
 </template>
 
 <style scoped>
