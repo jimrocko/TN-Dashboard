@@ -19,8 +19,7 @@
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer).<br>
 <sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
-Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch die App. Zuerst wählst du **Lehrer** oder **Schüler**, dann tippst du alles selbst.<br>
-Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
+Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch die App. Zuerst wählst du **Lehrer** oder **Schüler**, dann tippst du alles selbst.</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
 
@@ -128,7 +127,6 @@ TN-Dashboard-Tutorial.html  geführte Tour mit Klemmi durch die Demo (ohne Serve
 tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
 .github/    Build-Prüfung und Demo auf GitHub Pages
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
-start.sh    lokal starten (Mac/Linux), start.bat für Windows
 ```
 
 ### Installation und Updates
@@ -152,18 +150,10 @@ Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für di
 - Fotos des Teile-Scanners gehen nur zur Erkennung an Brickognize und werden auf dem Schulserver nicht gespeichert.
 - Passwörter liegen nur gehasht in der Datenbank und erscheinen nirgends in der App, auch nicht im Dev-Bereich.
 
-## Lokal testen
-- **Mac/Linux:** `./start.sh`
-- **Windows:** `start.bat`
+## Demo und Tutorial
+Ausprobieren geht ganz oben mit den Knöpfen **Demo starten** und **Tutorial starten**, ohne Installation, direkt im Browser.
 
-Das Skript prüft PHP und Node, legt eine lokale `.env` mit SQLite an (Daten in `local-data/`), baut beim ersten Mal die App, erstellt Test-Konten mit erfundenen Lagerdaten und öffnet die App im Browser (http://127.0.0.1:8000, bei belegtem Port der nächste freie). Nach Code-Änderungen: `./start.sh --neu-bauen`. Die Test-Daten bleiben erhalten.
-
-Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
-
-### Demo-Version
-`TN-Dashboard-Demo.html` im Hauptordner ist die komplette App als eine einzige Datei: alle Bereiche, Lehrer-Ansicht, Dev-Bereich und CSV-Export, nur mit erfundenen Daten. Login, Daten und Protokoll liegen im Browser („Demo-Daten zurücksetzen“ im Dev-Bereich stellt den Anfang wieder her). Neu bauen mit `cd frontend && npm run build:demo`.
-
-Öffnen: im Repo oben auf **Demo starten** klicken, oder die Datei herunterladen und per Doppelklick öffnen. Bei jedem Push auf den Standard-Branch wird sie außerdem auf [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) veröffentlicht (einmalig unter Settings → Pages die Quelle „GitHub Actions“ wählen).
+Die **Demo** ist die komplette App: alle Bereiche, Lehrer-Ansicht, Dev-Bereich und CSV-Export, nur mit erfundenen Daten. Login, Daten und Protokoll bleiben in deinem Browser („Demo-Daten zurücksetzen“ im Dev-Bereich stellt den Anfang wieder her).
 
 ### Tutorial mit Klemmi
 <img src="docs/images/klemmi-jubelt.png" alt="Klemmi jubelt" width="110" align="right">
@@ -179,19 +169,12 @@ Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`.
 - Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
 - Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben stehen Kapitel und Tutorial, darunter ein Fortschrittsbalken als Lego-Stein.
 - Wer sich verläuft, wird zurück zur Startseite gelotst; „Ich finde es nicht“ hilft, wenn ein Ziel fehlt. Mit dem X kann man jederzeit aufhören und frei weiterprobieren.
-- Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn. Neu bauen mit `cd frontend && npm run build:tutorial`.
+- Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn.
 
 <img src="docs/images/tutorial.png" alt="Tutorial: Klemmi zeigt auf die Kachel Minifig-Finder" width="720">
 
 | <img src="docs/images/klemmi.png" alt="Klemmi winkt" height="140"> | <img src="docs/images/klemmi-zeigt.png" alt="Klemmi zeigt" height="140"> | <img src="docs/images/klemmi-jubelt.png" alt="Klemmi jubelt" height="140"> |
 |:---:|:---:|:---:|
 | winkt zur Begrüßung | zeigt, wohin du tippen sollst | jubelt, wenn du fertig bist |
-
-### Entwicklung mit Hot-Reload
-```sh
-./start.sh                      # einmal ausführen: legt .env und Test-Daten an (danach Ctrl+C)
-php -S 127.0.0.1:8000 -t .      # PHP-API aus dem Projektordner
-cd frontend && npm run dev      # Vite mit Proxy auf /api
-```
 
 Wer mit einem KI-Agent weiterarbeitet: Projektwissen, Regeln und offene Punkte stehen in [`CLAUDE.md`](CLAUDE.md).
