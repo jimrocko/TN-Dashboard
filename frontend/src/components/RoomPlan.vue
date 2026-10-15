@@ -5,7 +5,12 @@ import { num } from '../utils/format'
 
 // Raumplan des Lagerzimmers. Antippen: Bereich → Hunderter-Block → Kästchen → Lagerort-Seite.
 // locations: aus inventory/meta (id, code, name, kind, lots, qty); open: { code: Anzahl offener Umlagerungsvorschläge }
-const props = defineProps({ locations: { type: Array, default: () => [] }, open: { type: Object, default: () => ({}) } })
+// markMixed: Mischkisten rot markieren (Umlagern ja, Inventar nein)
+const props = defineProps({
+  locations: { type: Array, default: () => [] },
+  open: { type: Object, default: () => ({}) },
+  markMixed: { type: Boolean, default: true },
+})
 
 const selected = ref(null) // 'G' | 'H' | 'N' | 'F' | 'MK'
 const block = ref(null) // Startnummer des Hunderter-Blocks, z. B. 200
@@ -27,7 +32,7 @@ const stats = (ids) => {
     lots: list.reduce((s, l) => s + l.lots, 0),
     qty: list.reduce((s, l) => s + l.qty, 0),
     open: list.reduce((s, l) => s + (props.open[l.code] ?? 0), 0),
-    mixed: list.filter((l) => isMixedBox(l.code, l.lots)).length,
+    mixed: props.markMixed ? list.filter((l) => isMixedBox(l.code, l.lots)).length : 0,
   }
 }
 const fIds = AREAS.filter((a) => a.group === 'F').map((a) => a.id)
@@ -56,7 +61,7 @@ const blocks = computed(() => {
     out.push({
       start, end: start + 99,
       boxes: inBlock.filter((l) => l.lots).length,
-      mixed: inBlock.filter((l) => isMixedBox(l.code, l.lots)).length,
+      mixed: props.markMixed ? inBlock.filter((l) => isMixedBox(l.code, l.lots)).length : 0,
       open: inBlock.reduce((s, l) => s + (props.open[l.code] ?? 0), 0),
     })
   }
@@ -68,7 +73,7 @@ const cells = computed(() => {
   return Array.from({ length: 100 }, (_, i) => {
     const n = block.value + i
     const loc = byNum[n] ?? null
-    return { n, code: formatCode(area.value.id, n), loc, mixed: !!loc && isMixedBox(loc.code, loc.lots) }
+    return { n, code: formatCode(area.value.id, n), loc, mixed: props.markMixed && !!loc && isMixedBox(loc.code, loc.lots) }
   })
 })
 const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => ({ ...a, items: byArea.value[a.id] ?? [] })))
@@ -99,7 +104,7 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
         <div>
           <strong>{{ zone.title }}</strong> <span class="muted">· {{ zone.sub }}</span>
           <div class="faint small">{{ zone.s.boxes }} Kästchen belegt · {{ num(zone.s.lots) }} Lose · {{ num(zone.s.qty) }} Teile</div>
-          <div v-if="area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lose, noch aufteilen ({{ zone.s.mixed }})</div>
+          <div v-if="markMixed && area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lose, noch aufteilen ({{ zone.s.mixed }})</div>
         </div>
         <button type="button" class="btn btn-sm" @click="pick(zone.key)">Schließen</button>
       </div>

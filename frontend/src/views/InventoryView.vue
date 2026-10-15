@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftRight } from 'lucide-vue-next'
+import { ArrowLeftRight, Map as MapIcon } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
+import RoomPlan from '../components/RoomPlan.vue'
 import { api } from '../api'
 import { num, eur, date } from '../utils/format'
 
@@ -41,12 +42,31 @@ const totals = computed(() => ({
   qty: items.value.reduce((s, i) => s + i.qty, 0),
   value: items.value.reduce((s, i) => s + i.qty * i.price, 0),
 }))
+// Lagerplan zum Aufklappen; die Wahl merkt sich das Gerät.
+const PLAN_KEY = 'tn-inventar-lagerplan'
+const showPlan = ref((() => { try { return localStorage.getItem(PLAN_KEY) === '1' } catch { return false } })())
+watch(showPlan, (v) => { try { localStorage.setItem(PLAN_KEY, v ? '1' : '0') } catch { /* egal */ } })
+
 const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item' } }
 </script>
 
 <template>
   <div class="page stack">
-    <PageHead title="Inventar" :sub="`${num(items.length)} Lose · ${num(totals.qty)} Teile · ${eur(totals.value)}`" />
+    <PageHead title="Inventar" :sub="`${num(items.length)} Lose · ${num(totals.qty)} Teile · ${eur(totals.value)}`">
+      <button type="button" class="btn" :class="{ 'btn-primary': showPlan }" :aria-expanded="showPlan" @click="showPlan = !showPlan">
+        <MapIcon :size="16" /> {{ showPlan ? 'Lagerplan ausblenden' : 'Lagerplan' }}
+      </button>
+    </PageHead>
+
+    <section v-if="showPlan" class="panel">
+      <div class="panel-head">
+        <h2>Lagerplan</h2>
+        <span class="faint small">Bereich und Kästchen antippen, um den Inhalt zu sehen</span>
+      </div>
+      <div class="panel-body">
+        <RoomPlan :locations="meta.locations" :mark-mixed="false" />
+      </div>
+    </section>
 
     <div class="panel">
       <div class="panel-head toolbar">
