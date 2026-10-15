@@ -19,20 +19,21 @@ const tile = (title) => [...document.querySelectorAll('.tile')].find((t) => t.qu
 
 export const homeTab = () => q('.bottom .tab')
 
-const list = [
-  // ---------- Start ----------
+// Gemeinsamer Anfang. Der Schritt `wait: 'choose'` fragt mitten im Bild: Lehrer oder Schüler?
+const intro = [
   {
     chapter: 'Hallo!',
     say: 'Hi! Ich bin Klemmi, offizielle Minifigur dieses Lagers. Ich zeig dir, wie du das TN Dashboard bedienst. Du klickst alles selbst, ich zeige dir nur, wohin. Keine Sorge: Hier ist alles Spielgeld und Spielsteine, du kannst nichts kaputt machen. Außer meine Frisur. Die ist aber eh aus Plastik.',
     wait: 'next', mood: 'wave',
   },
+  { chapter: 'Anmelden', wait: 'choose', say: '' },
+]
+
+// ---------- Schüler-Tutorial: Bedienung, jeder Bereich der Startseite wird mindestens einmal geöffnet ----------
+const studentList = [
   {
     chapter: 'Anmelden',
-    say: 'Erst mal anmelden. In der Schule nimmst du deinen eigenen Zugang, hier leihen wir uns Max aus. Tipp auf „Teilnehmer: max“, dann sind die Daten eingetragen.',
-    target: () => byText('.accounts .btn', 'Teilnehmer'), wait: 'click', go: '/login',
-  },
-  {
-    say: 'Perfekt. Jetzt noch auf „Anmelden“. (Psst: Das Passwort von Max ist wirklich schlecht. Mach das bei deinem besser.)',
+    say: 'Schüler, alles klar! In der Schule nimmst du deinen eigenen Zugang, hier leihen wir uns Max aus. Die Daten hab ich schon eingetragen. Tipp auf „Anmelden“. (Psst: Das Passwort von Max ist wirklich schlecht. Mach das bei deinem besser.)',
     target: () => q('form.box button.btn-primary'), wait: { route: /^\/$/ }, go: '/login',
   },
   {
@@ -203,6 +204,162 @@ const list = [
   },
 ]
 
+
+// ---------- Lehrer-Tutorial: Lehrer-Ansicht, Schüler, Dev-Bereich und Einstellungen im Detail; Listen nur kurz ----------
+const teacherList = [
+  {
+    chapter: 'Anmelden',
+    say: 'Lehrer, sehr gut! Dann zeige ich dir alles, was nur Lehrer dürfen. Hier melden wir uns als „Herr Lehrer“ an, die Daten sind schon eingetragen. Tipp auf „Anmelden“.',
+    target: () => q('form.box button.btn-primary'), wait: { route: /^\/$/ }, go: '/login',
+  },
+  {
+    chapter: 'Startseite',
+    say: 'Das ist dieselbe Startseite wie bei den Schülern. Inventar, Umlagern, Aufträge und so weiter funktionieren für dich genauso, die Listen kennst du schnell selbst. Spannend wird es bei den Sachen, die nur du siehst. Los geht’s!',
+    target: () => q('.grid'), wait: 'next', from: '/',
+  },
+  // Lehrer-Ansicht
+  {
+    chapter: 'Lehrer-Ansicht',
+    say: 'Tipp oben rechts auf deinen Namen. Dort versteckt sich die Lehrer-Ansicht.',
+    target: () => q('.user .chip'), wait: 'click',
+  },
+  {
+    say: 'Und jetzt auf „Lehrer-Ansicht“.',
+    target: () => byText('.menu .item', 'Lehrer-Ansicht'), wait: { route: /^\/lehrer/ },
+  },
+  {
+    say: 'Das ist deine Kommandozentrale. Links stehen alle Konten mit Rolle, wann sie zuletzt aktiv waren und wie viele Aktionen sie gemacht haben. Anmelden und Abmelden zählen dabei nicht mit, nur echte Arbeit.',
+    target: () => panel('Teilnehmer'), wait: 'next', go: '/lehrer',
+  },
+  {
+    say: 'Tipp auf Max Mustermann, dann siehst du nur sein Protokoll.',
+    target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'click', go: '/lehrer',
+  },
+  {
+    say: 'Rechts steht jetzt alles, was Max gemacht hat: wann, was, in welchem Bereich, mit Details wie Teil, Menge und Lagerort. Jede Umlagerung, jede Inventur, jeder Auftragsschritt. Ausreden wie „Ich war das nicht“ haben hier schlechte Karten.',
+    target: () => panel('Protokoll'), wait: 'next', go: '/lehrer',
+  },
+  {
+    say: 'Mit „CSV“ lädst du das Protokoll als Tabelle herunter, zum Beispiel für Excel oder für die Notenbesprechung. „Alle anzeigen“ oben in der Liste zeigt wieder alle zusammen.',
+    target: () => panel('Protokoll')?.querySelector('.panel-head .btn') ?? null, wait: 'next', go: '/lehrer',
+  },
+  // Schüler verwalten
+  {
+    chapter: 'Schüler anlegen',
+    say: 'Neue Schüler legst du hier an: Benutzername (damit melden sie sich an), Anzeigename (den siehst du im Protokoll) und ein Startpasswort mit mindestens 6 Zeichen. Probier’s aus und tipp dann auf „Anlegen“.',
+    target: () => panel('Teilnehmer anlegen'), wait: { api: /^POST users$/ }, hint: 'Hier ausfüllen', go: '/lehrer',
+  },
+  {
+    say: 'Angelegt! Das neue Konto steht jetzt in der Liste und kann sich sofort anmelden. Sag dem Schüler sein Startpasswort, am besten nicht quer durchs Klassenzimmer.',
+    target: () => panel('Teilnehmer'), wait: 'next', mood: 'cheer', go: '/lehrer',
+  },
+  {
+    chapter: 'Dev-Rolle',
+    say: 'Ganz rechts ist die Spalte „Dev“. Lehrer haben immer Zugang zum Dev-Bereich. Schülern kannst du ihn einzeln geben, zum Beispiel deinem Technik-Profi. Tipp bei Max auf „aus“, um ihm die Dev-Rolle zu geben.',
+    target: () => byText('tr.clickable', 'Max Mustermann')?.querySelector('.devbtn') ?? null, wait: { api: /^POST users\/\d+\/dev$/ }, go: '/lehrer',
+  },
+  {
+    say: 'Max hat jetzt die Dev-Rolle. Rein kommt er trotzdem erst mit dem Dev-Code, den du festlegst. Doppelt hält besser. Mit einem weiteren Tipp nimmst du die Rolle wieder weg.',
+    target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'next', go: '/lehrer',
+  },
+  // Analyse: Aktivität pro Teilnehmer (nur Lehrer)
+  {
+    chapter: 'Analyse',
+    say: 'In der Analyse gibt’s für dich eine Extra-Auswertung. Startseite, dann „Lager- & Auftragsanalyse“.',
+    target: () => tile('Lager- & Auftragsanalyse'), wait: { route: /^\/analyse/ }, from: '/',
+  },
+  {
+    say: '„Aktivität pro Teilnehmer“ sehen nur Lehrer: wer wie viel gearbeitet hat, auf einen Blick. Wer auffällig wenig hat, bekommt vielleicht mal einen Extra-Auftrag.',
+    target: () => panel('Aktivität pro Teilnehmer'), wait: 'next', go: '/analyse',
+  },
+  // Dev-Bereich
+  {
+    chapter: 'Dev-Bereich',
+    say: 'Jetzt der Maschinenraum: der Dev-Bereich. Tipp unten auf „Dev-Bereich“.',
+    target: () => byText('.bottom .tab', 'Dev-Bereich'), wait: { route: /^\/dev/ },
+  },
+  {
+    say: 'Der Dev-Bereich ist mit einem Code gesichert. Im Testbetrieb lautet er 0000, auf dem Schulserver legst du beim ersten Öffnen einen eigenen fest (4 bis 8 Ziffern). Tipp 0 0 0 0 und dann OK. Nach 5 falschen Versuchen ist eine Minute Pause.',
+    target: () => q('.gate .pad') ?? q('.gate'), wait: { api: /^POST dev\/unlock$/ }, hint: 'Code 0000 eingeben', go: '/dev',
+  },
+  {
+    say: 'Offen! Oben sind fünf Reiter: System, Tests, Daten, API und Einstellungen. Ich zeig dir jeden. Wichtig: Nach 15 Minuten ohne Aktivität und beim Abmelden sperrt sich alles von selbst.',
+    target: () => q('main .seg'), wait: 'next', go: '/dev',
+  },
+  {
+    say: '„System“ zeigt App-Version, Datenbank, PHP und welche Werte aus der .env der Schule gelesen werden. Passwörter stehen hier nie im Klartext. Wenn mal etwas hakt, schaust du zuerst hier.',
+    target: () => q('main .seg ~ *') ?? q('main section.panel'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Weiter zu „Tests“.',
+    target: () => byText('main .seg button', 'Tests'), wait: 'click', go: '/dev',
+  },
+  {
+    say: 'Die App kann sich selbst prüfen: Datenbank lesen und schreiben, Sitzung, Speicher und alle Bereiche (nur lesend). Tipp auf „Alle Tests starten“.',
+    target: () => byText('.btn', 'Alle Tests starten'), wait: 'click', go: '/dev',
+  },
+  {
+    say: 'Grün heißt alles gut. BrickLink und die Teileerkennung brauchen Internet und den Schulserver, in dieser Übung dürfen die also rot sein. Auf dem echten Server sollte alles grün werden.',
+    target: () => q('main section.panel'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Jetzt „Daten“.',
+    target: () => byText('main .seg button', 'Daten'), wait: 'click', go: '/dev',
+  },
+  {
+    say: 'Hier siehst du jede Tabelle der Datenbank, Seite für Seite. Nur lesen, nichts bearbeiten, und Passwörter bleiben versteckt. Praktisch, wenn du wissen willst, was wirklich gespeichert ist.',
+    target: () => panel('Tabellen') ?? q('main section.panel'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Weiter zu „API“.',
+    target: () => byText('main .seg button', 'API'), wait: 'click', go: '/dev',
+  },
+  {
+    say: 'Die API-Konsole schickt einzelne Anfragen an den Server und zeigt die Antwort. Weiter unten rufst du BrickLink-Artikel ab: Das Ergebnis wird in der Datenbank gespeichert und danach von dort gelesen. Das spart Kosten und API-Limits.',
+    target: () => panel('API-Konsole') ?? q('main section.panel'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Und zum Schluss „Einstellungen“.',
+    target: () => byText('main .seg button', 'Einstellungen'), wait: 'click', go: '/dev',
+  },
+  {
+    say: '„Debug-Hilfen“ gelten nur für dieses Gerät: eine kleine Info-Leiste, ein künstlich langsames Netz zum Testen und ein Mitschnitt der API-Aufrufe. Bei „Lokale Daten“ leerst du den App-Cache, falls ein iPad eine alte Version festhält.',
+    target: () => panel('Debug-Hilfen'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Bei „Zugang“ änderst du den Dev-Code. Danach müssen alle, auch Schüler mit Dev-Rolle, den neuen Code eingeben. Wer überhaupt rein darf, legst du in der Lehrer-Ansicht fest, das kennst du ja schon.',
+    target: () => panel('Zugang'), wait: 'next', go: '/dev',
+  },
+  {
+    say: 'Wenn du den Raum verlässt: abschließen! Tipp auf „Sperren“.',
+    target: () => panel('Zugang')?.querySelector('.row:last-child .btn') ?? null, wait: { api: /^POST dev\/lock$/ }, go: '/dev',
+  },
+  // Einstellungen der App
+  {
+    chapter: 'Einstellungen',
+    say: 'Gesperrt. Zum Schluss die normalen Einstellungen: Tipp unten auf „Einstellungen“.',
+    target: () => byText('.bottom .tab', 'Einstellungen'), wait: { route: /^\/einstellungen/ },
+  },
+  {
+    say: 'Hier stellt jede Person für ihr eigenes Gerät ein, wie die App aussieht: hell oder dunkel, Schriftgröße, Abstände und weniger Bewegung. Weiter unten stehen dein Konto und der Stand der Verbindungen.',
+    target: () => panel('Darstellung'), wait: 'next', go: '/einstellungen',
+  },
+  {
+    chapter: 'Geschafft!',
+    say: 'Fertig! Du kennst jetzt die Lehrer-Ansicht mit Protokoll und CSV, kannst Schüler anlegen und die Dev-Rolle vergeben, weißt, wie der Dev-Code funktioniert, und kennst alle fünf Reiter im Dev-Bereich. Das Lager ist in guten Händen. 🎉',
+    wait: 'end', mood: 'cheer',
+  },
+]
+
 // Kapitel weiterreichen, damit jeder Schritt seins kennt
-let current = ''
-export const steps = list.map((s) => ({ ...s, chapter: (current = s.chapter ?? current) }))
+function withChapters(list) {
+  let current = ''
+  return list.map((s) => ({ ...s, chapter: (current = s.chapter ?? current) }))
+}
+export const introSteps = withChapters(intro)
+export const tracks = {
+  schueler: withChapters(studentList),
+  lehrer: withChapters(teacherList),
+}
+// Konto, das nach der Wahl eingetragen wird (Knopf auf der Anmeldeseite der Demo)
+export const accountButton = (track) => byText('.accounts .btn', track === 'lehrer' ? 'Lehrer' : 'Teilnehmer')

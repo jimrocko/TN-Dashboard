@@ -19,7 +19,7 @@
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer). Dev-Code: `0000`.<br>
 <sub>Die Demo ist die komplette App mit erfundenen Daten (rund 125.000 Teile in über 1.400 Kästchen). Alles bleibt nur in deinem Browser.<br>
-Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch jeden Bereich der App. Du tippst selbst: suchen, Kästchen öffnen, Bestand zählen, Teil erkennen, umlagern, Auftrag weiterschieben.<br>
+Im **Tutorial** führt dich Klemmi, unser Maskottchen, durch die App. Zuerst wählst du **Lehrer** oder **Schüler**, dann tippst du alles selbst.<br>
 Andere Wege: [GitHub Pages](https://jimrocko.github.io/TN-Dashboard/) · [`TN-Dashboard-Demo.html`](TN-Dashboard-Demo.html) herunterladen und per Doppelklick öffnen (geht auch ohne Internet).</sub>
 
 <img src="docs/images/dashboard.png" alt="Startseite auf dem iPad" width="820">
@@ -168,10 +168,16 @@ Test-Konten: `lehrer/lehrer123`, `max/max12345`, `erika/erika123`. Dev-Code: `00
 ### Tutorial mit Klemmi
 <img src="docs/images/klemmi-jubelt.png" alt="Klemmi jubelt" width="110" align="right">
 
-**Klemmi** ist das Maskottchen des TN Dashboards: eine klassische rote Lego-Figur, die winkt, zeigt, blinzelt, beim Sprechen den Mund bewegt und am Ende jubelt. In `TN-Dashboard-Tutorial.html` zeigt er Teilnehmern, wie man die App bedient, und lässt dabei **jeden Bereich mindestens einmal öffnen**: Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“.
+**Klemmi** ist das Maskottchen des TN Dashboards: eine klassische rote Lego-Figur, die winkt, zeigt, blinzelt, beim Sprechen den Mund bewegt und am Ende jubelt. In `TN-Dashboard-Tutorial.html` erklärt er die App. Gleich am Anfang, an der Stelle der Anmeldung, fragt er **„Wer bist du?“**: links **Lehrer**, rechts **Schüler**. Danach geht es mit dem passenden Tutorial weiter.
+
+<img src="docs/images/tutorial-wahl.png" alt="Wahl am Anfang: Lehrer oder Schüler" width="480">
+
+| Schüler-Tutorial | Lehrer-Tutorial |
+|---|---|
+| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen, Dev-Rolle vergeben, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit Dev-Code und allen fünf Reitern (System, Tests, Daten, API, Einstellungen), Sperren und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
 
 - Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
-- Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben steht das aktuelle Kapitel, darunter ein Fortschrittsbalken als Lego-Stein.
+- Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben stehen Kapitel und Tutorial, darunter ein Fortschrittsbalken als Lego-Stein.
 - Wer sich verläuft, wird zurück zur Startseite gelotst; „Ich finde es nicht“ hilft, wenn ein Ziel fehlt. Mit dem X kann man jederzeit aufhören und frei weiterprobieren.
 - Das Tutorial hat eigene Daten und beginnt bei jedem Öffnen von vorn. Neu bauen mit `cd frontend && npm run build:tutorial`.
 
