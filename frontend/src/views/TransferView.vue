@@ -77,7 +77,7 @@ onMounted(async () => {
 
 <template>
   <div class="page stack">
-    <PageHead title="Umlagern" sub="Teile aus Mischkisten an ihren festen Regalplatz bringen oder frei umbuchen." />
+    <PageHead title="Umlagern" sub="Mischkisten aufteilen (G-Kästchen mit mehr als 3 Losen): Lose dorthin bringen, wo das Teil schon liegt, oder frei umbuchen." />
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -100,7 +100,7 @@ onMounted(async () => {
               <td class="num faint">{{ num(s.target_qty) }}</td>
               <td class="num"><button class="btn btn-sm" :disabled="busy" @click="book(s.lot.id, s.to_location_id, s.lot.qty)">Übernehmen</button></td>
             </tr>
-            <tr v-if="!suggestions.length"><td colspan="8" class="empty">Keine Vorschläge. Die Mischkisten enthalten nur Teile ohne festen Platz.</td></tr>
+            <tr v-if="!suggestions.length"><td colspan="8" class="empty">Keine Vorschläge. Es gibt keine Mischkisten, oder ihre Teile liegen sonst nirgends.</td></tr>
           </tbody>
         </table>
       </div>

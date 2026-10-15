@@ -48,7 +48,7 @@ onMounted(async () => {
       </section>
 
       <section class="panel">
-        <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">Lose je Kiste</span></div>
+        <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">G-Kästchen mit mehr als 3 Losen, die vollsten zuerst</span></div>
         <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 

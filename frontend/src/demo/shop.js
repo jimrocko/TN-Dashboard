@@ -1,5 +1,6 @@
 // Lager, Aufträge, Umlagern, Inventur und Analyse für die Demo, entspricht api/lib/Shop.php.
 import { DemoError, now } from './backend.js'
+import { isMixedBox } from '../utils/areas.js'
 
 const ORDER_STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen']
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt']
@@ -119,14 +120,26 @@ function order(db, id) {
   return { ...o, items }
 }
 
+// Mischkisten = G-Kästchen mit mehr als 3 verschiedenen Losen (isMixedBox, wie Shop::mixedBoxes)
+function mixedBoxes(db) {
+  const t = totalsByLocation(db)
+  const out = new Set()
+  for (const l of db.locations) if (isMixedBox(l.code, t.get(l.id)?.lots ?? 0)) out.add(l.id)
+  return out
+}
+
+/** Lose aus Mischkisten, deren Teil (gleiche Nummer + Farbe) schon in einem anderen, nicht gemischten Kästchen liegt. */
 function suggestions(db) {
-  const shelf = db.inventory.filter((i) => loc(db, i.location_id)?.kind === 'regal').sort((a, b) => b.qty - a.qty)
+  const mixed = mixedBoxes(db)
+  if (!mixed.size) return []
   const byKey = {}
-  for (const s of shelf) byKey[`${s.item_no}|${s.color_id}`] ??= s
+  for (const s of [...db.inventory].sort((a, b) => b.qty - a.qty)) {
+    if (!mixed.has(s.location_id)) byKey[`${s.item_no}|${s.color_id}`] ??= s
+  }
   return db.inventory
-    .filter((i) => loc(db, i.location_id)?.kind === 'mischkiste')
+    .filter((i) => mixed.has(i.location_id))
     .map((i) => lotRow(db, i))
-    .sort((a, b) => a.location_code.localeCompare(b.location_code) || a.item_no.localeCompare(b.item_no))
+    .sort((a, b) => natural(a.location_code, b.location_code) || a.item_no.localeCompare(b.item_no))
     .flatMap((m) => {
       const t = byKey[`${m.item_no}|${m.color_id}`]
       return t ? [{ lot: m, to_location_id: t.location_id, to_location_code: loc(db, t.location_id).code, target_qty: t.qty }] : []
@@ -254,7 +267,7 @@ function analysis(db) {
   return {
     by_category: group((i) => i.category),
     by_location: byLoc.filter((l) => l.kind === 'regal').slice(0, 10),
-    mixed_bins: byLoc.filter((l) => l.kind === 'mischkiste'),
+    mixed_bins: byLoc.filter((l) => isMixedBox(l.label, l.lots)).sort((a, b) => b.lots - a.lots || natural(a.label, b.label)).slice(0, 10),
     orders_by_status: ORDER_STATUSES.map((s) => ({ label: s, count: db.orders.filter((o) => o.status === s).length })),
     low_stock: db.inventory.filter((i) => loc(db, i.location_id)?.kind === 'regal' && i.qty < 20)
       .sort((a, b) => a.qty - b.qty).slice(0, 10).map((i) => lotRow(db, i)),

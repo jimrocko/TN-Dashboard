@@ -134,19 +134,6 @@ faktor = (ZIEL_TEILE - g - sum(i['qty'] for i in inventar if i['item_type'] == '
 for i in rest:
     i['qty'] = max(1, round(i['qty'] * faktor))
 
-# Mischkisten zum Einsortieren (MK-1…3): Teile, die schon einen festen Platz haben, plus eins ohne Platz
-regal = [i for i in inventar if i['item_type'] == 'PART']
-for k in range(1, 4):
-    c = f'MK-{k}'
-    lagerorte.append({'code': c, 'name': f'Mischkiste {k}', 'kind': 'mischkiste'})
-    gewaehlt = set()
-    while len(gewaehlt) < 4:
-        v = rnd.choice(regal)
-        if (v['item_no'], v['color_id']) not in gewaehlt:
-            gewaehlt.add((v['item_no'], v['color_id']))
-            inventar.append({**v, 'location': c, 'qty': rnd.randint(5, 60), 'updated_days_ago': rnd.randint(0, 10)})
-    inventar.append(los(rnd.choice(TEILE), (12, 'Trans-Clear'), c, rnd.randint(5, 40)))
-
 # Aufträge (erfunden) mit Positionen aus G/H/N
 kaeufer = ['brickfan_92', 'mocbuilder', 'steinchenwelt', 'klemmbaustein_kai', 'bluebrick_de', 'citybuilder77',
            'technic_tom', 'lena_bricks', 'modulbau_hh', 'plate_collector']
@@ -164,7 +151,7 @@ for n, st in enumerate(status):
 daten = {
     '_hinweis': 'Erfundene Beispieldaten für Demo und Tests (tools/gen-demo-data.py). Keine echten Bestellungen oder Kunden.',
     'locations': lagerorte, 'inventory': inventar, 'orders': auftraege,
-    'stocktakes': [{'location': 'G245'}, {'location': 'H012'}, {'location': 'MK-2'}],
+    'stocktakes': [{'location': 'G245'}, {'location': 'H012'}, {'location': 'N010'}],
 }
 ziel = Path(__file__).resolve().parent.parent / 'api' / 'sql' / 'demo-data.json'
 # Ein Datensatz pro Zeile: lesbare Git-Diffs, aber kleine Datei

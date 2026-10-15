@@ -25,6 +25,9 @@ function typed(array $rows, array $ints = [], array $floats = []): array
 
 const LOT_INTS = ['id', 'color_id', 'location_id', 'qty'];
 const ORDER_STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen'];
+// Mischkiste: Kästchen in Bereich G mit mehr als 3 verschiedenen Losen (Regel des Inhabers)
+const MIXED_AREA_PATTERN = '/^G\\d+$/i';
+const MIXED_MAX_LOTS = 3;
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt'];
 
 final class Shop
@@ -138,22 +141,43 @@ final class Shop
         }
     }
 
-    /** Lose in Mischkisten, deren Teil (gleiche Nummer + Farbe) schon einen festen Regalplatz hat. */
+    /**
+     * Mischkisten = G-Kästchen mit mehr als MIXED_MAX_LOTS verschiedenen Losen (noch nicht aufgeteilt).
+     * Liefert [location_id => Anzahl Lose] dieser Kästchen. Entspricht isMixedBox() in frontend/src/utils/areas.js.
+     */
+    public static function mixedBoxes(): array
+    {
+        $out = [];
+        foreach (q('SELECT l.id, l.code, COUNT(i.id) AS lots FROM {locations} l JOIN {inventory} i ON i.location_id = l.id
+                GROUP BY l.id, l.code')->fetchAll() as $r) {
+            if (preg_match(MIXED_AREA_PATTERN, $r['code']) && (int) $r['lots'] > MIXED_MAX_LOTS) {
+                $out[(int) $r['id']] = (int) $r['lots'];
+            }
+        }
+        return $out;
+    }
+
+    /** Lose aus Mischkisten, deren Teil (gleiche Nummer + Farbe) schon in einem anderen, nicht gemischten Kästchen liegt. */
     public static function suggestions(): array
     {
-        $mixed = typed(q(self::LOT_SELECT . " WHERE l.kind = 'mischkiste' ORDER BY l.code, i.item_no")->fetchAll(), LOT_INTS, ['price']);
-        $shelf = typed(q(self::LOT_SELECT . " WHERE l.kind = 'regal' ORDER BY i.qty DESC")->fetchAll(), LOT_INTS);
+        $mixed = self::mixedBoxes();
+        if (!$mixed) return [];
+        $all = typed(q(self::LOT_SELECT . ' ORDER BY i.qty DESC')->fetchAll(), LOT_INTS, ['price']);
         $byKey = [];
-        foreach ($shelf as $s) {
-            $byKey[$s['item_no'] . '|' . $s['color_id']] ??= $s;
+        foreach ($all as $l) {
+            if (!isset($mixed[$l['location_id']])) {
+                $byKey[$l['item_no'] . '|' . $l['color_id']] ??= $l;
+            }
         }
         $out = [];
-        foreach ($mixed as $m) {
+        foreach ($all as $m) {
+            if (!isset($mixed[$m['location_id']])) continue;
             $target = $byKey[$m['item_no'] . '|' . $m['color_id']] ?? null;
             if ($target) {
                 $out[] = ['lot' => $m, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'], 'target_qty' => $target['qty']];
             }
         }
+        usort($out, fn ($a, $b) => strnatcasecmp($a['lot']['location_code'], $b['lot']['location_code']) ?: strcmp($a['lot']['item_no'], $b['lot']['item_no']));
         return $out;
     }
 
@@ -371,7 +395,10 @@ final class Shop
         $activity = typed(q("SELECT u.display_name AS label, COUNT(a.id) AS count FROM {users} u
             LEFT JOIN {activity_log} a ON a.user_id = u.id AND a.action NOT IN ('login', 'logout')
             WHERE u.role = 'teilnehmer' AND u.active = 1 GROUP BY u.id, u.display_name ORDER BY COUNT(a.id) DESC")->fetchAll(), ['count']);
-        $mixed = array_values(array_filter($byLocation, fn ($l) => $l['kind'] === 'mischkiste'));
+        // Mischkisten (G-Kästchen mit zu vielen Losen), die vollsten zuerst
+        $mixed = array_values(array_filter($byLocation, fn ($l) => preg_match(MIXED_AREA_PATTERN, $l['label']) && $l['lots'] > MIXED_MAX_LOTS));
+        usort($mixed, fn ($a, $b) => $b['lots'] <=> $a['lots'] ?: strnatcasecmp($a['label'], $b['label']));
+        $mixed = array_slice($mixed, 0, 10);
         return [
             'by_category' => $byCategory,
             'by_location' => array_slice(array_values(array_filter($byLocation, fn ($l) => $l['kind'] === 'regal')), 0, 10),

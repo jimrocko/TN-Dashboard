@@ -1,7 +1,8 @@
 // Bereiche im Lagerzimmer (Skizze des Inhabers): Kästchen-Codes wie G245, H012, N005, FT3, Plate2.
 // G, H und N haben immer drei Stellen (N005), FG/FN/FT/Plate ohne führende Nullen.
 // G = gebraucht (linke Wand), H (rechte Wand oben), N = neu (rechte Wand unten),
-// FG/FN/FT/Plate = Figuren gebraucht/neu, Figurenteile, Plates (unten links). Mischkisten (MK-…) liegen außerhalb des Plans.
+// FG/FN/FT/Plate = Figuren gebraucht/neu, Figurenteile, Plates (unten links).
+// „Mischkiste“ ist kein eigener Ort, sondern ein G-Kästchen mit mehr als 3 Losen (siehe maxLots, isMixedBox).
 export const AREAS = [
   // maxLots: Kästchen mit mehr verschiedenen Losen gelten als Mischkiste (noch nicht aufgeteilt) und werden rot markiert.
   { id: 'G', label: 'Gebraucht', color: '#3f8f3a', from: 100, to: 999, digits: 3, maxLots: 3 },
@@ -21,14 +22,13 @@ export function formatCode(areaId, n) {
   return `${areaId}${String(n).padStart(digits, '0')}`
 }
 
-/** Zerlegt einen Lagerort-Code: G245 → { area: 'G', num: 245 }, N005 → { area: 'N', num: 5 }; Mischkisten → { area: 'MK' }; sonst null. */
+/** Zerlegt einen Lagerort-Code: G245 → { area: 'G', num: 245 }, N005 → { area: 'N', num: 5 }; sonst null. */
 export function parseCode(code) {
   const m = CODE.exec(String(code ?? ''))
   if (m) {
     const area = AREAS.find((a) => a.id.toLowerCase() === m[1].toLowerCase())
     return { area: area.id, num: Number(m[2]) }
   }
-  if (/^MK/i.test(String(code ?? ''))) return { area: 'MK', num: null }
   return null
 }
 

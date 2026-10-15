@@ -1422,10 +1422,7 @@
   {"code":"Plate77","name":"Plates, Kästchen 77","kind":"regal"},
   {"code":"Plate78","name":"Plates, Kästchen 78","kind":"regal"},
   {"code":"Plate79","name":"Plates, Kästchen 79","kind":"regal"},
-  {"code":"Plate80","name":"Plates, Kästchen 80","kind":"regal"},
-  {"code":"MK-1","name":"Mischkiste 1","kind":"mischkiste"},
-  {"code":"MK-2","name":"Mischkiste 2","kind":"mischkiste"},
-  {"code":"MK-3","name":"Mischkiste 3","kind":"mischkiste"}
+  {"code":"Plate80","name":"Plates, Kästchen 80","kind":"regal"}
  ],
  "inventory": [
   {"item_type":"PART","item_no":"3039","color_id":7,"color_name":"Blue","name":"Slope 45 2 x 2","category":"Slope","location":"G100","qty":10,"price":0.183,"updated_days_ago":39},
@@ -4522,40 +4519,25 @@
   {"item_type":"PART","item_no":"3710","color_id":59,"color_name":"Dark Red","name":"Plate 1 x 4","category":"Plate","location":"Plate79","qty":111,"price":0.096,"updated_days_ago":11},
   {"item_type":"PART","item_no":"3022","color_id":3,"color_name":"Yellow","name":"Plate 2 x 2","category":"Plate","location":"Plate80","qty":182,"price":0.12,"updated_days_ago":2},
   {"item_type":"PART","item_no":"3021","color_id":1,"color_name":"White","name":"Plate 2 x 3","category":"Plate","location":"Plate80","qty":195,"price":0.108,"updated_days_ago":32},
-  {"item_type":"PART","item_no":"3024","color_id":69,"color_name":"Dark Tan","name":"Plate 1 x 1","category":"Plate","location":"Plate80","qty":94,"price":0.047,"updated_days_ago":15},
-  {"item_type":"PART","item_no":"3003","color_id":5,"color_name":"Red","name":"Brick 2 x 2","category":"Brick","location":"MK-1","qty":36,"price":0.187,"updated_days_ago":6},
-  {"item_type":"PART","item_no":"32062","color_id":59,"color_name":"Dark Red","name":"Technic, Axle 2 Notched","category":"Technic, Axle","location":"MK-1","qty":47,"price":0.074,"updated_days_ago":6},
-  {"item_type":"PART","item_no":"3700","color_id":3,"color_name":"Yellow","name":"Technic, Brick 1 x 2 with Hole","category":"Technic, Brick","location":"MK-1","qty":41,"price":0.074,"updated_days_ago":5},
-  {"item_type":"PART","item_no":"3795","color_id":3,"color_name":"Yellow","name":"Plate 2 x 6","category":"Plate","location":"MK-1","qty":19,"price":0.058,"updated_days_ago":8},
-  {"item_type":"PART","item_no":"3001","color_id":12,"color_name":"Trans-Clear","name":"Brick 2 x 4","category":"Brick","location":"MK-1","qty":27,"price":0.194,"updated_days_ago":33},
-  {"item_type":"PART","item_no":"3623","color_id":1,"color_name":"White","name":"Plate 1 x 3","category":"Plate","location":"MK-2","qty":48,"price":0.087,"updated_days_ago":1},
-  {"item_type":"PART","item_no":"3713","color_id":7,"color_name":"Blue","name":"Technic, Bush","category":"Technic, Bush","location":"MK-2","qty":41,"price":0.028,"updated_days_ago":8},
-  {"item_type":"PART","item_no":"3023","color_id":12,"color_name":"Trans-Clear","name":"Plate 1 x 2","category":"Plate","location":"MK-2","qty":55,"price":0.049,"updated_days_ago":2},
-  {"item_type":"PART","item_no":"4073","color_id":80,"color_name":"Dark Green","name":"Plate, Round 1 x 1 Straight Side","category":"Plate, Round","location":"MK-2","qty":45,"price":0.035,"updated_days_ago":9},
-  {"item_type":"PART","item_no":"54200","color_id":12,"color_name":"Trans-Clear","name":"Slope 30 1 x 1 x 2/3","category":"Slope","location":"MK-2","qty":14,"price":0.022,"updated_days_ago":54},
-  {"item_type":"PART","item_no":"3068b","color_id":12,"color_name":"Trans-Clear","name":"Tile 2 x 2 with Groove","category":"Tile","location":"MK-3","qty":30,"price":0.177,"updated_days_ago":8},
-  {"item_type":"PART","item_no":"32062","color_id":42,"color_name":"Medium Blue","name":"Technic, Axle 2 Notched","category":"Technic, Axle","location":"MK-3","qty":23,"price":0.05,"updated_days_ago":8},
-  {"item_type":"PART","item_no":"2780","color_id":59,"color_name":"Dark Red","name":"Technic, Pin with Friction Ridges","category":"Technic, Pin","location":"MK-3","qty":44,"price":0.045,"updated_days_ago":3},
-  {"item_type":"PART","item_no":"3666","color_id":63,"color_name":"Dark Blue","name":"Plate 1 x 6","category":"Plate","location":"MK-3","qty":35,"price":0.079,"updated_days_ago":4},
-  {"item_type":"PART","item_no":"87079","color_id":12,"color_name":"Trans-Clear","name":"Tile 2 x 4","category":"Tile","location":"MK-3","qty":23,"price":0.317,"updated_days_ago":21}
+  {"item_type":"PART","item_no":"3024","color_id":69,"color_name":"Dark Tan","name":"Plate 1 x 1","category":"Plate","location":"Plate80","qty":94,"price":0.047,"updated_days_ago":15}
  ],
  "orders": [
-  {"order_no":"28471028","buyer":"brickfan_92","status":"Neu","days_ago":0,"items":[{"lot":2051,"qty":14,"price":0.24},{"lot":2200,"qty":17,"price":0.087},{"lot":1997,"qty":2,"price":0.061},{"lot":1546,"qty":6,"price":0.071},{"lot":573,"qty":5,"price":0.09},{"lot":2068,"qty":4,"price":0.088},{"lot":2402,"qty":17,"price":0.118},{"lot":2254,"qty":27,"price":0.073}]},
-  {"order_no":"28471174","buyer":"mocbuilder","status":"Neu","days_ago":1,"items":[{"lot":1805,"qty":6,"price":0.094},{"lot":1106,"qty":3,"price":0.3},{"lot":677,"qty":3,"price":0.074},{"lot":2618,"qty":15,"price":0.055},{"lot":726,"qty":1,"price":0.115},{"lot":379,"qty":5,"price":0.045},{"lot":2085,"qty":13,"price":0.054},{"lot":512,"qty":10,"price":0.239}]},
-  {"order_no":"28471352","buyer":"steinchenwelt","status":"Bezahlt","days_ago":2,"items":[{"lot":1105,"qty":18,"price":0.086},{"lot":1772,"qty":10,"price":0.074},{"lot":147,"qty":5,"price":0.158},{"lot":1215,"qty":4,"price":0.241},{"lot":732,"qty":3,"price":0.174},{"lot":610,"qty":11,"price":0.034},{"lot":2241,"qty":22,"price":0.026}]},
-  {"order_no":"28471484","buyer":"klemmbaustein_kai","status":"Bezahlt","days_ago":1,"items":[{"lot":2581,"qty":9,"price":0.165},{"lot":2358,"qty":28,"price":0.218},{"lot":1218,"qty":10,"price":0.246},{"lot":486,"qty":8,"price":0.141}]},
-  {"order_no":"28471612","buyer":"bluebrick_de","status":"Verpackt","days_ago":5,"items":[{"lot":2630,"qty":9,"price":0.105},{"lot":2247,"qty":26,"price":0.051},{"lot":1404,"qty":19,"price":0.028},{"lot":1555,"qty":17,"price":0.046}]},
-  {"order_no":"28471777","buyer":"citybuilder77","status":"Versandt","days_ago":6,"items":[{"lot":2382,"qty":20,"price":0.036},{"lot":625,"qty":6,"price":0.034},{"lot":985,"qty":4,"price":0.34},{"lot":544,"qty":1,"price":0.289}]},
-  {"order_no":"28471837","buyer":"technic_tom","status":"Versandt","days_ago":4,"items":[{"lot":2117,"qty":7,"price":0.11},{"lot":1387,"qty":6,"price":0.024},{"lot":1022,"qty":3,"price":0.085},{"lot":39,"qty":1,"price":0.154},{"lot":1018,"qty":8,"price":0.168},{"lot":477,"qty":13,"price":0.051}]},
-  {"order_no":"28471979","buyer":"lena_bricks","status":"Abgeschlossen","days_ago":9,"items":[{"lot":269,"qty":13,"price":0.08},{"lot":2240,"qty":24,"price":0.048},{"lot":2543,"qty":18,"price":0.256}]},
-  {"order_no":"28472117","buyer":"modulbau_hh","status":"Abgeschlossen","days_ago":11,"items":[{"lot":1244,"qty":2,"price":0.05},{"lot":2056,"qty":7,"price":0.105},{"lot":1282,"qty":16,"price":0.046},{"lot":1700,"qty":4,"price":0.053},{"lot":1698,"qty":5,"price":0.081},{"lot":1562,"qty":19,"price":0.089}]},
-  {"order_no":"28472248","buyer":"plate_collector","status":"Bezahlt","days_ago":1,"items":[{"lot":1095,"qty":9,"price":0.021},{"lot":1253,"qty":9,"price":0.132},{"lot":141,"qty":1,"price":0.029},{"lot":66,"qty":5,"price":0.033},{"lot":829,"qty":2,"price":0.105},{"lot":963,"qty":5,"price":0.029},{"lot":1074,"qty":6,"price":0.067},{"lot":1873,"qty":5,"price":0.057}]},
-  {"order_no":"28472393","buyer":"brickfan_92","status":"Neu","days_ago":3,"items":[{"lot":2427,"qty":17,"price":0.073},{"lot":2170,"qty":30,"price":0.058},{"lot":268,"qty":6,"price":0.15},{"lot":411,"qty":6,"price":0.069},{"lot":422,"qty":10,"price":0.073},{"lot":16,"qty":8,"price":0.029}]},
-  {"order_no":"28472515","buyer":"mocbuilder","status":"Verpackt","days_ago":2,"items":[{"lot":1218,"qty":9,"price":0.246},{"lot":1537,"qty":10,"price":0.076},{"lot":1553,"qty":3,"price":0.174}]}
+  {"order_no":"28471042","buyer":"brickfan_92","status":"Neu","days_ago":1,"items":[{"lot":2032,"qty":4,"price":0.019},{"lot":1661,"qty":1,"price":0.021},{"lot":336,"qty":19,"price":0.074}]},
+  {"order_no":"28471223","buyer":"mocbuilder","status":"Neu","days_ago":0,"items":[{"lot":2131,"qty":6,"price":0.178},{"lot":26,"qty":5,"price":0.082},{"lot":1454,"qty":5,"price":0.078},{"lot":2351,"qty":29,"price":0.293}]},
+  {"order_no":"28471320","buyer":"steinchenwelt","status":"Bezahlt","days_ago":4,"items":[{"lot":2358,"qty":19,"price":0.218},{"lot":2277,"qty":26,"price":0.102},{"lot":49,"qty":9,"price":0.049},{"lot":672,"qty":5,"price":0.115},{"lot":557,"qty":1,"price":0.035},{"lot":2561,"qty":28,"price":0.104}]},
+  {"order_no":"28471479","buyer":"klemmbaustein_kai","status":"Bezahlt","days_ago":4,"items":[{"lot":177,"qty":5,"price":0.05},{"lot":1166,"qty":15,"price":0.102},{"lot":2194,"qty":10,"price":0.076},{"lot":753,"qty":8,"price":0.045},{"lot":2524,"qty":11,"price":0.196},{"lot":785,"qty":11,"price":0.223},{"lot":1936,"qty":9,"price":0.169}]},
+  {"order_no":"28471548","buyer":"bluebrick_de","status":"Verpackt","days_ago":5,"items":[{"lot":573,"qty":2,"price":0.09},{"lot":2068,"qty":19,"price":0.088},{"lot":2402,"qty":4,"price":0.118},{"lot":2254,"qty":17,"price":0.073},{"lot":1685,"qty":4,"price":0.262},{"lot":2172,"qty":21,"price":0.148}]},
+  {"order_no":"28471696","buyer":"citybuilder77","status":"Versandt","days_ago":6,"items":[{"lot":677,"qty":1,"price":0.074},{"lot":2618,"qty":29,"price":0.055},{"lot":726,"qty":3,"price":0.115},{"lot":379,"qty":10,"price":0.045},{"lot":2085,"qty":15,"price":0.054}]},
+  {"order_no":"28471892","buyer":"technic_tom","status":"Versandt","days_ago":6,"items":[{"lot":2383,"qty":14,"price":0.022},{"lot":1185,"qty":1,"price":0.033},{"lot":2608,"qty":10,"price":0.059},{"lot":942,"qty":6,"price":0.178},{"lot":2308,"qty":25,"price":0.069},{"lot":1105,"qty":5,"price":0.086}]},
+  {"order_no":"28472039","buyer":"lena_bricks","status":"Abgeschlossen","days_ago":11,"items":[{"lot":1478,"qty":8,"price":0.038},{"lot":2642,"qty":6,"price":0.071},{"lot":2518,"qty":29,"price":0.098}]},
+  {"order_no":"28472190","buyer":"modulbau_hh","status":"Abgeschlossen","days_ago":12,"items":[{"lot":486,"qty":3,"price":0.141},{"lot":1092,"qty":7,"price":0.028},{"lot":2398,"qty":21,"price":0.04},{"lot":2083,"qty":26,"price":0.1},{"lot":1254,"qty":6,"price":0.01},{"lot":979,"qty":9,"price":0.19},{"lot":2365,"qty":27,"price":0.275},{"lot":2535,"qty":11,"price":0.089}]},
+  {"order_no":"28472316","buyer":"plate_collector","status":"Bezahlt","days_ago":2,"items":[{"lot":2394,"qty":19,"price":0.078},{"lot":2152,"qty":5,"price":0.027},{"lot":2079,"qty":8,"price":0.107},{"lot":1901,"qty":3,"price":0.012},{"lot":958,"qty":20,"price":0.354}]},
+  {"order_no":"28472370","buyer":"brickfan_92","status":"Neu","days_ago":3,"items":[{"lot":51,"qty":2,"price":0.15},{"lot":2196,"qty":1,"price":0.045},{"lot":2250,"qty":8,"price":0.148},{"lot":1456,"qty":2,"price":0.053},{"lot":1717,"qty":7,"price":0.193},{"lot":2117,"qty":11,"price":0.11},{"lot":1387,"qty":3,"price":0.024}]},
+  {"order_no":"28472545","buyer":"mocbuilder","status":"Verpackt","days_ago":4,"items":[{"lot":497,"qty":13,"price":0.144},{"lot":337,"qty":4,"price":0.148},{"lot":495,"qty":9,"price":0.08},{"lot":269,"qty":6,"price":0.08},{"lot":2240,"qty":2,"price":0.048},{"lot":2543,"qty":16,"price":0.256}]}
  ],
  "stocktakes": [
   {"location":"G245"},
   {"location":"H012"},
-  {"location":"MK-2"}
+  {"location":"N010"}
  ]
 }

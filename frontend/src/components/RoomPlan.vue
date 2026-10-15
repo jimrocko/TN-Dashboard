@@ -12,15 +12,15 @@ const props = defineProps({
   markMixed: { type: Boolean, default: true },
 })
 
-const selected = ref(null) // 'G' | 'H' | 'N' | 'F' | 'MK'
+const selected = ref(null) // 'G' | 'H' | 'N' | 'F'
 const block = ref(null) // Startnummer des Hunderter-Blocks, z. B. 200
 
 const byArea = computed(() => {
   const m = {}
   for (const l of props.locations) {
     const p = parseCode(l.code)
-    const key = p ? p.area : 'MK'
-    ;(m[key] ??= []).push({ ...l, num: p?.num ?? null })
+    if (!p) continue // Codes außerhalb des Raumplans
+    ;(m[p.area] ??= []).push({ ...l, num: p.num })
   }
   for (const list of Object.values(m)) list.sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }))
   return m
@@ -41,7 +41,6 @@ const zones = computed(() => [
   { key: 'H', title: `${formatCode('H', 0)}–${formatCode('H', 999)}`, sub: 'Regal H', color: areaById('H').color, s: stats(['H']) },
   { key: 'N', title: `${formatCode('N', 0)}–${formatCode('N', 999)}`, sub: 'Neu', color: areaById('N').color, s: stats(['N']) },
   { key: 'F', title: 'FG · FN · FT · Plate', sub: 'Figuren & Plates', color: areaById('FG').color, s: stats(fIds) },
-  { key: 'MK', title: 'Mischkisten', sub: 'zum Einsortieren', color: '#8a8f98', s: stats(['MK']) },
 ])
 const zone = computed(() => zones.value.find((z) => z.key === selected.value))
 
@@ -131,7 +130,7 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
       </template>
 
       <!-- Figuren & Plates: Kästchen je Unterbereich -->
-      <template v-else-if="zone.key === 'F'">
+      <template v-else>
         <div v-for="g in fGroups" :key="g.id" class="sub">
           <div class="subname">{{ g.id }} · {{ g.label }}</div>
           <div class="tiles">
@@ -143,13 +142,6 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
         </div>
       </template>
 
-      <!-- Mischkisten -->
-      <div v-else class="tiles">
-        <RouterLink v-for="l in byArea.MK ?? []" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="tile2" :class="{ empty: !l.lots }">
-          <span class="mono code">{{ l.code }}</span><span class="faint small">{{ l.lots }} Lose · {{ num(l.qty) }}</span>
-          <span v-if="open[l.code]" class="badge">{{ open[l.code] }}</span>
-        </RouterLink>
-      </div>
     </div>
   </div>
 </template>
@@ -183,7 +175,6 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
 .z-H { right: 9%; top: 9%; }
 .z-N { right: 9%; top: 40%; }
 .z-F { left: 10%; top: 55%; }
-.z-MK { left: 34%; bottom: 7%; border-style: dashed; border-radius: 10px; }
 
 .badge {
   position: absolute; top: -8px; right: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
@@ -235,7 +226,6 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
   .z-H { right: 8%; top: 5%; }
   .z-N { right: 8%; top: 42%; }
   .z-F { left: 9%; top: 58%; }
-  .z-MK { left: 26%; bottom: 6%; }
   .cells { gap: 3px; }
   .cell { min-height: 28px; font-size: 0.68rem; }
 }
