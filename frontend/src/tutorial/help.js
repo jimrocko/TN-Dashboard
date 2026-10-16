@@ -14,6 +14,16 @@ const head = () => q('main .page-head')
 const end = (say) => ({ say, wait: 'end', mood: 'cheer' })
 
 const topics = {
+  start: {
+    title: 'Startseite',
+    steps: [
+      { say: 'Willkommen auf der Startseite! Ganz oben ist die Suche: Teil-Nummer, Name, Farbe, Lagerort oder Auftrag eintippen und Enter.', target: () => q('main form.search') },
+      { say: 'Rechts im Suchfeld sitzt das Scan-Symbol. Damit fotografierst du ein Teil, und die App erkennt es.', target: () => q('main form.search .scan') },
+      { say: 'Jede Kachel ist ein Bereich. Die kleine Zeile unten verrät, was dort gerade los ist, zum Beispiel wie viele Vorschläge in Umlagern warten.', target: () => q('main .grid') },
+      { say: 'Unten geht es immer zurück nach Hause und zu den Einstellungen. Oben rechts auf deinen Namen tippen zeigt deine Aktivitäten.', target: () => q('.bottom') },
+      end('In jedem Bereich gibt es oben rechts „Hilfe“. Da erkläre ich dir genau diesen Bereich oder mache die große Rundführung mit dir.'),
+    ],
+  },
   inventar: {
     title: 'Inventar',
     steps: [
@@ -109,6 +119,7 @@ const topics = {
 }
 
 const byPath = [
+  [/^\/$/, 'start'],
   [/^\/inventar/, 'inventar'], [/^\/umlagern/, 'umlagern'], [/^\/inventur/, 'inventur'], [/^\/analyse/, 'analyse'],
   [/^\/auftraege/, 'auftraege'], [/^\/scanner/, 'scanner'], [/^\/teil\//, 'teil'], [/^\/lagerort\//, 'lagerort'],
   [/^\/suche/, 'suche'], [/^\/modul\//, 'modul'],
@@ -122,6 +133,12 @@ export function helpTopic(path) {
 
 /** Schritte für das Hilfe-Fenster, Kapitel = Name des Bereichs. */
 export const helpSteps = (id) => topics[id].steps.map((s) => ({ wait: 'next', ...s, chapter: topics[id].title }))
+
+/** Rundführung (Tutorial mit Übungsdaten): auf dem Schulserver tutorial.html neben der App (package-dist.mjs),
+ * in der Demo die Datei aus dem Repo. */
+export const tutorialUrl = import.meta.env.MODE === 'demo'
+  ? 'https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Tutorial.html'
+  : 'tutorial.html'
 
 /** Gerade offene Hilfe (App.vue zeigt dann Klemmi). */
 export const help = reactive({ topic: null, run: 0 })

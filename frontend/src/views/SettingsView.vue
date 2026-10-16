@@ -6,6 +6,7 @@ import SegControl from '../components/SegControl.vue'
 import { useAuth } from '../stores/auth'
 import { useSettings } from '../stores/settings'
 import { api, IS_DEMO, IS_TUTORIAL } from '../api'
+import { tutorialUrl } from '../tutorial/help'
 
 const auth = useAuth()
 const s = useSettings()
@@ -21,9 +22,7 @@ const themes = [
 ]
 const densities = [{ value: 'comfortable', label: 'Komfortabel' }, { value: 'compact', label: 'Kompakt' }]
 const fonts = [{ value: 'normal', label: 'Normal' }, { value: 'large', label: 'Groß' }]
-// Tutorial mit Klemmi (Wunsch des Inhabers): eigene Datei mit Übungsdaten, öffnet in neuem Tab.
-// Auf dem Schulserver liegt sie neben der App (package-dist.mjs kopiert sie), die Demo nimmt die Datei aus dem Repo.
-const tutorialUrl = IS_DEMO ? 'https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Tutorial.html' : 'tutorial.html'
+// Tutorial mit Klemmi (Wunsch des Inhabers): eigene Datei mit Übungsdaten, öffnet in neuem Tab (Adresse in help.js).
 const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
 </script>
 
@@ -61,7 +60,7 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
           <a class="btn btn-primary" :href="tutorialUrl" target="_blank" rel="noopener"><GraduationCap :size="16" /> Tutorial starten</a>
         </div>
         <div class="row">
-          <div><div class="k">Hilfe in jedem Bereich</div><div class="h">Das <CircleHelp :size="14" class="inl" /> oben rechts in Inventar, Umlagern, Inventur, Analyse und den anderen Bereichen: Klemmi erklärt kurz nur diesen Bereich.</div></div>
+          <div><div class="k">Hilfe in jedem Bereich</div><div class="h">„<CircleHelp :size="14" class="inl" /> Hilfe“ oben rechts in jedem Bereich (und unten auf der Startseite): Klemmi erklärt kurz nur diesen Bereich oder startet die Rundführung.</div></div>
         </div>
       </div>
     </section>

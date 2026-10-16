@@ -59,7 +59,10 @@ Große Kacheln mit Live-Zahlen (Bestand, offene Vorschläge, offene Inventuren) 
 
 ## Hilfe in jedem Bereich
 
-Oben rechts in jedem Bereich sitzt ein kleines **?**. Ein Tipp darauf, und Klemmi erklärt in ein paar Schritten nur diesen Bereich: Er leuchtet die wichtigen Stellen an und sagt, wofür sie da sind. Dabei wird nichts gebucht oder verändert, die Hilfe ist also auch mit echten Daten gefahrlos. Mit „Fertig“, dem X oder Esc ist sie wieder weg.
+Oben rechts in jedem Bereich (und unten auf der Startseite) sitzt der Knopf **Hilfe** mit zwei Möglichkeiten:
+
+- **Diesen Bereich erklären:** Klemmi erklärt in ein paar Schritten nur diesen Bereich, zum Beispiel Umlagern. Er leuchtet die wichtigen Stellen an und sagt, wofür sie da sind. Dabei wird nichts gebucht oder verändert, die Hilfe ist also auch mit echten Daten gefahrlos. Mit „Fertig“, dem X oder Esc ist sie wieder weg.
+- **Rundführung durch die ganze App:** öffnet das Tutorial mit Übungsdaten in einem neuen Tab (gibt es auch in den Einstellungen).
 
 <p align="center"><img src="docs/images/hilfe.png" alt="Klemmi erklärt das Inventar" width="640"></p>
 
