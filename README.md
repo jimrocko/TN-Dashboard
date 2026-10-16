@@ -46,7 +46,7 @@ Große Kacheln mit Live-Zahlen (Bestand, offene Vorschläge, offene Inventuren) 
   <tr>
     <td width="68%" valign="top">
 
-**Auf jedem Gerät:** Auf PC und iPad stehen vier Kacheln in einer Reihe, auf dem Handy zwei. Nichts ist gequetscht, alles passt auf einen Blick.
+**Auf jedem Gerät:** Auf PC und iPad stehen die sechs Kacheln mittig in zwei Reihen zu je drei, auf dem Handy zu zweit. Nichts ist gequetscht, alles passt auf einen Blick.
 
 **Minifig-Finder und Pickliste** sind die bestehenden Programme der Schule. Sie bekommen im Dashboard eine eigene Kachel und den gemeinsamen Login.
 
