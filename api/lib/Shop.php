@@ -179,7 +179,8 @@ final class Shop
             if (count($lots) < 2) continue;
             usort($lots, fn ($a, $b) => $b['qty'] <=> $a['qty'] ?: $cmpCode($a, $b));
             $home = $lots[0];
-            foreach (array_slice($lots, 1) as $l) $add($l, $home, 'falsch');
+            // Lots im selben Kästchen wie das Ziel bleiben liegen (echter Bestand: gleiches Teil mit anderem Preis/Zustand)
+            foreach (array_slice($lots, 1) as $l) if ($l['location_id'] !== $home['location_id']) $add($l, $home, 'falsch');
         }
 
         // 2. Farben zusammenlegen

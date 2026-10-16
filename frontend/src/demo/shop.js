@@ -177,7 +177,8 @@ function suggestions(db) {
     const lots = byCombo.get(k)
     if (lots.length < 2) continue
     lots.sort((a, b) => b.qty - a.qty || cmpCode(a, b))
-    for (const l of lots.slice(1)) add(l, lots[0], 'falsch')
+    // Lots im selben Kästchen wie das Ziel bleiben liegen (echter Bestand: gleiches Teil mit anderem Preis/Zustand)
+    for (const l of lots.slice(1)) if (l.location_id !== lots[0].location_id) add(l, lots[0], 'falsch')
   }
 
   // 2. Farben zusammenlegen
