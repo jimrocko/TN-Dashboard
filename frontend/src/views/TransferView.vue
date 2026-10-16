@@ -43,7 +43,7 @@ async function book(lotId, toId, amount, label) {
     const r = (await api.post('transfers', { lot_id: lotId, to_location_id: Number(toId), qty: Number(amount) })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
     lot.value = null
-    await Promise.all([load(), blExport.value?.refresh()])
+    await Promise.all([load(), blExport.value?.refresh({ popup: true })])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 

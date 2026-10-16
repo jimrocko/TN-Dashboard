@@ -51,7 +51,7 @@ async function book(s) {
   try {
     const r = (await api.post('transfers', { lot_id: s.lot.id, to_location_id: s.to_location_id, qty: s.lot.qty })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
-    await Promise.all([load(), blExport.value?.refresh()])
+    await Promise.all([load(), blExport.value?.refresh({ popup: true })])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 async function startStocktake() {
