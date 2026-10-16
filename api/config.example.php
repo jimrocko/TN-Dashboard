@@ -25,6 +25,7 @@ return [
         'bricklink.consumer_secret' => ['BRICKLINK_CONSUMER_SECRET', 'BL_CONSUMER_SECRET'],
         'bricklink.token'           => ['BRICKLINK_TOKEN', 'BRICKLINK_TOKEN_VALUE', 'BL_TOKEN'],
         'bricklink.token_secret'    => ['BRICKLINK_TOKEN_SECRET', 'BL_TOKEN_SECRET'],
+        'ollie.db_path'             => ['OLLIE_DB_PATH'],
     ],
 
     'db' => [
@@ -57,6 +58,12 @@ return [
     'brickognize' => [
         'url'     => 'https://api.brickognize.com/predict/',
         'timeout' => 30,
+    ],
+
+    // Ollies Dashboard (bi-legoshop-dashboard) auf demselben Rechner: Pfad zu seiner Datenbank data/legoshop.db.
+    // Dann lässt sich der Bestand ohne BrickLink-Abruf von dort übernehmen (Dev-Bereich → Einstellungen). Leer = aus.
+    'ollie' => [
+        'db_path' => '',
     ],
 
     // Sitzungsdauer in Sekunden (8 h = ein Kurstag)

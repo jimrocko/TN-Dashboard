@@ -18,6 +18,7 @@ require __DIR__ . '/lib/Brickognize.php';
 require __DIR__ . '/lib/Dev.php';
 require __DIR__ . '/lib/Shop.php';
 require __DIR__ . '/lib/BrickLinkSync.php';
+require __DIR__ . '/lib/OllieSync.php';
 require __DIR__ . '/lib/DemoData.php';
 
 set_exception_handler(function (Throwable $e) {
@@ -275,6 +276,22 @@ switch (true) {
             exit;
         }
         json_response(['activity' => $rows]);
+
+    // ---- Abgleich mit Ollies Dashboard (gleicher Rechner, nur lesend) ----
+    case $route === 'ollie/status' && $method === 'GET':
+        Dev::require();
+        json_response(OllieSync::status());
+
+    case $route === 'ollie/import' && $method === 'POST':
+        // Ganzen Bestand aus Ollies Datenbank übernehmen (nur Lehrer, ersetzt das Lager wie der BrickLink-Import)
+        $staff = require_staff();
+        try {
+            $r = OllieSync::import();
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        ActivityLog::log((int) $staff['id'], 'ollie_import', null, ['lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
+        json_response($r);
 
     // ---- Dev-Bereich ----
     case $route === 'dev/status' && $method === 'GET':

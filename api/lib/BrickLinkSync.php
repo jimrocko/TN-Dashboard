@@ -210,6 +210,16 @@ final class BrickLinkSync
         foreach (Cache::remember('categories', 7 * 86400, fn () => $bl->get('/categories'))['data'] as $c) {
             $cats[(int) $c['category_id']] = (string) $c['category_name'];
         }
+        return self::importItems($items, fn (array $it, ?string $old) => $cats[(int) ($it['item']['category_id'] ?? 0)] ?? ($old ?? ''));
+    }
+
+    /**
+     * Gemeinsamer Abgleich für BrickLink und Ollies Dashboard (OllieSync): $items im Format der BrickLink-API
+     * (/inventories), $categoryOf(item, bisherige Kategorie des Lots oder null) liefert die Kategorie.
+     */
+    public static function importItems(array $items, callable $categoryOf): array
+    {
+        self::ensureSchema();
         $names = ['G' => 'Gebraucht', 'H' => 'Regal H', 'N' => 'Neu', 'FG' => 'Figuren gebraucht', 'FN' => 'Figuren neu',
                   'FT' => 'Figurenteile', 'PLATE' => 'Plates'];
 
@@ -219,7 +229,11 @@ final class BrickLinkSync
             $loc = [];
             foreach (q('SELECT id, code FROM {locations}')->fetchAll() as $l) $loc[strtolower($l['code'])] = (int) $l['id'];
             $known = [];
-            foreach (q('SELECT id, bl_lot_id FROM {inventory} WHERE bl_lot_id IS NOT NULL')->fetchAll() as $r) $known[(int) $r['bl_lot_id']] = (int) $r['id'];
+            $oldCat = [];
+            foreach (q('SELECT id, bl_lot_id, category FROM {inventory} WHERE bl_lot_id IS NOT NULL')->fetchAll() as $r) {
+                $known[(int) $r['bl_lot_id']] = (int) $r['id'];
+                $oldCat[(int) $r['bl_lot_id']] = (string) $r['category'];
+            }
 
             $t = now();
             $keep = [];
@@ -242,7 +256,7 @@ final class BrickLinkSync
                 $vals = [
                     (string) ($it['item']['type'] ?? 'PART'), (string) $it['item']['no'], (int) ($it['color_id'] ?? 0),
                     (string) ($it['color_name'] ?? ''), html_entity_decode((string) ($it['item']['name'] ?? ''), ENT_QUOTES | ENT_HTML5),
-                    $cats[(int) ($it['item']['category_id'] ?? 0)] ?? '', $locId, (int) $it['quantity'],
+                    (string) $categoryOf($it, $oldCat[$lotId] ?? null), $locId, (int) $it['quantity'],
                     (float) ($it['unit_price'] ?? 0), ($it['new_or_used'] ?? 'U') === 'N' ? 'N' : 'U', $t,
                 ];
                 if (isset($known[$lotId])) {

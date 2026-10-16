@@ -545,6 +545,15 @@ export function route(db, method, parts, params, body, requireUser, log) {
     log(me.id, body.done ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', { aenderungen: n })
     return { done: n }
   }
+  // Ollies Dashboard (gleicher Rechner auf dem Schulserver): in der Demo nicht vorhanden
+  if (method === 'GET' && a === 'ollie' && b === 'status') {
+    requireUser()
+    return { configured: false, ok: false, lots: null, parts: null, ollie_synced_at: null, imported_at: null, error: null, demo: true }
+  }
+  if (method === 'POST' && a === 'ollie' && b === 'import') {
+    requireUser()
+    throw new DemoError('In der Demo gibt es Ollies Dashboard nicht. Auf dem Schulserver kommt der Bestand mit diesem Knopf aus seiner Datenbank.', 503)
+  }
   if (method === 'POST' && a === 'bricklink' && b === 'import') {
     requireUser()
     throw new DemoError('In der Demo gibt es keine BrickLink-Verbindung. Auf dem Schulserver kommt das Lager mit diesem Knopf aus dem BrickLink-Shop.', 503)

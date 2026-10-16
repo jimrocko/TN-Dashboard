@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import SegControl from '../../components/SegControl.vue'
-import { IS_DEMO } from '../../api'
+import { api, IS_DEMO } from '../../api'
+import { num, dateTime } from '../../utils/format'
 import { useAuth } from '../../stores/auth'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
 import { appSettings, resetAppSettings, isChanged } from '../../utils/appSettings'
@@ -59,6 +60,26 @@ const appOptions = {
 }
 const appModules = homeModules.filter((m) => appOptions[m.id] || m.status === 'extern')
 
+// Ollies Dashboard auf demselben Rechner: Bestand aus seiner Datenbank übernehmen (nur lesend, kein BrickLink-Abruf).
+const ollie = ref(null)
+const ollieBusy = ref(false)
+const ollieConfirm = ref(false)
+const ollieNewer = () => !!ollie.value?.ollie_synced_at && (!ollie.value.imported_at || ollie.value.ollie_synced_at > ollie.value.imported_at)
+async function loadOllie() {
+  try { ollie.value = await api.get('ollie/status') } catch (e) { ollie.value = { configured: false, error: e.message } }
+}
+async function importOllie() {
+  ollieBusy.value = true
+  ollieConfirm.value = false
+  err.value = ''
+  try {
+    const r = await api.post('ollie/import')
+    say(`Bestand aus Ollies Dashboard übernommen: ${num(r.lots)} Lots (${num(r.new)} neu, ${num(r.removed)} entfernt).`)
+    await loadOllie()
+  } catch (e) { err.value = e.message } finally { ollieBusy.value = false }
+}
+onMounted(loadOllie)
+
 const confirmDemo = ref(false)
 async function resetDemoData() {
   resetDemo()
@@ -107,6 +128,39 @@ async function resetDemoData() {
         <div v-for="o in appOptions[m.id]" v-else :key="o.key" class="row">
           <div><div class="k">{{ o.k }}</div><div class="h">{{ o.h }}</div></div>
           <SegControl v-model="appSettings[m.id][o.key]" :options="o.options" :label="`${m.title}: ${o.k}`" />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Ollies Dashboard</h2><span class="faint small">gleicher Rechner · nur lesen</span></div>
+      <div class="rows">
+        <div class="row">
+          <div>
+            <div class="k">Verbindung</div>
+            <div v-if="!ollie" class="h">Wird geprüft …</div>
+            <div v-else-if="ollie.demo" class="h">In der Demo nicht vorhanden. Auf dem Schulserver liest die App hier Ollies Datenbank (data/legoshop.db).</div>
+            <div v-else-if="!ollie.configured" class="h">Noch nicht eingerichtet: in der .env <code>OLLIE_DB_PATH=</code> mit dem Pfad zu Ollies <code>data/legoshop.db</code> eintragen.</div>
+            <div v-else-if="ollie.ok" class="h">{{ num(ollie.lots) }} Lots · {{ num(ollie.parts) }} Teile · Ollie hat zuletzt {{ dateTime(ollie.ollie_synced_at) }} von BrickLink geholt.</div>
+            <div v-else class="h error">{{ ollie.error }}</div>
+          </div>
+          <span v-if="ollie && !ollie.demo" class="pill" :class="ollie.ok ? 'ok' : ''">{{ ollie.ok ? 'Verbunden' : ollie.configured ? 'Fehler' : 'Aus' }}</span>
+        </div>
+        <div class="row">
+          <div>
+            <div class="k">Bestand übernehmen</div>
+            <div class="h">Ersetzt unser Lager durch Ollies Stand (per Lot-ID, Lagerort aus den Remarks), ohne BrickLink-Abruf. Noch nicht übertragene Umlagerungen und Inventuren werden verworfen.
+              <template v-if="ollie?.imported_at"> Zuletzt übernommen: {{ dateTime(ollie.imported_at) }}.</template>
+              <b v-if="ollie?.ok && ollieNewer()"> Ollies Stand ist neuer.</b></div>
+          </div>
+          <div class="inline">
+            <span v-if="!auth.isStaff" class="faint small">nur Lehrer</span>
+            <button v-else-if="!ollieConfirm" class="btn btn-sm" :disabled="ollieBusy || (!ollie?.ok && !IS_DEMO)" @click="ollieConfirm = true">{{ ollieBusy ? 'Übernehme …' : 'Übernehmen' }}</button>
+            <template v-else>
+              <button class="btn btn-sm danger" @click="importOllie">Ja, übernehmen</button>
+              <button class="btn btn-sm btn-ghost" @click="ollieConfirm = false">Abbrechen</button>
+            </template>
+          </div>
         </div>
       </div>
     </section>
