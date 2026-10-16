@@ -17,6 +17,7 @@ require __DIR__ . '/lib/BrickLinkClient.php';
 require __DIR__ . '/lib/Brickognize.php';
 require __DIR__ . '/lib/Dev.php';
 require __DIR__ . '/lib/Shop.php';
+require __DIR__ . '/lib/BrickLinkSync.php';
 require __DIR__ . '/lib/DemoData.php';
 
 set_exception_handler(function (Throwable $e) {
@@ -158,6 +159,32 @@ switch (true) {
         $r = Shop::transfer((int) ($in['lot_id'] ?? 0), (int) ($in['to_location_id'] ?? 0), (int) ($in['qty'] ?? 0), (int) $me['id']);
         ActivityLog::log((int) $me['id'], 'transfer', 'umlagern', ['teil' => "{$r['item_no']} {$r['color']}", 'menge' => $r['qty'], 'von' => $r['from'], 'nach' => $r['to']]);
         json_response(['transfer' => $r], 201);
+
+    case $route === 'bricklink/pending' && $method === 'GET':
+        // Eigene Umlagerungen, die noch nicht per Mass Update/Upload bei BrickLink eingetragen sind
+        $me = require_user();
+        json_response(['transfers' => BrickLinkSync::pending((int) $me['id'])]);
+
+    case $route === 'bricklink/done' && $method === 'POST':
+        $me = require_user();
+        $n = BrickLinkSync::done((int) $me['id'], (array) (request_json()['ids'] ?? []));
+        if ($n) ActivityLog::log((int) $me['id'], 'bricklink_export', 'umlagern', ['umlagerungen' => $n]);
+        json_response(['done' => $n]);
+
+    case $route === 'bricklink/import' && $method === 'POST':
+        // Lager komplett aus dem BrickLink-Shop übernehmen (nur Lehrer)
+        $staff = require_staff();
+        $bl = new BrickLinkClient(config()['bricklink']);
+        if (!$bl->isConfigured()) {
+            json_error('BrickLink ist noch nicht eingerichtet (api/config.php)', 503);
+        }
+        try {
+            $r = BrickLinkSync::import($bl);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        ActivityLog::log((int) $staff['id'], 'bricklink_import', null, ['lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
+        json_response($r);
 
     case $route === 'stocktakes' && $method === 'GET':
         require_user();

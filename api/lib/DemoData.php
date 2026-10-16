@@ -3,6 +3,8 @@
 /** Lädt die erfundenen Beispieldaten aus sql/demo-data.json (nur in eine leere Datenbank). */
 final class DemoData
 {
+    public const DEMO_LOT_BASE = 300000001;
+
     public static function isEmpty(): bool
     {
         return (int) q('SELECT COUNT(*) FROM {inventory}')->fetchColumn() === 0
@@ -14,6 +16,7 @@ final class DemoData
         if (!self::isEmpty()) {
             throw new RuntimeException('Es sind bereits Lagerdaten vorhanden');
         }
+        BrickLinkSync::ensureSchema();
         $data = json_decode(file_get_contents(__DIR__ . '/../sql/demo-data.json'), true);
         $ago = fn (int $days) => date('Y-m-d H:i:s', time() - $days * 86400 - random_int(0, 6 * 3600));
         $pdo = db();
@@ -26,9 +29,11 @@ final class DemoData
             }
             $lot = [];
             foreach ($data['inventory'] as $i => $p) {
-                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$p['item_type'], $p['item_no'], $p['color_id'], $p['color_name'], $p['name'],
-                   $p['category'], $loc[$p['location']], $p['qty'], $p['price'], $ago($p['updated_days_ago'])]);
+                // Erfundene BrickLink-Lot-IDs (gleiche Rechnung wie seedData() in frontend/src/demo/shop.js)
+                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, updated_at,
+                   bl_lot_id, bl_condition) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$p['item_type'], $p['item_no'], $p['color_id'],
+                   $p['color_name'], $p['name'], $p['category'], $loc[$p['location']], $p['qty'], $p['price'], $ago($p['updated_days_ago']),
+                   self::DEMO_LOT_BASE + $i, BrickLinkSync::conditionFor($p['location'])]);
                 $lot[$i] = (int) $pdo->lastInsertId();
             }
             foreach ($data['orders'] as $o) {

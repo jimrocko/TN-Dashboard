@@ -8,7 +8,7 @@ import * as devRoutes from './dev.js'
 
 // Version erhöhen, wenn sich die Beispieldaten ändern: alte Browser-Daten werden dann verworfen.
 // Das Tutorial hat eigene Daten, damit es die normale Demo nicht verändert.
-export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v1' : 'tn-dashboard-demo-v7'
+export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v2' : 'tn-dashboard-demo-v8'
 
 export class DemoError extends Error {
   constructor(message, status) {

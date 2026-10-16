@@ -15,6 +15,28 @@ const like = (v, term) => String(v ?? '').toLowerCase().includes(term.toLowerCas
 const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de', { numeric: true })
 const round = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d
 
+const DEMO_LOT_BASE = 300000001
+// Zustand bei BrickLink (N = neu, U = gebraucht), wie BrickLinkSync::conditionFor()
+const conditionFor = (code) => (/^(N|FN)\d+$/i.test(code) ? 'N' : 'U')
+
+/**
+ * Was sich in BrickLink ändern muss (Lagerort steht in den Remarks), wie BrickLinkSync::changes() in PHP.
+ * Einträge: update (lot_id, qty = +/- Menge, remarks, delete), upload (neues Los), fehlt (Los ohne BrickLink-Lot-ID).
+ */
+function blChanges(lot, existing, qty, toCode) {
+  const upd = (row, set) => (row.bl_lot_id
+    ? { type: 'update', lot_id: row.bl_lot_id, ...set }
+    : { type: 'fehlt', item_no: row.item_no, color_name: row.color_name })
+  const full = qty === lot.qty
+  if (existing) return [upd(existing, { qty }), upd(lot, full ? { delete: true } : { qty: -qty })]
+  if (full) return [upd(lot, { remarks: toCode })]
+  return [
+    upd(lot, { qty: -qty }),
+    { type: 'upload', item_type: lot.item_type, item_no: lot.item_no, color_id: lot.color_id, qty, price: lot.price,
+      condition: lot.bl_condition ?? 'U', remarks: toCode },
+  ]
+}
+
 export function seedData(seed) {
   const locations = seed.locations.map((l, i) => ({ id: i + 1, ...l }))
   const locId = Object.fromEntries(locations.map((l) => [l.code, l.id]))
@@ -22,6 +44,8 @@ export function seedData(seed) {
     id: i + 1, item_type: p.item_type, item_no: p.item_no, color_id: p.color_id, color_name: p.color_name,
     name: p.name, category: p.category, location_id: locId[p.location], qty: p.qty, price: p.price,
     updated_at: ago(p.updated_days_ago),
+    // Erfundene BrickLink-Lot-IDs, gleiche Rechnung wie api/lib/DemoData.php
+    bl_lot_id: DEMO_LOT_BASE + i, bl_condition: conditionFor(p.location),
   }))
   let itemId = 1
   const orders = seed.orders.map((o, i) => ({
@@ -259,6 +283,7 @@ function transfer(db, lotId, toId, qty, userId) {
   const t = now()
   const from = loc(db, lot.location_id)?.code ?? null
   const existing = db.inventory.find((i) => i.location_id === toId && i.item_no === lot.item_no && i.color_id === lot.color_id)
+  const bl = blChanges(lot, existing, qty, to.code)
   if (existing) {
     existing.qty += qty
     existing.updated_at = t
@@ -266,14 +291,15 @@ function transfer(db, lotId, toId, qty, userId) {
     lot.location_id = toId
     lot.updated_at = t
   } else {
-    db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, updated_at: t })
+    // Neues Los bekommt seine BrickLink-Lot-ID erst beim nächsten Import
+    db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, updated_at: t, bl_lot_id: null })
   }
   if (existing || qty < lot.qty) {
     if (qty === lot.qty) db.inventory = db.inventory.filter((i) => i.id !== lotId)
     else { lot.qty -= qty; lot.updated_at = t }
   }
   db.transfers.push({ id: db.nextTransfer++, item_no: lot.item_no, color_name: lot.color_name, name: lot.name,
-    from_code: from, to_code: to.code, qty, user_id: userId, created_at: t })
+    from_code: from, to_code: to.code, qty, user_id: userId, created_at: t, bl_changes: bl, bl_done_at: null })
   return { item_no: lot.item_no, color: lot.color_name, qty, from, to: to.code }
 }
 
@@ -442,6 +468,27 @@ export function route(db, method, parts, params, body, requireUser, log) {
     const r = transfer(db, Number(body.lot_id), Number(body.to_location_id), Number(body.qty), me.id)
     log(me.id, 'transfer', 'umlagern', { teil: `${r.item_no} ${r.color}`, menge: r.qty, von: r.from, nach: r.to })
     return { transfer: r }
+  }
+  if (method === 'GET' && a === 'bricklink' && b === 'pending') {
+    const me = requireUser()
+    return {
+      transfers: db.transfers.filter((t) => t.user_id === me.id && !t.bl_done_at && t.bl_changes)
+        .map((t) => ({ id: t.id, item_no: t.item_no, color_name: t.color_name, name: t.name, qty: t.qty, created_at: t.created_at,
+          from_code: t.from_code, to_code: t.to_code, changes: t.bl_changes })),
+    }
+  }
+  if (method === 'POST' && a === 'bricklink' && b === 'done') {
+    const me = requireUser()
+    const ids = new Set((body.ids ?? []).map(Number))
+    const t = now()
+    let n = 0
+    for (const x of db.transfers) if (x.user_id === me.id && !x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
+    if (n) log(me.id, 'bricklink_export', 'umlagern', { umlagerungen: n })
+    return { done: n }
+  }
+  if (method === 'POST' && a === 'bricklink' && b === 'import') {
+    requireUser()
+    throw new DemoError('In der Demo gibt es keine BrickLink-Verbindung. Auf dem Schulserver kommt das Lager mit diesem Knopf aus dem BrickLink-Shop.', 503)
   }
   if (method === 'GET' && a === 'stocktakes' && !b) {
     requireUser()

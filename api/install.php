@@ -13,6 +13,7 @@ require __DIR__ . '/lib/response.php';
 require __DIR__ . '/lib/env.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/Shop.php';
+require __DIR__ . '/lib/BrickLinkSync.php';
 require __DIR__ . '/lib/DemoData.php';
 
 $cli = PHP_SAPI === 'cli';

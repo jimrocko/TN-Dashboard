@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS {p}inventory (
   location_id INTEGER NULL REFERENCES {p}locations(id) ON DELETE SET NULL,
   qty INTEGER NOT NULL DEFAULT 0,
   price REAL NOT NULL DEFAULT 0,
+  bl_lot_id INTEGER NULL,
+  bl_condition TEXT NOT NULL DEFAULT 'U',
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS {p}idx_inv_item ON {p}inventory (item_no, color_id);
@@ -79,7 +81,9 @@ CREATE TABLE IF NOT EXISTS {p}transfers (
   to_location_id INTEGER NULL,
   qty INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  bl_changes TEXT NULL,
+  bl_done_at TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS {p}stocktakes (

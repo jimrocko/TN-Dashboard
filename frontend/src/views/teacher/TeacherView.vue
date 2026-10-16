@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Download, UserPlus, Code2, Trash2 } from 'lucide-vue-next'
+import { Download, UserPlus, Code2, Trash2, RefreshCw } from 'lucide-vue-next'
 import PageHead from '../../components/PageHead.vue'
 import ActivityTable from '../../components/ActivityTable.vue'
 import { api, apiUrl, IS_DEMO } from '../../api'
@@ -64,6 +64,21 @@ async function demoCsv() {
   document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+// Lager komplett aus dem BrickLink-Shop übernehmen (Lot-IDs für den Export nach dem Umlagern, Lagerort aus den Remarks)
+const importAsk = ref(false)
+const importBusy = ref(false)
+const importMsg = ref('')
+const importErr = ref('')
+async function importBrickLink() {
+  importBusy.value = true
+  importMsg.value = importErr.value = ''
+  try {
+    const r = await api.post('bricklink/import')
+    importMsg.value = `${r.lots} Lose übernommen (${r.new} neu, ${r.updated} aktualisiert, ${r.removed} entfernt, ${r.new_locations} neue Lagerorte`
+      + (r.without_location ? `, ${r.without_location} ohne Lagerort in den Remarks` : '') + ').'
+    importAsk.value = false
+  } catch (e) { importErr.value = e.message } finally { importBusy.value = false }
+}
 const csvUrl = () => apiUrl('activity', { format: 'csv', limit: 5000, ...(selected.value ? { user: selected.value.id } : {}) })
 
 onMounted(async () => { await loadUsers(); await select(null) })
@@ -125,6 +140,21 @@ onMounted(async () => { await loadUsers(); await select(null) })
             <button class="btn btn-primary"><UserPlus :size="16" /> Anlegen</button>
           </form>
         </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>BrickLink-Shop</h2></div>
+          <div class="panel-body stack-sm">
+            <p class="muted small">Übernimmt das Lager aus dem BrickLink-Shop, mit Lot-IDs und dem Lagerort aus den Remarks. Danach können alle nach dem Umlagern die Änderungen per Knopf zu BrickLink übertragen. Noch nicht übertragene Umlagerungen werden dabei verworfen.</p>
+            <div v-if="importAsk" class="confirm">
+              <span class="small">Lager jetzt ersetzen?</span>
+              <button class="btn btn-sm btn-primary" :disabled="importBusy" @click="importBrickLink">Ja, übernehmen</button>
+              <button class="btn btn-sm" :disabled="importBusy" @click="importAsk = false">Abbrechen</button>
+            </div>
+            <button v-else class="btn" @click="importAsk = true"><RefreshCw :size="16" /> Lager aus BrickLink übernehmen</button>
+            <p v-if="importErr" class="error small">{{ importErr }}</p>
+            <p v-if="importMsg" class="success small">{{ importMsg }}</p>
+          </div>
+        </section>
       </div>
 
       <section class="panel">
@@ -149,5 +179,8 @@ onMounted(async () => { await loadUsers(); await select(null) })
 /* Handy: weniger Spalten, damit Name, Dev und Papierkorb ohne seitliches Scrollen passen */
 @media (max-width: 700px) { .wide { display: none; } }
 .pad { margin: 0; padding: 10px var(--pad); }
+.stack-sm { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.stack-sm p { margin: 0; }
+.confirm { flex-wrap: wrap; }
 @media (max-width: 1100px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 </style>

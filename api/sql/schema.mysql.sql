@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS {p}inventory (
   location_id INT UNSIGNED NULL,
   qty INT NOT NULL DEFAULT 0,
   price DECIMAL(10,3) NOT NULL DEFAULT 0,
+  bl_lot_id BIGINT UNSIGNED NULL,
+  bl_condition CHAR(1) NOT NULL DEFAULT 'U',
   updated_at DATETIME NOT NULL,
   INDEX {p}idx_inv_item (item_no, color_id),
   INDEX {p}idx_inv_loc (location_id),
@@ -82,7 +84,9 @@ CREATE TABLE IF NOT EXISTS {p}transfers (
   to_location_id INT UNSIGNED NULL,
   qty INT NOT NULL,
   user_id INT UNSIGNED NOT NULL,
-  created_at DATETIME NOT NULL
+  created_at DATETIME NOT NULL,
+  bl_changes TEXT NULL,
+  bl_done_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS {p}stocktakes (

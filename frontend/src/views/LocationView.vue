@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, ArrowRight, ClipboardCheck } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
+import BrickLinkExport from '../components/BrickLinkExport.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
 import PartImage from '../components/PartImage.vue'
@@ -14,6 +15,7 @@ import { isMixedBox, maxLotsFor } from '../utils/areas'
 // Erreichbar über jeden Lagerort-Tag in der App.
 const route = useRoute()
 const router = useRouter()
+const blExport = ref(null)
 const loc = ref(null)
 const error = ref('')
 const busy = ref(false)
@@ -49,7 +51,7 @@ async function book(s) {
   try {
     const r = (await api.post('transfers', { lot_id: s.lot.id, to_location_id: s.to_location_id, qty: s.lot.qty })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
-    await load()
+    await Promise.all([load(), blExport.value?.refresh()])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 async function startStocktake() {
@@ -180,6 +182,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
         </section>
       </div>
     </template>
+    <BrickLinkExport ref="blExport" />
   </div>
 </template>
 

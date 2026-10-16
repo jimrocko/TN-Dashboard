@@ -275,6 +275,7 @@ final class Shop
     /** Menge eines Loses an einen anderen Lagerort buchen. Gleiches Teil am Ziel wird zusammengeführt. */
     public static function transfer(int $lotId, int $toId, int $qty, int $userId): array
     {
+        BrickLinkSync::ensureSchema(); // vor der Transaktion: ALTER TABLE beendet sie in MySQL
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -286,16 +287,19 @@ final class Shop
             if ($qty < 1 || $qty > (int) $lot['qty']) json_error('Menge muss zwischen 1 und ' . $lot['qty'] . ' liegen');
 
             $t = now();
-            $existing = q('SELECT id FROM {inventory} WHERE location_id = ? AND item_no = ? AND color_id = ?',
-                [$toId, $lot['item_no'], $lot['color_id']])->fetchColumn();
+            $target = q('SELECT id, item_no, color_name, bl_lot_id FROM {inventory} WHERE location_id = ? AND item_no = ? AND color_id = ?',
+                [$toId, $lot['item_no'], $lot['color_id']])->fetch() ?: null;
+            $existing = $target ? (int) $target['id'] : false;
+            $blChanges = BrickLinkSync::changes($lot, $target, $qty, (string) $to['code']);
             if ($existing) {
                 q('UPDATE {inventory} SET qty = qty + ?, updated_at = ? WHERE id = ?', [$qty, $t, $existing]);
             } elseif ($qty === (int) $lot['qty']) {
                 q('UPDATE {inventory} SET location_id = ?, updated_at = ? WHERE id = ?', [$toId, $t, $lotId]);
             } else {
-                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
-                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $t]);
+                // Neues Los bekommt seine BrickLink-Lot-ID erst beim nächsten Import (BrickLink vergibt sie beim Mass Upload)
+                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
+                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['bl_condition'], $t]);
             }
             if ($existing || $qty < (int) $lot['qty']) {
                 if ($qty === (int) $lot['qty']) {
@@ -304,8 +308,9 @@ final class Shop
                     q('UPDATE {inventory} SET qty = qty - ?, updated_at = ? WHERE id = ?', [$qty, $t, $lotId]);
                 }
             }
-            q('INSERT INTO {transfers} (item_no, color_name, name, from_location_id, to_location_id, qty, user_id, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_no'], $lot['color_name'], $lot['name'], $lot['location_id'], $toId, $qty, $userId, $t]);
+            q('INSERT INTO {transfers} (item_no, color_name, name, from_location_id, to_location_id, qty, user_id, created_at, bl_changes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_no'], $lot['color_name'], $lot['name'], $lot['location_id'], $toId, $qty,
+               $userId, $t, json_encode($blChanges, JSON_UNESCAPED_UNICODE)]);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();

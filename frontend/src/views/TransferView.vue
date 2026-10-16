@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
+import BrickLinkExport from '../components/BrickLinkExport.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
 import RoomPlan from '../components/RoomPlan.vue'
@@ -17,6 +18,7 @@ const locations = ref([])
 const msg = ref('')
 const error = ref('')
 const busy = ref(false)
+const blExport = ref(null)
 
 // Manuelle Umbuchung
 const lotQuery = ref('')
@@ -41,7 +43,7 @@ async function book(lotId, toId, amount, label) {
     const r = (await api.post('transfers', { lot_id: lotId, to_location_id: Number(toId), qty: Number(amount) })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
     lot.value = null
-    await load()
+    await Promise.all([load(), blExport.value?.refresh()])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 
@@ -199,6 +201,7 @@ onMounted(async () => {
         </div>
       </section>
     </div>
+    <BrickLinkExport ref="blExport" />
   </div>
 </template>
 

@@ -149,7 +149,11 @@ const studentList = [
     target: () => panel('Vorschläge')?.querySelector('tbody .btn') ?? null, wait: { api: /^POST transfers$/ }, go: '/umlagern',
   },
   {
-    say: 'Gebucht! Weiter unten gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen.',
+    say: 'Gebucht! Jetzt muss es noch in den BrickLink-Shop. Dafür taucht unten dieser große Knopf auf: Er kopiert die Änderungen und öffnet BrickLink. Dort fügst du sie ein und bestätigst. Hier im Tutorial lassen wir BrickLink in Ruhe.',
+    target: () => q('.bl-export'), wait: 'next', go: '/umlagern',
+  },
+  {
+    say: 'Unter den Vorschlägen gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen.',
     target: () => panel('Lagerplan'), wait: 'next', go: '/umlagern',
   },
   // ---------- Aufträge ----------
@@ -269,6 +273,11 @@ const teacherList = [
   {
     say: 'Max hat jetzt die Dev-Rolle und sieht ab der nächsten Anmeldung unten den Knopf „Dev-Bereich“. Einen extra Code braucht er nicht, er ist ja schon mit seinem Passwort angemeldet. Mit einem weiteren Tipp nimmst du die Rolle wieder weg.',
     target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'next', go: '/lehrer',
+  },
+  {
+    chapter: 'BrickLink',
+    say: 'Damit Umlagerungen auch im BrickLink-Shop landen, holst du hier einmal das Lager aus BrickLink, mit Lot-IDs und dem Lagerort aus den Remarks. Danach bekommen die Schüler nach jeder Umlagerung einen Knopf, der alles für BrickLink kopiert. Im Tutorial gibt es keine BrickLink-Verbindung, also nur anschauen.',
+    target: () => panel('BrickLink-Shop'), wait: 'next', go: '/lehrer',
   },
   // Analyse: Aktivität pro Teilnehmer (nur Lehrer)
   {
