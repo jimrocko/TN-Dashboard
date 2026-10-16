@@ -2,16 +2,15 @@
 // alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks. Wird bei BrickLink unten beim Upload eingefügt.
 // Ganz weggeräumte Lots stehen mit Menge 0 drin, damit sie bei BrickLink nicht stehen bleiben.
 // Lots ohne BrickLink-Lot-ID (neu aus einer Teilmenge) kommen mit Teil, Farbe, Zustand und Preis.
-// BrickLink: keine XML-Deklaration am Anfang, höchstens 200 KB pro Eintrag, sonst in Teile aufteilen.
+// BrickLink: keine XML-Deklaration am Anfang. Immer eine einzige XML, auch bei großem Bestand
+// (Inhaber: geht in einem Stück wie beim BrickStore-Export).
 
 // Upload-Seite im BrickLink-Shop
 export const BRICKLINK_XML_URL = 'https://www.bricklink.com/invXML.asp'
-export const MAX_BYTES = 204800
 
 const ITEM_TYPES = { PART: 'P', MINIFIG: 'M', SET: 'S', BOOK: 'B', GEAR: 'G', CATALOG: 'C', INSTRUCTION: 'I', ORIGINAL_BOX: 'O' }
 const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const tag = (name, v) => `<${name}>${esc(v)}</${name}>`
-const bytes = (s) => new TextEncoder().encode(s).length
 
 function item(l) {
   const remarks = l.code ? tag('REMARKS', l.code) : ''
@@ -20,26 +19,10 @@ function item(l) {
     + `${tag('QTY', l.qty)}${tag('PRICE', Number(l.price).toFixed(3))}${tag('CONDITION', l.bl_condition === 'N' ? 'N' : 'U')}${remarks}</ITEM>`
 }
 
-/** Ganzer Bestand als XML, aufgeteilt in Teile mit höchstens 200 KB. Ergebnis: [{ xml, lots }] */
+/** Ganzer Bestand als eine XML. Ergebnis als Liste mit einem Eintrag: [{ xml, lots }] */
 export function buildStockXml(stock) {
   const items = [...stock.lots.map(item), ...stock.deleted.map((id) => `<ITEM>${tag('LOTID', id)}${tag('QTY', 0)}</ITEM>`)]
-  const head = '<INVENTORY>\n'
-  const foot = '</INVENTORY>'
-  const parts = []
-  let cur = []
-  let size = bytes(head + foot)
-  for (const it of items) {
-    const n = bytes(it) + 1
-    if (cur.length && size + n > MAX_BYTES) {
-      parts.push(cur)
-      cur = []
-      size = bytes(head + foot)
-    }
-    cur.push(it)
-    size += n
-  }
-  if (cur.length) parts.push(cur)
-  return parts.map((p) => ({ xml: head + p.join('\n') + '\n' + foot, lots: p.length }))
+  return [{ xml: `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>`, lots: items.length }]
 }
 
 /** In die Zwischenablage, ohne vorher zu warten: muss direkt im Tipp passieren (iPad-Safari). */
