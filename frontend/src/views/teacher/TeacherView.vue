@@ -79,14 +79,14 @@ onMounted(async () => { await loadUsers(); await select(null) })
           <div class="panel-head"><h2>Teilnehmer</h2><span class="faint small">{{ users.length }} Konten</span></div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Name</th><th>Rolle</th><th>Zuletzt aktiv</th><th class="num">Aktionen</th><th class="num" title="Zugang zum Dev-Bereich">Dev</th><th class="num" aria-label="Löschen"></th></tr></thead>
+              <thead><tr><th>Name</th><th>Rolle</th><th class="wide">Zuletzt aktiv</th><th class="num wide">Aktionen</th><th class="num" title="Zugang zum Dev-Bereich">Dev</th><th class="num" aria-label="Löschen"></th></tr></thead>
               <tbody>
                 <tr class="clickable" :class="{ selected: !selected }" @click="select(null)"><td colspan="6"><strong>Alle anzeigen</strong></td></tr>
                 <tr v-for="u in users" :key="u.id" class="clickable" :class="{ selected: selected?.id === u.id }" @click="select(u)">
                   <td>{{ u.display_name }}<div class="faint small mono">{{ u.username }}</div></td>
                   <td class="muted">{{ roleLabel[u.role] }}</td>
-                  <td class="faint">{{ u.last_seen ? dateTime(u.last_seen) : 'nie' }}</td>
-                  <td class="num">{{ u.activity_count }}</td>
+                  <td class="faint wide">{{ u.last_seen ? dateTime(u.last_seen) : 'nie' }}</td>
+                  <td class="num wide">{{ u.activity_count }}</td>
                   <td class="num">
                     <Code2 v-if="u.role !== 'teilnehmer'" :size="15" class="faint" aria-label="Lehrer haben immer Zugang" />
                     <button v-else class="btn btn-sm devbtn" :class="{ on: u.dev_access }" :aria-pressed="u.dev_access"
@@ -140,11 +140,14 @@ onMounted(async () => { await loadUsers(); await select(null) })
 </template>
 
 <style scoped>
-.cols { display: grid; grid-template-columns: minmax(300px, 2fr) 3fr; gap: var(--gap); align-items: start; }
+/* Teilnehmer-Liste breit genug für alle Spalten (Name bis Papierkorb), Protokoll daneben */
+.cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
 .devbtn.on { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); }
 .confirm { display: inline-flex; align-items: center; gap: 6px; }
 .danger { color: var(--danger); border-color: var(--danger); }
 .delbtn:hover { color: var(--danger); }
+/* Handy: weniger Spalten, damit Name, Dev und Papierkorb ohne seitliches Scrollen passen */
+@media (max-width: 700px) { .wide { display: none; } }
 .pad { margin: 0; padding: 10px var(--pad); }
 @media (max-width: 1100px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 </style>

@@ -259,7 +259,7 @@ const teacherList = [
   {
     chapter: 'Schüler löschen',
     say: 'Verlässt jemand den Kurs, löschst du sein Konto mit dem Papierkorb ganz rechts. Probier es mit dem Konto, das du gerade angelegt hast: Papierkorb und dann „Ja“. Gelöschte Konten können sich nicht mehr anmelden, ihr Protokoll bleibt aber erhalten.',
-    target: () => newestUserRow(), wait: { api: /^POST users\/\d+\/delete$/ }, go: '/lehrer',
+    target: () => newestUserRow(), hint: 'Papierkorb, dann „Ja“', wait: { api: /^POST users\/\d+\/delete$/ }, go: '/lehrer',
   },
   {
     chapter: 'Dev-Rolle',
