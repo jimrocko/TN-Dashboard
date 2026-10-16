@@ -477,12 +477,24 @@ export function route(db, method, parts, params, body, requireUser, log) {
           from_code: t.from_code, to_code: t.to_code, changes: t.bl_changes })),
     }
   }
+  if (method === 'GET' && a === 'bricklink' && b === 'stock') {
+    // wie BrickLinkSync::stock(): ganzer Bestand, weggeräumte Lot-IDs, alle offenen Umlagerungen
+    requireUser()
+    const lots = db.inventory.map((i) => ({ bl_lot_id: i.bl_lot_id ?? null, item_type: i.item_type, item_no: i.item_no, color_id: i.color_id,
+      qty: i.qty, price: i.price, bl_condition: i.bl_condition ?? 'U', code: loc(db, i.location_id)?.code ?? null, id: i.id }))
+    lots.sort((x, y) => (x.bl_lot_id === null) - (y.bl_lot_id === null) || (x.bl_lot_id ?? 0) - (y.bl_lot_id ?? 0) || x.id - y.id)
+    const have = new Set(lots.map((l) => l.bl_lot_id).filter(Boolean))
+    const open = db.transfers.filter((t) => !t.bl_done_at && t.bl_changes)
+    const deleted = new Set()
+    for (const t of open) for (const c of t.bl_changes) if (c.type === 'update' && c.delete && !have.has(c.lot_id)) deleted.add(c.lot_id)
+    return { lots: lots.map(({ id, ...l }) => l), deleted: [...deleted], transfer_ids: open.map((t) => t.id) }
+  }
   if (method === 'POST' && a === 'bricklink' && b === 'done') {
     const me = requireUser()
     const ids = new Set((body.ids ?? []).map(Number))
     const t = now()
     let n = 0
-    for (const x of db.transfers) if (x.user_id === me.id && !x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
+    for (const x of db.transfers) if (!x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
     if (n) log(me.id, 'bricklink_export', 'umlagern', { umlagerungen: n })
     return { done: n }
   }

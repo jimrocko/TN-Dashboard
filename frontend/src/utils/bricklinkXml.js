@@ -1,50 +1,45 @@
-// BrickLink-XML aus offenen Umlagerungen (Antwort von GET bricklink/pending).
-// Mass Update ändert bestehende Lots (per Lot-ID), Mass Upload legt neue an. Der Lagerort steht in den Remarks.
-// Regeln von BrickLink: Menge nur relativ (+5 / -3), nie auf 0 oder darunter (dann <DELETE>Y</DELETE>),
-// keine XML-Deklaration am Anfang, höchstens 200 KB.
+// BrickLink-XML mit dem ganzen Bestand (Antwort von GET bricklink/stock), Wunsch des Inhabers:
+// alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks. Wird bei BrickLink unten beim Upload eingefügt.
+// Ganz weggeräumte Lots stehen mit Menge 0 drin, damit sie bei BrickLink nicht stehen bleiben.
+// Lots ohne BrickLink-Lot-ID (neu aus einer Teilmenge) kommen mit Teil, Farbe, Zustand und Preis.
+// BrickLink: keine XML-Deklaration am Anfang, höchstens 200 KB pro Eintrag, sonst in Teile aufteilen.
 
-// Seite „Upload/Update“ im BrickLink-Shop. Dort „Mass Update“ bzw. „Mass Upload“ wählen und einfügen.
+// Upload-Seite im BrickLink-Shop
 export const BRICKLINK_XML_URL = 'https://www.bricklink.com/invXML.asp'
+export const MAX_BYTES = 204800
 
 const ITEM_TYPES = { PART: 'P', MINIFIG: 'M', SET: 'S', BOOK: 'B', GEAR: 'G', CATALOG: 'C', INSTRUCTION: 'I', ORIGINAL_BOX: 'O' }
 const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const tag = (name, v) => `<${name}>${esc(v)}</${name}>`
-const wrap = (items) => (items.length ? `<INVENTORY>\n${items.map((i) => `<ITEM>${i}</ITEM>`).join('\n')}\n</INVENTORY>` : null)
+const bytes = (s) => new TextEncoder().encode(s).length
 
-/**
- * Alle Änderungen zusammenfassen: pro Lot-ID eine Zeile (Mengen addiert, letzter Lagerort, Löschen gewinnt).
- * Ergebnis: { update, upload } als XML-Text (oder null), dazu missing = Lots ohne BrickLink-Lot-ID.
- */
-export function buildBrickLinkXml(transfers) {
-  const lots = new Map()
-  const uploads = []
-  const missing = []
-  for (const t of transfers) {
-    for (const c of t.changes ?? []) {
-      if (c.type === 'update') {
-        const l = lots.get(c.lot_id) ?? { qty: 0, remarks: null, del: false }
-        if (c.qty) l.qty += c.qty
-        if (c.remarks) l.remarks = c.remarks
-        if (c.delete) l.del = true
-        lots.set(c.lot_id, l)
-      } else if (c.type === 'upload') {
-        uploads.push(c)
-      } else if (c.type === 'fehlt') {
-        missing.push(c)
-      }
+function item(l) {
+  const remarks = l.code ? tag('REMARKS', l.code) : ''
+  if (l.bl_lot_id) return `<ITEM>${tag('LOTID', l.bl_lot_id)}${tag('QTY', l.qty)}${remarks}</ITEM>`
+  return `<ITEM>${tag('ITEMTYPE', ITEM_TYPES[l.item_type] ?? 'P')}${tag('ITEMID', l.item_no)}${tag('COLOR', l.color_id)}`
+    + `${tag('QTY', l.qty)}${tag('PRICE', Number(l.price).toFixed(3))}${tag('CONDITION', l.bl_condition === 'N' ? 'N' : 'U')}${remarks}</ITEM>`
+}
+
+/** Ganzer Bestand als XML, aufgeteilt in Teile mit höchstens 200 KB. Ergebnis: [{ xml, lots }] */
+export function buildStockXml(stock) {
+  const items = [...stock.lots.map(item), ...stock.deleted.map((id) => `<ITEM>${tag('LOTID', id)}${tag('QTY', 0)}</ITEM>`)]
+  const head = '<INVENTORY>\n'
+  const foot = '</INVENTORY>'
+  const parts = []
+  let cur = []
+  let size = bytes(head + foot)
+  for (const it of items) {
+    const n = bytes(it) + 1
+    if (cur.length && size + n > MAX_BYTES) {
+      parts.push(cur)
+      cur = []
+      size = bytes(head + foot)
     }
+    cur.push(it)
+    size += n
   }
-  const updateItems = []
-  for (const [id, l] of lots) {
-    if (l.del) { updateItems.push(tag('LOTID', id) + tag('DELETE', 'Y')); continue }
-    let x = ''
-    if (l.qty) x += tag('QTY', l.qty > 0 ? `+${l.qty}` : String(l.qty))
-    if (l.remarks) x += tag('REMARKS', l.remarks)
-    if (x) updateItems.push(tag('LOTID', id) + x)
-  }
-  const uploadItems = uploads.map((u) => tag('ITEMTYPE', ITEM_TYPES[u.item_type] ?? 'P') + tag('ITEMID', u.item_no) + tag('COLOR', u.color_id)
-    + tag('PRICE', Number(u.price).toFixed(3)) + tag('QTY', u.qty) + tag('CONDITION', u.condition === 'N' ? 'N' : 'U') + tag('REMARKS', u.remarks))
-  return { update: wrap(updateItems), upload: wrap(uploadItems), missing, updateCount: updateItems.length, uploadCount: uploadItems.length }
+  if (cur.length) parts.push(cur)
+  return parts.map((p) => ({ xml: head + p.join('\n') + '\n' + foot, lots: p.length }))
 }
 
 /** In die Zwischenablage, ohne vorher zu warten: muss direkt im Tipp passieren (iPad-Safari). */

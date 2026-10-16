@@ -2,9 +2,11 @@
 
 /**
  * Abgleich mit dem BrickLink-Shop.
- * - Jede Umlagerung merkt sich, was sich in BrickLink ändern muss (Spalte bl_changes in tn_transfers).
- *   Der Schüler kopiert danach eine XML für „Mass Update“ bzw. „Mass Upload“ und fügt sie bei BrickLink ein.
+ * - Nach dem Umlagern kopiert der Schüler den ganzen Bestand als XML (alle Lots mit der Menge nach dem
+ *   Abziehen, Lagerort in den Remarks) und fügt ihn bei BrickLink unten beim Upload ein (Wunsch des Inhabers).
  *   Die App selbst schreibt nie zu BrickLink.
+ * - Jede Umlagerung merkt sich, was sich in BrickLink ändert (Spalte bl_changes in tn_transfers). Daraus kommen
+ *   die ganz weggeräumten Lots (Menge 0 in der XML) und der Hinweis, wer noch nicht übertragen hat.
  * - Der Lagerort steht in BrickLink in den Remarks des Lots.
  * - Import (nur Lehrer): Lager komplett aus dem BrickLink-Shop übernehmen, mit Lot-IDs.
  * Gleiche Regeln in frontend/src/demo/shop.js (blChanges), XML-Aufbau in frontend/src/utils/bricklinkXml.js.
@@ -81,15 +83,46 @@ final class BrickLinkSync
         return $rows;
     }
 
-    /** Als übertragen markieren (nur eigene Umlagerungen). */
-    public static function done(int $userId, array $ids): int
+    /**
+     * Ganzer Bestand für die XML: alle Lots mit aktueller Menge und Lagerort, dazu die Lot-IDs, die beim Umlagern
+     * ganz weggeräumt wurden (noch nicht übertragen), und die IDs aller offenen Umlagerungen (von allen Nutzern,
+     * denn der ganze Bestand enthält auch ihre Änderungen).
+     */
+    public static function stock(): array
+    {
+        self::ensureSchema();
+        $lots = q('SELECT i.bl_lot_id, i.item_type, i.item_no, i.color_id, i.qty, i.price, i.bl_condition, l.code
+            FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id
+            ORDER BY CASE WHEN i.bl_lot_id IS NULL THEN 1 ELSE 0 END, i.bl_lot_id, i.id')->fetchAll();
+        $have = [];
+        foreach ($lots as &$l) {
+            $l['bl_lot_id'] = $l['bl_lot_id'] === null ? null : (int) $l['bl_lot_id'];
+            $l['color_id'] = (int) $l['color_id'];
+            $l['qty'] = (int) $l['qty'];
+            $l['price'] = round((float) $l['price'], 3);
+            if ($l['bl_lot_id']) $have[$l['bl_lot_id']] = true;
+        }
+        unset($l);
+        $ids = [];
+        $deleted = [];
+        foreach (q('SELECT id, bl_changes FROM {transfers} WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL ORDER BY id')->fetchAll() as $t) {
+            $ids[] = (int) $t['id'];
+            foreach (json_decode((string) $t['bl_changes'], true) ?: [] as $c) {
+                if (($c['type'] ?? '') === 'update' && !empty($c['delete']) && !isset($have[(int) $c['lot_id']])) $deleted[(int) $c['lot_id']] = true;
+            }
+        }
+        return ['lots' => $lots, 'deleted' => array_keys($deleted), 'transfer_ids' => $ids];
+    }
+
+    /** Umlagerungen als übertragen markieren (alle, die im kopierten Bestand enthalten waren). */
+    public static function done(array $ids): int
     {
         self::ensureSchema();
         $ids = array_values(array_filter(array_map('intval', $ids), fn ($i) => $i > 0));
         if (!$ids) return 0;
         $in = implode(',', array_fill(0, count($ids), '?'));
-        return q("UPDATE {transfers} SET bl_done_at = ? WHERE user_id = ? AND bl_done_at IS NULL AND id IN ($in)",
-            array_merge([now()], [$userId], $ids))->rowCount();
+        return q("UPDATE {transfers} SET bl_done_at = ? WHERE bl_done_at IS NULL AND id IN ($in)",
+            array_merge([now()], $ids))->rowCount();
     }
 
     /**

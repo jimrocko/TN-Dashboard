@@ -165,9 +165,14 @@ switch (true) {
         $me = require_user();
         json_response(['transfers' => BrickLinkSync::pending((int) $me['id'])]);
 
+    case $route === 'bricklink/stock' && $method === 'GET':
+        // Ganzer Bestand für die BrickLink-XML (alle Lots mit Menge nach dem Abziehen)
+        require_user();
+        json_response(BrickLinkSync::stock());
+
     case $route === 'bricklink/done' && $method === 'POST':
         $me = require_user();
-        $n = BrickLinkSync::done((int) $me['id'], (array) (request_json()['ids'] ?? []));
+        $n = BrickLinkSync::done((array) (request_json()['ids'] ?? []));
         if ($n) ActivityLog::log((int) $me['id'], 'bricklink_export', 'umlagern', ['umlagerungen' => $n]);
         json_response(['done' => $n]);
 
