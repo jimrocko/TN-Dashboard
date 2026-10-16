@@ -13,8 +13,8 @@
 ![PWA](https://img.shields.io/badge/PWA-iPad%20ready-5A0FC8?logo=pwa&logoColor=white)
 [![Build](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml/badge.svg)](https://github.com/jimrocko/TN-Dashboard/actions/workflows/build.yml)
 
-<a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
-<a href="https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Tutorial.html"><img src="https://img.shields.io/badge/%F0%9F%A7%B1%20Tutorial%20starten-Klemmi%20zeigt%20dir%20alles-d01c0a?style=for-the-badge" alt="Tutorial starten" height="44"></a>
+<a href="https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Demo.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Demo%20starten-ein%20Klick%2C%20nichts%20installieren-2563eb?style=for-the-badge" alt="Demo starten" height="44"></a>
+<a href="https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Tutorial.html"><img src="https://img.shields.io/badge/%F0%9F%A7%B1%20Tutorial%20starten-Klemmi%20zeigt%20dir%20alles-d01c0a?style=for-the-badge" alt="Tutorial starten" height="44"></a>
 <img src="docs/images/klemmi.png" alt="Klemmi winkt" height="96" align="absmiddle">
 
 Anmelden mit `max` / `max12345` (Teilnehmer) oder `lehrer` / `lehrer123` (Lehrer).<br>
