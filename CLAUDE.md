@@ -34,7 +34,7 @@ frontend/           Vue 3 + Vite + Pinia + vue-router (Hash-Routing)
   src/styles/theme.css  Normales Design (Tokens), xp.css = XP-Stil (nur mit data-tn-style="xp")
 TN-Dashboard-Demo.html  Komplette App als eine HTML-Datei mit Fake-Daten (npm run build:demo erzeugt sie, wird eingecheckt)
 TN-Dashboard-Tutorial.html  Geführte Tour mit Klemmi (npm run build:tutorial erzeugt sie, wird eingecheckt)
-.github/workflows/ build.yml = Build-Prüfung (PHP-Lint, Build, Demo, install.php), demo-pages.yml = Demo auf GitHub Pages
+.github/workflows/ build.yml = Build-Prüfung (PHP-Lint, Build, Demo, install.php). **Kein GitHub Pages** (Wunsch des Inhabers, Workflow entfernt)
 start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 ```
 
@@ -140,13 +140,13 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Demo: `npm run build:demo` schreibt `demo-dist/tn-dashboard-demo.html` (Artifact-Format) und **`TN-Dashboard-Demo.html` im Hauptordner** (vollständige Datei, wird eingecheckt; nach Frontend-Änderungen neu bauen und committen). Die Demo hat **alle Funktionen**, nur mit Fake-Daten (Wunsch des Inhabers, keine „eingeschränkte“ Demo); einzig BrickLink-Abrufe brauchen den Server.
 - Tutorial: `npm run build:tutorial`, README-Knopf „Tutorial starten“ → https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Tutorial.html · Claude-Artifact https://claude.ai/artifact/2JKRe1tzHtP5tzqMh1hwLX (zum Aktualisieren `tutorial-dist/tn-dashboard-tutorial.html` mit dieser URL erneut veröffentlichen)
 - Ein-Klick-Demo im README: https://raw.githack.com/jimrocko/TN-Dashboard/HEAD/TN-Dashboard-Demo.html (braucht öffentliches Repo).
-- Weitere Demo-Links: GitHub Pages https://jimrocko.github.io/TN-Dashboard/ (Workflow `demo-pages.yml`, braucht öffentliches Repo und Pages-Quelle „GitHub Actions“). Zusätzlich Claude-Artifact https://claude.ai/artifact/29wfoDHbYM184kcHwZECaP (privat; zum Aktualisieren `demo-dist/tn-dashboard-demo.html` mit dieser URL erneut veröffentlichen, Link bleibt). Der frühere Link `…/D8tjj1fC192NUEocyTMZ9R` ist nicht mehr erreichbar und zeigt einen alten Stand (noch mit MK-Kisten) – nicht mehr verwenden.
+- **Kein GitHub Pages** (Inhaber, Sitzung 5): Die Demo läuft nur über den README-Knopf (raw.githack-Link). Zusätzlich Claude-Artifact https://claude.ai/artifact/29wfoDHbYM184kcHwZECaP (privat; zum Aktualisieren `demo-dist/tn-dashboard-demo.html` mit dieser URL erneut veröffentlichen, Link bleibt). Der frühere Link `…/D8tjj1fC192NUEocyTMZ9R` ist nicht mehr erreichbar und zeigt einen alten Stand (noch mit MK-Kisten) – nicht mehr verwenden.
 - Browser-Tests mit Playwright: Chromium liegt in `/opt/pw-browsers/chromium` (Cloud-Umgebung). XP-Stil im Test aktivieren: `localStorage['tn-dashboard-settings'] = '{"style":"xp"}'`.
 - In der Cloud-Sandbox sind Brickognize und BrickLink-Bilder gesperrt; Erkennung dort nur über den Demo-Knopf testbar.
 
 ## Offene Punkte
 - **Integration in den Schul-Webserver** macht der Inhaber später gemeinsam mit einem Agent (Hochladen von `dist/`, `.env`, HTTPS, Firewall für Brickognize).
-- Repo öffentlich machen (Inhaber) und unter Settings → Pages „GitHub Actions“ wählen, damit der Demo-Link funktioniert.
+- Repo öffentlich machen (Inhaber), damit der Demo-Knopf (raw.githack) funktioniert.
 - Pickliste/Minifig-Finder mit echten Shopdaten testen (BrickLink- und BrickOwl-Schlüssel in der .env der Schule). Laufweg-Reihenfolge in der Lehrer-Ansicht eintragen, Absender `shop.sender` setzen.
 - Umlagern/Inventur schreiben noch nicht zu BrickLink zurück (das Original hat dafür `inventory_center` mit `PUT /inventories`). Nach dem nächsten „Bestand holen“ gilt wieder der BrickLink-Stand. Mit dem Inhaber klären, ob das nachgebaut werden soll.
 - Rechnungen, Screen/Infoboard und Inventur-Center des Python-Programms sind nicht übernommen (nicht beauftragt).

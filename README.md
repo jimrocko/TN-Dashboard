@@ -126,7 +126,7 @@ docs/       Logo und Screenshots
 TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
 TN-Dashboard-Tutorial.html  geführte Tour mit Klemmi durch die Demo (ohne Server)
 tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
-.github/    Build-Prüfung und Demo auf GitHub Pages
+.github/    Build-Prüfung
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
 ```
 
