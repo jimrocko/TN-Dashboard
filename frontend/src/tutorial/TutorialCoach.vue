@@ -1,12 +1,15 @@
 <script setup>
 // Tutorial-Begleiter: dunkelt alles ab außer dem Element, das man antippen soll, zeigt mit einem Pfeil darauf
-// und lässt Klemmi erklären. Nur im Tutorial-Build (npm run build:tutorial) eingebunden.
+// und lässt Klemmi erklären. Im Tutorial-Build das ganze Tutorial; mit `help` (Schritte aus help.js)
+// die Kurzhilfe zu einem Bereich (Knopf „?“), dann nur Erklärschritte und am Ende „Fertig“.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { X, ArrowRight, RotateCcw, Compass, GraduationCap, Backpack } from 'lucide-vue-next'
 import Klemmi from './Klemmi.vue'
 import { introSteps, tracks, homeTab, accountButton } from './steps'
 
+const props = defineProps({ help: { type: Array, default: null } })
+const emit = defineEmits(['close'])
 const route = useRoute()
 const router = useRouter()
 
@@ -14,11 +17,11 @@ const active = ref(true)
 const index = ref(0)
 // Erst nach der Wahl (Lehrer oder Schüler) steht fest, welches Tutorial weiterläuft.
 const track = ref(null)
-const steps = computed(() => [...introSteps, ...(track.value ? tracks[track.value] : [])])
+const steps = computed(() => props.help ?? [...introSteps, ...(track.value ? tracks[track.value] : [])])
 const step = computed(() => steps.value[index.value])
 const total = computed(() => steps.value.length)
 // Vor der Wahl: Fortschritt so zeigen, als ginge es mit dem kürzeren Schüler-Tutorial weiter
-const shownTotal = computed(() => (track.value ? total.value : introSteps.length + tracks.schueler.length))
+const shownTotal = computed(() => (track.value || props.help ? total.value : introSteps.length + tracks.schueler.length))
 const isChoose = computed(() => step.value.wait === 'choose')
 function choose(t) {
   track.value = t
@@ -111,6 +114,7 @@ function onApi(e) {
 }
 // Erklärschritte auch mit Enter oder Leertaste weiter (PC)
 function onKey(e) {
+  if (props.help && active.value && e.key === 'Escape') { quit(); return }
   if (!active.value || !isInfo.value || isEnd.value || isChoose.value || !['Enter', ' '].includes(e.key)) return
   e.preventDefault()
   if (talking.value) finishTyping()
@@ -194,9 +198,9 @@ function rescue() {
 
 // ---------- Ende ----------
 const confirmQuit = ref(false)
-function quit() { active.value = false; clearInterval(typer) }
+function quit() { active.value = false; clearInterval(typer); emit('close') }
 // Neu laden: main.js setzt die Tutorial-Daten zurück, man startet abgemeldet bei Schritt 1.
-const restart = () => location.reload()
+const restart = () => { if (props.help) index.value = 0; else location.reload() }
 const confetti = Array.from({ length: 36 }, (_, i) => ({
   left: `${(i * 37) % 100}%`,
   delay: `${(i % 14) * 0.12}s`,
@@ -235,7 +239,7 @@ onBeforeUnmount(() => {
       </svg>
     </div>
 
-    <div v-if="isEnd" class="confetti" aria-hidden="true">
+    <div v-if="isEnd && !help" class="confetti" aria-hidden="true">
       <i v-for="(c, i) in confetti" :key="i" :style="{ left: c.left, animationDelay: c.delay, animationDuration: c.duration, background: c.color, width: c.w }"></i>
     </div>
 
@@ -255,7 +259,8 @@ onBeforeUnmount(() => {
           <span class="chapter">{{ step.chapter }}</span>
           <span class="stepno">{{ index + 1 }} / {{ shownTotal }}</span>
           <span v-if="track" class="track">{{ track === 'lehrer' ? 'Lehrer-Tutorial' : 'Schüler-Tutorial' }}</span>
-          <button class="close" type="button" title="Tutorial beenden" aria-label="Tutorial beenden" @click.stop="confirmQuit = !confirmQuit"><X :size="18" /></button>
+          <span v-else-if="help" class="track">Hilfe</span>
+          <button class="close" type="button" :title="help ? 'Hilfe schließen' : 'Tutorial beenden'" :aria-label="help ? 'Hilfe schließen' : 'Tutorial beenden'" @click.stop="help ? quit() : (confirmQuit = !confirmQuit)"><X :size="18" /></button>
         </div>
         <p class="say"><strong class="name">Klemmi:</strong> {{ shown }}<span v-if="talking" class="caret">▍</span></p>
         <div class="brick" :style="{ '--p': `${((index + 1) / shownTotal) * 100}%` }"><i></i></div>
@@ -264,12 +269,16 @@ onBeforeUnmount(() => {
           <button class="btn btn-sm" type="button" @click.stop="confirmQuit = false">Weitermachen</button>
           <button class="btn btn-sm btn-primary" type="button" @click.stop="quit">Beenden</button>
         </div>
+        <div v-else-if="isEnd && help" class="actions">
+          <button class="btn" type="button" @click.stop="restart"><RotateCcw :size="16" /> Nochmal</button>
+          <button class="btn btn-primary next" type="button" @click.stop="quit">Fertig</button>
+        </div>
         <div v-else-if="isEnd" class="actions">
           <button class="btn" type="button" @click.stop="restart"><RotateCcw :size="16" /> Nochmal von vorn</button>
           <button class="btn btn-primary" type="button" @click.stop="quit"><Compass :size="16" /> Frei erkunden</button>
         </div>
         <div v-else class="actions">
-          <button v-if="stuck" class="btn btn-sm" type="button" @click.stop="rescue">Ich finde es nicht</button>
+          <button v-if="stuck && !help" class="btn btn-sm" type="button" @click.stop="rescue">Ich finde es nicht</button>
           <span v-else-if="!isInfo" class="note turn"><i></i> Du bist dran!</span>
           <button v-if="isInfo" class="btn btn-primary next" type="button" :disabled="talking" @click.stop="advance()">Weiter <ArrowRight :size="16" /></button>
         </div>

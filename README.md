@@ -50,12 +50,18 @@ Große Kacheln mit Live-Zahlen (Bestand, offene Vorschläge, offene Inventuren) 
 
 **Minifig-Finder und Pickliste** sind die bestehenden Programme der Schule. Sie bekommen im Dashboard eine eigene Kachel und den gemeinsamen Login.
 
-**Meine Aktivitäten** (oben rechts auf den eigenen Namen tippen) zeigt das eigene Protokoll. Unter **Einstellungen** stellt jeder für sein Gerät Hell/Dunkel, Dichte, Schriftgröße und Animationen ein.
+**Meine Aktivitäten** (oben rechts auf den eigenen Namen tippen) zeigt das eigene Protokoll. Unter **Einstellungen** stellt jeder für sein Gerät Hell/Dunkel, Dichte, Schriftgröße und Animationen ein; dort startet auch das **Tutorial mit Klemmi** (in einem neuen Tab, mit Übungsdaten).
 
 </td>
     <td width="32%" align="center"><img src="docs/images/handy.png" alt="Startseite auf dem Handy" width="220"></td>
   </tr>
 </table>
+
+## Hilfe in jedem Bereich
+
+Oben rechts in jedem Bereich sitzt ein kleines **?**. Ein Tipp darauf, und Klemmi erklärt in ein paar Schritten nur diesen Bereich: Er leuchtet die wichtigen Stellen an und sagt, wofür sie da sind. Dabei wird nichts gebucht oder verändert, die Hilfe ist also auch mit echten Daten gefahrlos. Mit „Fertig“, dem X oder Esc ist sie wieder weg.
+
+<p align="center"><img src="docs/images/hilfe.png" alt="Klemmi erklärt das Inventar" width="640"></p>
 
 ## Teile-Scanner und Teile-Seite
 

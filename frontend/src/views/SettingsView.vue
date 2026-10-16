@@ -1,11 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Moon, Sun, Monitor } from 'lucide-vue-next'
+import { Moon, Sun, Monitor, GraduationCap, CircleHelp } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import SegControl from '../components/SegControl.vue'
 import { useAuth } from '../stores/auth'
 import { useSettings } from '../stores/settings'
-import { api, IS_DEMO } from '../api'
+import { api, IS_DEMO, IS_TUTORIAL } from '../api'
 
 const auth = useAuth()
 const s = useSettings()
@@ -21,6 +21,9 @@ const themes = [
 ]
 const densities = [{ value: 'comfortable', label: 'Komfortabel' }, { value: 'compact', label: 'Kompakt' }]
 const fonts = [{ value: 'normal', label: 'Normal' }, { value: 'large', label: 'Groß' }]
+// Tutorial mit Klemmi (Wunsch des Inhabers): eigene Datei mit Übungsdaten, öffnet in neuem Tab.
+// Auf dem Schulserver liegt sie neben der App (package-dist.mjs kopiert sie), die Demo nimmt die Datei aus dem Repo.
+const tutorialUrl = IS_DEMO ? 'https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Tutorial.html' : 'tutorial.html'
 const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
 </script>
 
@@ -46,6 +49,19 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
         <div class="row">
           <div><div class="k">Animationen</div><div class="h">Übergänge, z. B. beim Öffnen des Menüs.</div></div>
           <SegControl :model-value="s.reduceMotion" :options="motion" label="Animationen" @update:model-value="s.set({ reduceMotion: $event })" />
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!IS_TUTORIAL" class="panel">
+      <div class="panel-head"><h2>Hilfe</h2></div>
+      <div class="rows">
+        <div class="row">
+          <div><div class="k">Tutorial mit Klemmi</div><div class="h">Geführte Tour durch die ganze App, mit Übungsdaten. Öffnet sich in einem neuen Tab, echte Daten bleiben unberührt.</div></div>
+          <a class="btn btn-primary" :href="tutorialUrl" target="_blank" rel="noopener"><GraduationCap :size="16" /> Tutorial starten</a>
+        </div>
+        <div class="row">
+          <div><div class="k">Hilfe in jedem Bereich</div><div class="h">Das <CircleHelp :size="14" class="inl" /> oben rechts in Inventar, Umlagern, Inventur, Analyse und den anderen Bereichen: Klemmi erklärt kurz nur diesen Bereich.</div></div>
         </div>
       </div>
     </section>
@@ -78,6 +94,7 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
 
 <style scoped>
 .narrow { max-width: 900px; }
+.inl { vertical-align: -2px; }
 .rows { display: flex; flex-direction: column; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px var(--pad); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .row:last-child { border-bottom: 0; }

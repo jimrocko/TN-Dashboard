@@ -43,8 +43,8 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
-        // Die API darf nie aus dem Cache kommen.
-        navigateFallbackDenylist: [/\/api\//],
+        // Die API darf nie aus dem Cache kommen; tutorial.html ist eine eigene Seite (nicht auf die App umleiten).
+        navigateFallbackDenylist: [/\/api\//, /tutorial\.html$/],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
     }),

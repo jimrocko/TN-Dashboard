@@ -7,9 +7,11 @@ import XpShell from './components/XpShell.vue'
 import DebugOverlay from './components/DebugOverlay.vue'
 import { useSettings } from './stores/settings'
 import { IS_TUTORIAL } from './api'
+import { help, helpSteps, closeHelp } from './tutorial/help'
 
-// Klemmi gibt es nur im Tutorial-Build; in App und Demo fällt der Code komplett weg.
-const TutorialCoach = IS_TUTORIAL ? defineAsyncComponent(() => import('./tutorial/TutorialCoach.vue')) : null
+// Klemmi: im Tutorial-Build die große Tour. In App und Demo nur die Kurzhilfe je Bereich (Knopf „?“),
+// erst beim ersten Öffnen nachgeladen.
+const Coach = defineAsyncComponent(() => import('./tutorial/TutorialCoach.vue'))
 
 const route = useRoute()
 const settings = useSettings()
@@ -17,6 +19,8 @@ const chrome = computed(() => !route.meta.public)
 // XP verlassen, während eine Spaß-App offen ist: zurück zur Startseite (die Apps gibt es nur im XP-Stil)
 const router = useRouter()
 watch(() => settings.style, (s) => { if (s !== 'xp' && route.meta.xpOnly) router.replace('/') })
+// Hilfe schließen, wenn man den Bereich verlässt
+watch(() => route.path, () => closeHelp())
 </script>
 
 <template>
@@ -28,7 +32,8 @@ watch(() => settings.style, (s) => { if (s !== 'xp' && route.meta.xpOnly) router
     <BottomNav />
   </div>
   <DebugOverlay v-if="chrome" />
-  <TutorialCoach v-if="TutorialCoach" />
+  <Coach v-if="IS_TUTORIAL" />
+  <Coach v-else-if="help.topic" :key="help.run" :help="helpSteps(help.topic)" @close="closeHelp" />
 </template>
 
 <style scoped>
