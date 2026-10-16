@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
 import LocationTag from '../components/LocationTag.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
+import BrickLinkExport from '../components/BrickLinkExport.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
 import { appSettings } from '../utils/appSettings'
@@ -17,6 +18,7 @@ const newLoc = ref('')
 const msg = ref('')
 const error = ref('')
 const busy = ref(false)
+const blExport = ref(null)
 
 async function loadList() {
   try { list.value = (await api.get('stocktakes')).stocktakes } catch (e) { error.value = e.message }
@@ -61,7 +63,8 @@ async function close() {
   try {
     const r = await api.post(`stocktakes/${current.value.id}/close`)
     msg.value = `Inventur ${r.location} abgeschlossen. ${r.corrections.length} Bestandskorrektur(en) gebucht.`
-    await Promise.all([loadList(), open(current.value.id)])
+    // Korrekturen gehen wie beim Umlagern per Kopieren zu BrickLink: gleiches Pop-up (nur wenn sich etwas geändert hat)
+    await Promise.all([loadList(), open(current.value.id), r.corrections.length ? blExport.value?.refresh({ popup: true }) : null])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 // Dev-Einstellung „Blind zählen“: Soll und Differenz bleiben verborgen, bis die Inventur abgeschlossen ist.
@@ -135,6 +138,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
         </div>
       </section>
     </div>
+    <BrickLinkExport ref="blExport" />
   </div>
 </template>
 

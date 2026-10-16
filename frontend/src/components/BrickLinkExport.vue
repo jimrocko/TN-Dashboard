@@ -4,6 +4,7 @@
 // Gemeinsam für alle, nicht persönlich: Offene Umlagerungen und die laufende Übertragung sieht jeder, und jeder darf
 // sie abschließen. Es ist immer nur eine Übertragung offen, damit kein älterer Bestand einen neueren überschreibt.
 // Mit „Später“ geschlossen, bleibt der Kasten unten auf der Seite. Die App schreibt selbst nie zu BrickLink.
+// Auch abgeschlossene Inventuren mit Korrekturen kommen hier hinein (gleiches Pop-up nach „Abschließen“).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Upload, Check, Copy, X } from 'lucide-vue-next'
 import { api, IS_TUTORIAL } from '../api'
@@ -11,6 +12,7 @@ import { num, dateTime } from '../utils/format'
 import { BRICKLINK_XML_URL, buildStockXml, copyText } from '../utils/bricklinkXml'
 
 const pending = ref([])  // offene Umlagerungen aller Nutzer
+const pendingSt = ref([]) // abgeschlossene Inventuren mit Korrekturen, noch nicht übertragen
 const exp = ref(null)    // laufende Übertragung (oder null)
 const stock = ref(null)  // ganzer Bestand (wird vorher geladen, Kopieren muss direkt im Tipp passieren)
 const copied = ref(false)
@@ -24,10 +26,11 @@ async function refresh({ popup: show = false } = {}) {
   try {
     const r = await api.get('bricklink/pending')
     pending.value = r.transfers
+    pendingSt.value = r.stocktakes ?? []
     exp.value = r.export
     copied.value = false
     stock.value = null
-    if (pending.value.length || exp.value) {
+    if (openCount.value || exp.value) {
       doneMsg.value = ''
       if (show && !IS_TUTORIAL) popup.value = true
       stock.value = await api.get('bricklink/stock')
@@ -46,8 +49,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 const xml = computed(() => (stock.value ? buildStockXml(stock.value)[0].xml : ''))
 const lotCount = computed(() => (stock.value ? stock.value.lots.length + stock.value.deleted.length : 0))
-// Umlagerungen, die nach dem Start der offenen Übertragung dazukamen (kommen in die nächste)
-const newer = computed(() => (exp.value ? pending.value.filter((t) => !exp.value.transfer_ids.includes(t.id)).length : 0))
+const openCount = computed(() => pending.value.length + pendingSt.value.length)
+// „2 Umlagerungen und 1 Inventur“
+const what = (u, i) => [u && `${u} ${u === 1 ? 'Umlagerung' : 'Umlagerungen'}`, i && `${i} ${i === 1 ? 'Inventur' : 'Inventuren'}`].filter(Boolean).join(' und ')
+// Änderungen, die nach dem Start der offenen Übertragung dazukamen (kommen in die nächste)
+const newer = computed(() => (exp.value
+  ? pending.value.filter((t) => !exp.value.transfer_ids.includes(t.id)).length + pendingSt.value.filter((x) => !(exp.value.stocktake_ids ?? []).includes(x.id)).length
+  : 0))
 
 function copyAndOpen() {
   // Kopieren und Öffnen direkt im Tipp, sonst blockiert Safari beides
@@ -59,7 +67,7 @@ async function start() {
   error.value = ''
   copyAndOpen()
   try {
-    exp.value = (await api.post('bricklink/start', { ids: stock.value.transfer_ids })).export
+    exp.value = (await api.post('bricklink/start', { ids: stock.value.transfer_ids, stocktake_ids: stock.value.stocktake_ids ?? [] })).export
   } catch (e) {
     await refresh()
     error.value = e.message
@@ -82,7 +90,7 @@ async function finish(done) {
 <template>
   <!-- Als Pop-up an den body gehängt (auch im XP-Fenster mittig), sonst an Ort und Stelle; display: contents hält sticky intakt -->
   <Teleport to="body" :disabled="!popup">
-  <div v-if="pending.length || exp || (popup && doneMsg)" :class="popup ? 'bl-overlay' : 'bl-inline'" @click.self="close">
+  <div v-if="openCount || exp || (popup && doneMsg)" :class="popup ? 'bl-overlay' : 'bl-inline'" @click.self="close">
   <section class="bl-export panel" :class="{ still: IS_TUTORIAL, modal: popup }" :role="popup ? 'dialog' : null" :aria-modal="popup ? 'true' : null" aria-live="polite">
     <button v-if="popup" class="btn btn-sm close" type="button" aria-label="Schließen" @click="close"><X :size="16" /></button>
 
@@ -92,7 +100,7 @@ async function finish(done) {
         <Upload :size="20" />
         <div>
           <h2>Übertragung läuft</h2>
-          <p class="muted small">Seit {{ dateTime(exp.created_at) }} · {{ exp.transfer_ids.length }} {{ exp.transfer_ids.length === 1 ? 'Umlagerung' : 'Umlagerungen' }}.
+          <p class="muted small">Seit {{ dateTime(exp.created_at) }} · {{ what(exp.transfer_ids.length, (exp.stocktake_ids ?? []).length) }}.
             Wurde der kopierte Bestand bei BrickLink unten beim Upload eingefügt und bestätigt?</p>
         </div>
       </div>
@@ -102,17 +110,17 @@ async function finish(done) {
       </div>
       <button class="btn btn-sm again" type="button" :disabled="!stock" @click="copyAndOpen"><Copy :size="15" /> Bestand nochmal kopieren · BrickLink öffnen</button>
       <p v-if="copied" class="success small">Kopiert! Bei BrickLink unten beim Upload einfügen und bestätigen.</p>
-      <p v-if="newer" class="faint small">{{ newer }} neuere {{ newer === 1 ? 'Umlagerung kommt' : 'Umlagerungen kommen' }} danach in die nächste Übertragung.</p>
+      <p v-if="newer" class="faint small">{{ newer }} {{ newer === 1 ? 'neuere Änderung kommt' : 'neuere Änderungen kommen' }} danach in die nächste Übertragung.</p>
     </template>
 
     <!-- Noch nichts gestartet -->
-    <template v-else-if="pending.length">
+    <template v-else-if="openCount">
       <div class="head">
         <Upload :size="20" />
         <div>
           <h2>Zu BrickLink übertragen</h2>
-          <p class="muted small">{{ pending.length }} {{ pending.length === 1 ? 'Umlagerung ist' : 'Umlagerungen sind' }} noch nicht im BrickLink-Shop.
-            <template v-if="stock">Kopiert wird der ganze Bestand: {{ num(lotCount) }} Lots mit der Menge nach dem Abziehen.</template></p>
+          <p class="muted small">{{ what(pending.length, pendingSt.length) }} {{ openCount === 1 ? 'ist' : 'sind' }} noch nicht im BrickLink-Shop.
+            <template v-if="stock">Kopiert wird der ganze Bestand: {{ num(lotCount) }} Lots mit den aktuellen Mengen.</template></p>
         </div>
       </div>
       <div class="steps">
@@ -126,7 +134,7 @@ async function finish(done) {
       <div class="head"><Check :size="20" /><div><h2>{{ doneMsg }}</h2></div></div>
     </template>
 
-    <button v-if="popup" class="btn later" type="button" @click="close">{{ pending.length || exp ? 'Später' : 'Schließen' }}</button>
+    <button v-if="popup" class="btn later" type="button" @click="close">{{ openCount || exp ? 'Später' : 'Schließen' }}</button>
     <p v-if="error" class="error small">{{ error }}</p>
   </section>
   </div>

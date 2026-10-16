@@ -95,7 +95,9 @@ CREATE TABLE IF NOT EXISTS {p}stocktakes (
   status VARCHAR(16) NOT NULL DEFAULT 'offen',
   created_at DATETIME NOT NULL,
   closed_at DATETIME NULL,
-  closed_by INT UNSIGNED NULL
+  closed_by INT UNSIGNED NULL,
+  bl_changes TEXT NULL,
+  bl_done_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS {p}stocktake_items (
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS {p}bl_exports (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   open_flag TINYINT NULL UNIQUE,
   transfer_ids TEXT NOT NULL,
+  stocktake_ids TEXT NULL,
   created_by INT UNSIGNED NOT NULL,
   created_at DATETIME NOT NULL,
   closed_at DATETIME NULL,

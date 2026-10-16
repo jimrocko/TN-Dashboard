@@ -116,7 +116,7 @@ const studentList = [
     target: () => byText('.btn', 'Abschließen'), wait: { api: /^POST stocktakes\/\d+\/close$/ },
   },
   {
-    say: 'Erledigt! Jede Abweichung wurde als Korrektur gebucht. Und weil alles protokolliert wird, weiß dein Lehrer später auch, wer so fleißig war.',
+    say: 'Erledigt! Jede Abweichung wurde als Korrektur gebucht. Damit auch der BrickLink-Shop die gezählten Mengen kennt, erscheint unten „Zu BrickLink übertragen“. Wie das geht, zeig ich dir gleich beim Umlagern.',
     target: () => q('p.success') ?? q('main section.panel'), wait: 'next', mood: 'cheer',
   },
   // ---------- Teile-Scanner ----------

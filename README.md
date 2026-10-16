@@ -107,7 +107,7 @@ Höchstens 3 Lots pro Kästchen, immer nur innerhalb eines Bereichs (gebraucht b
 
 <p align="center"><img src="docs/images/umlagern.png" alt="Umlagern mit Vorschlägen" width="720"></p>
 
-Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf kopiert den ganzen Bestand als BrickLink-XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) und öffnet BrickLink; dort unten beim Upload einfügen und bestätigen, danach in der App „Ja, ist eingefügt“. Es läuft immer nur eine Übertragung, die alle sehen und jeder abschließen kann. Buchen zwei gleichzeitig dasselbe Lot, geht nur die erste Buchung durch.
+Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf kopiert den ganzen Bestand als BrickLink-XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) und öffnet BrickLink; dort unten beim Upload einfügen und bestätigen, danach in der App „Ja, ist eingefügt“. Abgeschlossene Inventuren mit Korrekturen kommen in dieselbe Übertragung. Es läuft immer nur eine Übertragung, die alle sehen und jeder abschließen kann. Buchen zwei gleichzeitig dasselbe Lot, geht nur die erste Buchung durch.
 
 <p align="center"><img src="docs/images/bricklink.png" alt="Fenster Zu BrickLink übertragen" width="720"></p>
 
@@ -115,7 +115,7 @@ Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf ko
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/images/inventur.png" alt="Inventur"><br><b>Inventur & Bestandsprüfung</b><br>Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren.</td>
+    <td width="50%" valign="top"><img src="docs/images/inventur.png" alt="Inventur"><br><b>Inventur & Bestandsprüfung</b><br>Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren. Danach öffnet sich wie beim Umlagern <b>Zu BrickLink übertragen</b>, damit die gezählten Mengen auch im Shop stehen (ohne API-Abruf, per Kopieren und Einfügen).</td>
     <td width="50%" valign="top"><img src="docs/images/auftraege.png" alt="Auftragszentrale"><br><b>Auftragszentrale</b><br>Bestellungen nach Status, Positionen sortiert nach Lagerort (Laufweg beim Picken), Status weiterschalten. Ohne eigene Kachel: erreichbar über die Suche, die Analyse („Aufträge nach Status“), die Teile- und die Lagerort-Seite.</td>
   </tr>
 </table>

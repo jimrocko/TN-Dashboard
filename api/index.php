@@ -164,7 +164,8 @@ switch (true) {
     case $route === 'bricklink/pending' && $method === 'GET':
         // Offene Umlagerungen aller Nutzer und die laufende Übertragung (gemeinsam für alle, nicht persönlich)
         require_user();
-        json_response(['transfers' => BrickLinkSync::pending(), 'export' => BrickLinkSync::openExport()]);
+        json_response(['transfers' => BrickLinkSync::pending(), 'stocktakes' => BrickLinkSync::pendingStocktakes(),
+            'export' => BrickLinkSync::openExport()]);
 
     case $route === 'bricklink/stock' && $method === 'GET':
         // Ganzer Bestand für die BrickLink-XML (alle Lots mit Menge nach dem Abziehen)
@@ -174,8 +175,9 @@ switch (true) {
     case $route === 'bricklink/start' && $method === 'POST':
         // Übertragung starten (Bestand wurde kopiert). Es darf immer nur eine offen sein.
         $me = require_user();
-        $e = BrickLinkSync::start((array) (request_json()['ids'] ?? []), (int) $me['id']);
-        ActivityLog::log((int) $me['id'], 'bricklink_export_start', 'umlagern', ['umlagerungen' => count($e['transfer_ids'])]);
+        $in = request_json();
+        $e = BrickLinkSync::start((array) ($in['ids'] ?? []), (int) $me['id'], (array) ($in['stocktake_ids'] ?? []));
+        ActivityLog::log((int) $me['id'], 'bricklink_export_start', 'umlagern', ['umlagerungen' => count($e['transfer_ids']), 'inventuren' => count($e['stocktake_ids'])]);
         json_response(['export' => $e], 201);
 
     case $route === 'bricklink/finish' && $method === 'POST':
@@ -183,7 +185,7 @@ switch (true) {
         $me = require_user();
         $in = request_json();
         $n = BrickLinkSync::finish((int) ($in['id'] ?? 0), !empty($in['done']));
-        ActivityLog::log((int) $me['id'], !empty($in['done']) ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', ['umlagerungen' => $n]);
+        ActivityLog::log((int) $me['id'], !empty($in['done']) ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', ['aenderungen' => $n]);
         json_response(['done' => $n]);
 
     case $route === 'bricklink/import' && $method === 'POST':

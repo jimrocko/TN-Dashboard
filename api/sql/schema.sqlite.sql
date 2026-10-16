@@ -92,7 +92,9 @@ CREATE TABLE IF NOT EXISTS {p}stocktakes (
   status TEXT NOT NULL DEFAULT 'offen',
   created_at TEXT NOT NULL,
   closed_at TEXT NULL,
-  closed_by INTEGER NULL
+  closed_by INTEGER NULL,
+  bl_changes TEXT NULL,
+  bl_done_at TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS {p}stocktake_items (
@@ -122,6 +124,7 @@ CREATE TABLE IF NOT EXISTS {p}bl_exports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   open_flag INTEGER NULL UNIQUE,
   transfer_ids TEXT NOT NULL,
+  stocktake_ids TEXT NULL,
   created_by INTEGER NOT NULL,
   created_at TEXT NOT NULL,
   closed_at TEXT NULL,

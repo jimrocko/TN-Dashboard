@@ -317,6 +317,9 @@ function transfer(db, lotId, toId, qty, userId, expectLoc = null, expectQty = nu
   return { item_no: lot.item_no, color: lot.color_name, qty, from, to: to.code }
 }
 
+/** Laufende Übertragung für die Antwort (wie BrickLinkSync::openExport) */
+const exportRow = (e) => ({ id: e.id, transfer_ids: e.transfer_ids, stocktake_ids: e.stocktake_ids ?? [], created_at: e.created_at })
+
 function stocktakeRow(db, s) {
   const l = loc(db, s.location_id)
   return {
@@ -487,12 +490,15 @@ export function route(db, method, parts, params, body, requireUser, log) {
   if (method === 'GET' && a === 'bricklink' && b === 'pending') {
     // wie in PHP: offene Umlagerungen aller Nutzer und die laufende Übertragung (gemeinsam, ohne Namen)
     requireUser()
+    // dazu abgeschlossene Inventuren mit Korrekturen (wie BrickLinkSync::pendingStocktakes)
     const e = (db.blExports ?? []).find((x) => x.open)
     return {
       transfers: db.transfers.filter((t) => !t.bl_done_at && t.bl_changes)
         .map((t) => ({ id: t.id, item_no: t.item_no, color_name: t.color_name, name: t.name, qty: t.qty, created_at: t.created_at,
           from_code: t.from_code, to_code: t.to_code, changes: t.bl_changes })),
-      export: e ? { id: e.id, transfer_ids: e.transfer_ids, created_at: e.created_at } : null,
+      stocktakes: db.stocktakes.filter((x) => !x.bl_done_at && x.bl_changes)
+        .map((x) => ({ id: x.id, closed_at: x.closed_at, location_code: loc(db, x.location_id).code, corrections: x.bl_changes })),
+      export: e ? exportRow(e) : null,
     }
   }
   if (method === 'GET' && a === 'bricklink' && b === 'stock') {
@@ -505,19 +511,22 @@ export function route(db, method, parts, params, body, requireUser, log) {
     const open = db.transfers.filter((t) => !t.bl_done_at && t.bl_changes)
     const deleted = new Set()
     for (const t of open) for (const c of t.bl_changes) if (c.type === 'update' && c.delete && !have.has(c.lot_id)) deleted.add(c.lot_id)
-    return { lots: lots.map(({ id, ...l }) => l), deleted: [...deleted], transfer_ids: open.map((t) => t.id) }
+    const openSt = db.stocktakes.filter((x) => !x.bl_done_at && x.bl_changes)
+    return { lots: lots.map(({ id, ...l }) => l), deleted: [...deleted], transfer_ids: open.map((t) => t.id), stocktake_ids: openSt.map((x) => x.id) }
   }
   if (method === 'POST' && a === 'bricklink' && b === 'start') {
     // Übertragung starten; immer nur eine offen (wie BrickLinkSync::start)
     const me = requireUser()
     db.blExports ??= []
-    const ids = (body.ids ?? []).map(Number).filter((i) => i > 0)
-    if (!ids.length) throw new DemoError('Keine offenen Umlagerungen', 400)
+    const clean = (a) => (a ?? []).map(Number).filter((i) => i > 0)
+    const ids = clean(body.ids)
+    const stIds = clean(body.stocktake_ids)
+    if (!ids.length && !stIds.length) throw new DemoError('Keine offenen Änderungen', 400)
     if (db.blExports.some((x) => x.open)) throw new DemoError('Gerade läuft schon eine Übertragung. Bitte den kopierten Bestand nicht einfügen.', 409)
-    const e = { id: db.blExports.length + 1, open: true, transfer_ids: ids, created_by: me.id, created_at: now() }
+    const e = { id: db.blExports.length + 1, open: true, transfer_ids: ids, stocktake_ids: stIds, created_by: me.id, created_at: now() }
     db.blExports.push(e)
-    log(me.id, 'bricklink_export_start', 'umlagern', { umlagerungen: ids.length })
-    return { export: { id: e.id, transfer_ids: e.transfer_ids, created_at: e.created_at } }
+    log(me.id, 'bricklink_export_start', 'umlagern', { umlagerungen: ids.length, inventuren: stIds.length })
+    return { export: exportRow(e) }
   }
   if (method === 'POST' && a === 'bricklink' && b === 'finish') {
     // Offene Übertragung abschließen (eingefügt oder verworfen); darf jeder
@@ -529,9 +538,11 @@ export function route(db, method, parts, params, body, requireUser, log) {
     if (body.done) {
       const ids = new Set(e.transfer_ids)
       for (const x of db.transfers) if (!x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
+      const st = new Set(e.stocktake_ids ?? [])
+      for (const x of db.stocktakes) if (!x.bl_done_at && st.has(x.id)) { x.bl_done_at = t; n++ }
     }
     Object.assign(e, { open: false, closed_at: t, state: body.done ? 'eingefuegt' : 'verworfen' })
-    log(me.id, body.done ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', { umlagerungen: n })
+    log(me.id, body.done ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', { aenderungen: n })
     return { done: n }
   }
   if (method === 'POST' && a === 'bricklink' && b === 'import') {
@@ -580,7 +591,8 @@ export function route(db, method, parts, params, body, requireUser, log) {
       lot.updated_at = t
       corrections.push({ item_no: it.item_no, color: it.color_name, diff })
     }
-    Object.assign(st, { status: 'abgeschlossen', closed_at: t, closed_by_name: me.display_name })
+    // Korrekturen müssen noch zu BrickLink (wie Shop::closeStocktake)
+    Object.assign(st, { status: 'abgeschlossen', closed_at: t, closed_by_name: me.display_name, bl_changes: corrections.length ? corrections : null, bl_done_at: null })
     const code = loc(db, st.location_id).code
     log(me.id, 'stocktake_closed', 'inventur', { lagerort: code, korrekturen: corrections.length })
     return { location: code, corrections }

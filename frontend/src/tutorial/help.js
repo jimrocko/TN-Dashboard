@@ -53,7 +53,7 @@ const topics = {
       { say: 'Oben rechts wählst du einen Lagerort und startest eine neue Inventur.', target: () => q('main .page-head .toolbar') },
       { say: 'Hier stehen alle Inventuren: offene zum Weiterzählen und fertige zum Nachschauen. Antippen öffnet sie.', target: () => q('main section.panel') },
       { say: 'In einer offenen Inventur trägst du bei jedem Teil die gezählte Menge ein. „Soll“ ist, was laut App da sein müsste, „Diff.“ die Abweichung.', target: () => panel('Inventur') },
-      end('Mit „Abschließen“ wird der Bestand auf deine gezählten Mengen korrigiert. Zähl lieber zweimal!'),
+      end('Mit „Abschließen“ wird der Bestand auf deine gezählten Mengen korrigiert. Danach öffnet sich „Zu BrickLink übertragen“, damit die Mengen auch im Shop stimmen. Zähl lieber zweimal!'),
     ],
   },
   analyse: {

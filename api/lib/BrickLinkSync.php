@@ -7,6 +7,8 @@
  *   Die App selbst schreibt nie zu BrickLink.
  * - Jede Umlagerung merkt sich, was sich in BrickLink ändert (Spalte bl_changes in tn_transfers). Daraus kommen
  *   die ganz weggeräumten Lots (Menge 0 in der XML) und der Hinweis, wer noch nicht übertragen hat.
+ * - Abgeschlossene Inventuren mit Korrekturen zählen genauso als offene Änderung (Spalte bl_changes in tn_stocktakes,
+ *   Wunsch des Inhabers): Nach „Abschließen“ kommt dasselbe Pop-up, der ganze Bestand enthält die gezählten Mengen.
  * - Der Lagerort steht in BrickLink in den Remarks des Lots.
  * - Import (nur Lehrer): Lager komplett aus dem BrickLink-Shop übernehmen, mit Lot-IDs.
  * Gleiche Regeln in frontend/src/demo/shop.js (blChanges), XML-Aufbau in frontend/src/utils/bricklinkXml.js.
@@ -25,6 +27,9 @@ final class BrickLinkSync
                             'bl_condition' => $sqlite ? "TEXT NOT NULL DEFAULT 'U'" : "CHAR(1) NOT NULL DEFAULT 'U'"],
             'transfers' => ['bl_changes' => 'TEXT NULL',
                             'bl_done_at' => $sqlite ? 'TEXT NULL' : 'DATETIME NULL'],
+            'stocktakes' => ['bl_changes' => 'TEXT NULL',
+                             'bl_done_at' => $sqlite ? 'TEXT NULL' : 'DATETIME NULL'],
+            'bl_exports' => ['stocktake_ids' => 'TEXT NULL'],
         ];
         // Übertragungen: open_flag = 1 nur bei der offenen; UNIQUE erlaubt mehrere NULL, aber nur eine offene
         db()->exec('CREATE TABLE IF NOT EXISTS ' . t('bl_exports') . ' (
@@ -77,6 +82,20 @@ final class BrickLinkSync
         ];
     }
 
+    /** Abgeschlossene Inventuren mit Korrekturen (von allen), die noch nicht zu BrickLink übertragen wurden. */
+    public static function pendingStocktakes(): array
+    {
+        self::ensureSchema();
+        $rows = q('SELECT s.id, s.closed_at, s.bl_changes, l.code AS location_code FROM {stocktakes} s
+            JOIN {locations} l ON l.id = s.location_id WHERE s.bl_done_at IS NULL AND s.bl_changes IS NOT NULL ORDER BY s.id')->fetchAll();
+        foreach ($rows as &$r) {
+            $r['id'] = (int) $r['id'];
+            $r['corrections'] = json_decode((string) $r['bl_changes'], true) ?: [];
+            unset($r['bl_changes']);
+        }
+        return $rows;
+    }
+
     /** Umlagerungen (von allen), die noch nicht zu BrickLink übertragen wurden. */
     public static function pending(): array
     {
@@ -121,27 +140,31 @@ final class BrickLinkSync
                 if (($c['type'] ?? '') === 'update' && !empty($c['delete']) && !isset($have[(int) $c['lot_id']])) $deleted[(int) $c['lot_id']] = true;
             }
         }
-        return ['lots' => $lots, 'deleted' => array_keys($deleted), 'transfer_ids' => $ids];
+        $stIds = array_map('intval', q('SELECT id FROM {stocktakes} WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
+        return ['lots' => $lots, 'deleted' => array_keys($deleted), 'transfer_ids' => $ids, 'stocktake_ids' => $stIds];
     }
 
     /** Die offene Übertragung (oder null). Gemeinsam für alle, ohne Namen. */
     public static function openExport(): ?array
     {
         self::ensureSchema();
-        $e = q('SELECT id, transfer_ids, created_at FROM {bl_exports} WHERE open_flag = 1')->fetch();
+        $e = q('SELECT id, transfer_ids, stocktake_ids, created_at FROM {bl_exports} WHERE open_flag = 1')->fetch();
         if (!$e) return null;
-        return ['id' => (int) $e['id'], 'transfer_ids' => json_decode((string) $e['transfer_ids'], true) ?: [], 'created_at' => $e['created_at']];
+        return ['id' => (int) $e['id'], 'transfer_ids' => json_decode((string) $e['transfer_ids'], true) ?: [],
+                'stocktake_ids' => json_decode((string) ($e['stocktake_ids'] ?? ''), true) ?: [], 'created_at' => $e['created_at']];
     }
 
     /** Übertragung starten; schlägt fehl (409), wenn schon eine offen ist. */
-    public static function start(array $ids, int $userId): array
+    public static function start(array $ids, int $userId, array $stocktakeIds = []): array
     {
         self::ensureSchema();
-        $ids = array_values(array_filter(array_map('intval', $ids), fn ($i) => $i > 0));
-        if (!$ids) json_error('Keine offenen Umlagerungen', 400);
+        $clean = fn (array $a) => array_values(array_filter(array_map('intval', $a), fn ($i) => $i > 0));
+        $ids = $clean($ids);
+        $stIds = $clean($stocktakeIds);
+        if (!$ids && !$stIds) json_error('Keine offenen Änderungen', 400);
         try {
-            q('INSERT INTO {bl_exports} (open_flag, transfer_ids, created_by, created_at) VALUES (1, ?, ?, ?)',
-                [json_encode($ids), $userId, now()]);
+            q('INSERT INTO {bl_exports} (open_flag, transfer_ids, stocktake_ids, created_by, created_at) VALUES (1, ?, ?, ?, ?)',
+                [json_encode($ids), json_encode($stIds), $userId, now()]);
         } catch (PDOException $e) {
             // UNIQUE auf open_flag: jemand anders war schneller
             json_error('Gerade läuft schon eine Übertragung. Bitte den kopierten Bestand nicht einfügen.', 409);
@@ -153,7 +176,7 @@ final class BrickLinkSync
     public static function finish(int $id, bool $done): int
     {
         self::ensureSchema();
-        $e = q('SELECT id, transfer_ids FROM {bl_exports} WHERE id = ? AND open_flag = 1', [$id])->fetch();
+        $e = q('SELECT id, transfer_ids, stocktake_ids FROM {bl_exports} WHERE id = ? AND open_flag = 1', [$id])->fetch();
         if (!$e) json_error('Diese Übertragung wurde schon abgeschlossen', 409);
         $t = now();
         $n = 0;
@@ -161,6 +184,11 @@ final class BrickLinkSync
         if ($done && $ids) {
             $in = implode(',', array_fill(0, count($ids), '?'));
             $n = q("UPDATE {transfers} SET bl_done_at = ? WHERE bl_done_at IS NULL AND id IN ($in)", array_merge([$t], $ids))->rowCount();
+        }
+        $stIds = array_map('intval', json_decode((string) ($e['stocktake_ids'] ?? ''), true) ?: []);
+        if ($done && $stIds) {
+            $in = implode(',', array_fill(0, count($stIds), '?'));
+            $n += q("UPDATE {stocktakes} SET bl_done_at = ? WHERE bl_done_at IS NULL AND id IN ($in)", array_merge([$t], $stIds))->rowCount();
         }
         q('UPDATE {bl_exports} SET open_flag = NULL, closed_at = ?, state = ? WHERE id = ?', [$t, $done ? 'eingefuegt' : 'verworfen', $id]);
         return $n;
@@ -237,6 +265,7 @@ final class BrickLinkSync
                 }
             }
             q('UPDATE {transfers} SET bl_done_at = ? WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL', [$t]);
+            q('UPDATE {stocktakes} SET bl_done_at = ? WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL', [$t]);
             q("UPDATE {bl_exports} SET open_flag = NULL, closed_at = ?, state = 'verworfen' WHERE open_flag = 1", [$t]);
             $pdo->commit();
         } catch (Throwable $e) {

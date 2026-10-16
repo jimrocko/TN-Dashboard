@@ -389,6 +389,7 @@ final class Shop
         if (!$s) json_error('Prüfung nicht gefunden', 404);
         if ($s['status'] !== 'offen') json_error('Prüfung ist bereits abgeschlossen', 409);
         $corrections = [];
+        BrickLinkSync::ensureSchema(); // Spalten vorher anlegen: ALTER TABLE beendet in MySQL jede Transaktion
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -402,7 +403,9 @@ final class Shop
                 q('UPDATE {inventory} SET qty = ?, updated_at = ? WHERE id = ?', [max(0, (int) $current + $diff), $t, $it['inventory_id']]);
                 $corrections[] = ['item_no' => $it['item_no'], 'color' => $it['color_name'], 'diff' => $diff];
             }
-            q("UPDATE {stocktakes} SET status = 'abgeschlossen', closed_at = ?, closed_by = ? WHERE id = ?", [$t, $userId, $id]);
+            // Korrekturen müssen noch zu BrickLink (gleiches Pop-up wie nach dem Umlagern, siehe BrickLinkSync)
+            q("UPDATE {stocktakes} SET status = 'abgeschlossen', closed_at = ?, closed_by = ?, bl_changes = ? WHERE id = ?",
+                [$t, $userId, $corrections ? json_encode($corrections, JSON_UNESCAPED_UNICODE) : null, $id]);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
