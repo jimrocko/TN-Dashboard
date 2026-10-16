@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, History, Settings, GraduationCap, Code2, Power, LogOut } from 'lucide-vue-next'
-import { modules, moduleById } from '../modules'
+import { modules, homeModules, moduleById } from '../modules'
 import { pageTitle } from '../router'
 import { useAuth } from '../stores/auth'
 import { windowKey } from '../utils/windowing'
@@ -32,9 +32,10 @@ const extras = computed(() => [
   { id: 'einstellungen', title: 'Einstellungen', icon: Settings, path: '/einstellungen', xpColor: '#7a7a7a' },
   ...(auth.isStaff ? [{ id: 'lehrer', title: 'Lehrer-Ansicht', icon: GraduationCap, path: '/lehrer', xpColor: '#b5651d' }] : []),
 ])
-const desktopIcons = computed(() => [...xpApps, ...modules, ...extras.value])
+const desktopIcons = computed(() => [...xpApps, ...homeModules, ...extras.value])
+// Fenster-Symbol: auch Bereiche ohne Kachel (Scanner, Aufträge) haben eins
 const iconFor = (key) => (key.startsWith('/teil/') || key.startsWith('/lagerort/') ? moduleById('inventar')
-  : desktopIcons.value.find((i) => key === i.path || key.startsWith(i.path + '/')) ?? null)
+  : [...xpApps, ...modules, ...extras.value].find((i) => key === i.path || key.startsWith(i.path + '/')) ?? null)
 
 // Bildschirmbreite: schmal = Fenster immer bildschirmfüllend
 const compactMq = typeof matchMedia === 'function' ? matchMedia('(max-width: 900px)') : null
@@ -225,7 +226,7 @@ onBeforeUnmount(() => {
             <Search :size="16" />
             <input id="start-search" v-model="q" type="search" enterkeyhint="search" placeholder="Teile, Lagerorte, Aufträge suchen" aria-label="Suchen" />
           </form>
-          <RouterLink v-for="m in modules" :key="m.id" :to="m.path" class="sm-item">
+          <RouterLink v-for="m in homeModules" :key="m.id" :to="m.path" class="sm-item">
             <span class="glyph sm" :style="{ '--c': m.xpColor }"><component :is="m.icon" :size="18" :stroke-width="2" /></span>
             <span>{{ m.title }}</span>
           </RouterLink>

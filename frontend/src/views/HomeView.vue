@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import GlobalSearch from '../components/GlobalSearch.vue'
 import ModuleTile from '../components/ModuleTile.vue'
-import { modules } from '../modules'
+import { homeModules } from '../modules'
 import { api } from '../api'
 
 const data = ref(null)
@@ -31,7 +31,7 @@ onMounted(load)
       <button class="btn btn-primary" :disabled="seeding" @click="seed">Beispieldaten laden</button>
     </div>
     <div class="grid">
-      <ModuleTile v-for="m in modules" :key="m.id" :module="m" :data="data" />
+      <ModuleTile v-for="m in homeModules" :key="m.id" :module="m" :data="data" />
     </div>
   </div>
 </template>

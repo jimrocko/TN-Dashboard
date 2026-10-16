@@ -7,12 +7,11 @@ import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
 import { api } from '../api'
 import { num, eur, dateTime, orderStatusClass } from '../utils/format'
-import { appSettings } from '../utils/appSettings'
 
 const STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen']
 const route = useRoute()
 const router = useRouter()
-const status = ref(route.query.status ?? appSettings.auftraege.status)
+const status = ref(route.query.status ?? 'aktiv')
 const orders = ref([])
 const current = ref(null)
 const error = ref('')
@@ -86,7 +85,7 @@ async function setStatus(s) {
         </div>
         <div class="panel-body status-row">
           <span class="pill" :class="orderStatusClass(current.status)">{{ current.status }}</span>
-          <button v-if="next && appSettings.auftraege.nextButton" class="btn btn-primary btn-sm" :disabled="busy" @click="setStatus(next)">Weiter zu „{{ next }}“</button>
+          <button v-if="next" class="btn btn-primary btn-sm" :disabled="busy" @click="setStatus(next)">Weiter zu „{{ next }}“</button>
           <select class="select" :value="current.status" @change="setStatus($event.target.value)" :disabled="busy" aria-label="Status setzen">
             <option v-for="s in STATUSES" :key="s">{{ s }}</option>
           </select>

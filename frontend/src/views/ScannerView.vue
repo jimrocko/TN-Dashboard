@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Camera, CameraOff, ImageUp, ScanSearch, ExternalLink } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
@@ -10,7 +10,6 @@ import { rememberRecognition } from '../utils/recognition'
 import { num } from '../utils/format'
 import { cameraAvailable, startCamera, captureFrame, shrinkFile } from '../utils/camera'
 import { WINDOW_VISIBLE } from '../utils/windowing'
-import { appSettings } from '../utils/appSettings'
 
 // Teile-Scanner: Foto eines Teils machen, der kostenlose Dienst Brickognize erkennt es,
 // danach zeigt die App, ob und wo das Teil bei uns im Lager liegt.
@@ -47,8 +46,6 @@ function camStop() {
   camOn.value = false
 }
 watch(visible, (v) => { if (!v) camStop() })
-// Dev-Einstellung: Kamera gleich beim Öffnen starten
-onMounted(() => { if (appSettings.scanner.autoCam && cameraAvailable() && visible.value) camStart() })
 
 async function recognize(blob) {
   busy.value = true
@@ -68,7 +65,7 @@ async function recognize(blob) {
 function show(list) {
   items.value = list
   rememberRecognition(list)
-  if (list[0]?.type === 'part' && appSettings.scanner.openPart) {
+  if (list[0]?.type === 'part') {
     camStop()
     router.push({ path: `/teil/${list[0].id}`, query: { scan: '1', t: String(Date.now()) } })
   }

@@ -6,7 +6,7 @@ import { IS_DEMO } from '../../api'
 import { useAuth } from '../../stores/auth'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
 import { appSettings, resetAppSettings, isChanged } from '../../utils/appSettings'
-import { modules } from '../../modules'
+import { homeModules } from '../../modules'
 import { resetDemo } from '../../demo/backend'
 
 // Einstellungen für Entwickler: Debug-Hilfen und lokale Daten. Der Stil ist hier bewusst nicht umschaltbar.
@@ -35,7 +35,7 @@ async function clearCaches() {
     say(`${regs.length} Service Worker und ${keys.length} Caches entfernt. Beim nächsten Laden wird alles neu geholt.`)
   } catch (e) { err.value = e.message }
 }
-// Einstellungen je Bereich: Reihenfolge wie auf der Startseite, externe Programme ohne eigene Einstellungen.
+// Einstellungen je Bereich: Reihenfolge wie auf der Startseite (nur Bereiche mit Kachel), externe Programme ohne eigene Einstellungen.
 const n = (v) => v.toLocaleString('de-DE')
 const appOptions = {
   inventar: [
@@ -50,15 +50,6 @@ const appOptions = {
     { key: 'plan', k: 'Lagerplan anzeigen', h: 'Raumplan mit roten Mischkisten zwischen Vorschlägen und Umbuchen.', options: onOff },
     { key: 'popup', k: 'BrickLink-Pop-up nach dem Umlagern', h: 'Aus = kein Pop-up, die Übertragung steht nur unten auf der Seite.', options: onOff },
   ],
-  scanner: [
-    { key: 'maxPx', k: 'Fotogröße', h: 'Längste Seite vor dem Hochladen. Kleiner = schneller im WLAN, größer = genauer.', options: [640, 1024, 1600].map((v) => ({ value: v, label: `${n(v)} px` })) },
-    { key: 'openPart', k: 'Teile-Seite direkt öffnen', h: 'Aus = Ergebnis mit Alternativen bleibt im Scanner stehen.', options: onOff },
-    { key: 'autoCam', k: 'Kamera beim Öffnen starten', h: 'Spart einen Tipp. Der Browser fragt beim ersten Mal nach der Erlaubnis.', options: onOff },
-  ],
-  auftraege: [
-    { key: 'status', k: 'Filter beim Öffnen', h: 'Welche Aufträge die Liste zuerst zeigt.', options: [{ value: 'aktiv', label: 'Aktiv' }, { value: '', label: 'Alle' }, { value: 'Neu', label: 'Neu' }, { value: 'Bezahlt', label: 'Bezahlt' }, { value: 'Verpackt', label: 'Verpackt' }] },
-    { key: 'nextButton', k: 'Knopf „Weiter zu …“', h: 'Aus = Status nur über die Auswahlliste ändern.', options: onOff },
-  ],
   inventur: [
     { key: 'blind', k: 'Blind zählen', h: 'Soll-Menge und Abweichungen bleiben verborgen, bis die Inventur abgeschlossen ist.', options: onOff },
   ],
@@ -66,7 +57,7 @@ const appOptions = {
     { key: 'metric', k: 'Kennzahl „Bestand nach Kategorie“', h: 'Was die Balken beim Öffnen zeigen.', options: [{ value: 'qty', label: 'Teile' }, { value: 'value', label: 'Lagerwert' }, { value: 'lots', label: 'Lots' }] },
   ],
 }
-const appModules = modules.filter((m) => appOptions[m.id] || m.status === 'extern')
+const appModules = homeModules.filter((m) => appOptions[m.id] || m.status === 'extern')
 
 const confirmDemo = ref(false)
 async function resetDemoData() {

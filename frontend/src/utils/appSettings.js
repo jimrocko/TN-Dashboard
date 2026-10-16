@@ -8,8 +8,6 @@ const KEY = 'tn-app-settings'
 export const appDefaults = {
   inventar: { limit: 500, sort: 'item', plan: 'merken' },
   umlagern: { page: 30, reason: 'alle', history: 15, popup: true, plan: true },
-  scanner: { maxPx: 1024, openPart: true, autoCam: false },
-  auftraege: { status: 'aktiv', nextButton: true },
   inventur: { blind: false },
   analyse: { metric: 'qty' },
 }

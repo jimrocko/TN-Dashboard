@@ -122,8 +122,8 @@ const studentList = [
   // ---------- Teile-Scanner ----------
   {
     chapter: 'Teile-Scanner',
-    say: 'Du hast ein Teil in der Hand und keine Ahnung, was das ist? Dafür gibt’s den Teile-Scanner. Startseite, dann „Teile-Scanner“.',
-    target: () => tile('Teile-Scanner'), wait: { route: /^\/scanner/ }, from: '/',
+    say: 'Du hast ein Teil in der Hand und keine Ahnung, was das ist? Dafür gibt’s den Teile-Scanner. Der steckt in der Suche: Tipp auf der Startseite rechts im Suchfeld auf das Scan-Symbol.',
+    target: () => q('form.search .scan'), wait: { route: /^\/scanner/ }, from: '/',
   },
   {
     say: 'Im Lager hältst du das Teil vor die Kamera oder wählst ein Foto, und die App erkennt es. Hier in der Übung gibt’s keine Kamera, deshalb schummeln wir: Tipp auf „Demo: Erkennung ohne Foto testen“.',
@@ -156,20 +156,6 @@ const studentList = [
     say: 'Unter den Vorschlägen gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen.',
     target: () => panel('Lagerplan'), wait: 'next', go: '/umlagern',
   },
-  // ---------- Aufträge ----------
-  {
-    chapter: 'Aufträge',
-    say: 'Jetzt die Aufträge, da kommen die Bestellungen rein. Startseite, dann „Auftragszentrale“.',
-    target: () => tile('Auftragszentrale'), wait: { route: /^\/auftraege/ }, from: '/',
-  },
-  {
-    say: 'Das sind die offenen Bestellungen. Tipp einen Auftrag an.',
-    target: () => q('main section.panel tbody tr.clickable'), wait: 'click', go: '/auftraege',
-  },
-  {
-    say: 'Hier siehst du, welche Teile gepackt werden müssen und wo sie liegen. Ist ein Schritt fertig, schiebst du den Auftrag weiter. Tipp auf „Weiter zu …“.',
-    target: () => byText('.btn', 'Weiter zu'), wait: { api: /^POST orders\/\d+\/status$/ }, go: '/auftraege',
-  },
   // ---------- Inventur-Übersicht ----------
   {
     chapter: 'Inventur & Bestandsprüfung',
@@ -183,12 +169,26 @@ const studentList = [
   // ---------- Analyse ----------
   {
     chapter: 'Analyse',
-    say: 'Letzter Bereich: die Analyse, das Zahlen-Dashboard. Startseite, dann „Lager- & Auftragsanalyse“.',
+    say: 'Letzte Kachel: die Analyse, das Zahlen-Dashboard. Startseite, dann „Lager- & Auftragsanalyse“.',
     target: () => tile('Lager- & Auftragsanalyse'), wait: { route: /^\/analyse/ }, from: '/',
   },
   {
     say: 'Hier siehst du, welche Kategorien wir haben, welche Fächer voll sind, wo der Bestand knapp wird und wo noch Mischkisten warten.',
     target: () => q('main section.panel'), wait: 'next', go: '/analyse',
+  },
+  // ---------- Aufträge ----------
+  {
+    chapter: 'Aufträge',
+    say: 'Zum Schluss die Aufträge, da kommen die Bestellungen rein. Eine eigene Kachel haben sie nicht, du kommst über Links hin, zum Beispiel hier: Tipp bei „Aufträge nach Status“ auf „Bezahlt“.',
+    target: () => panel('Aufträge nach Status')?.querySelector('a[href*="Bezahlt"]') ?? panel('Aufträge nach Status'), wait: { route: /^\/auftraege/ }, go: '/analyse',
+  },
+  {
+    say: 'Das sind alle bezahlten Bestellungen, die noch gepackt werden müssen. Tipp einen Auftrag an.',
+    target: () => q('main section.panel tbody tr.clickable'), wait: 'click', go: '/auftraege',
+  },
+  {
+    say: 'Hier siehst du, welche Teile gepackt werden müssen und wo sie liegen. Ist ein Schritt fertig, schiebst du den Auftrag weiter. Tipp auf „Weiter zu …“.',
+    target: () => byText('.btn', 'Weiter zu'), wait: { api: /^POST orders\/\d+\/status$/ }, go: '/auftraege',
   },
   // ---------- Protokoll ----------
   {
