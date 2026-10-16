@@ -113,7 +113,7 @@ final class Shop
             $where[] = '(o.order_no LIKE ? OR o.buyer LIKE ?)';
             array_push($p, "%$term%", "%$term%");
         }
-        $sql = 'SELECT o.id, o.order_no, o.buyer, o.status, o.ordered_at, o.total,
+        $sql = 'SELECT o.id, o.platform, o.order_no, o.buyer, o.status, o.ordered_at, o.total,
                 (SELECT COUNT(*) FROM {order_items} x WHERE x.order_id = o.id) AS positions,
                 (SELECT COALESCE(SUM(qty), 0) FROM {order_items} x WHERE x.order_id = o.id) AS parts
             FROM {orders} o' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY o.ordered_at DESC LIMIT 200';
@@ -122,11 +122,11 @@ final class Shop
 
     public static function order(int $id): ?array
     {
-        $o = q('SELECT id, order_no, buyer, status, ordered_at, total FROM {orders} WHERE id = ?', [$id])->fetch();
+        $o = q('SELECT id, platform, order_no, buyer, status, ordered_at, total FROM {orders} WHERE id = ?', [$id])->fetch();
         if (!$o) return null;
         $o = typed([$o], ['id'], ['total'])[0];
         $o['items'] = typed(q('SELECT x.id, x.inventory_id, x.item_no, x.color_name, x.name, x.qty, x.price,
-                l.code AS location_code, i.qty AS stock
+                COALESCE(l.code, x.remarks) AS location_code, i.qty AS stock
             FROM {order_items} x LEFT JOIN {inventory} i ON i.id = x.inventory_id LEFT JOIN {locations} l ON l.id = i.location_id
             WHERE x.order_id = ? ORDER BY l.code, x.item_no', [$id])->fetchAll(), ['id', 'inventory_id', 'qty', 'stock'], ['price']);
         // Laufweg: Kästchen in natürlicher Reihenfolge (N4 vor N150)
@@ -293,9 +293,9 @@ final class Shop
             } elseif ($qty === (int) $lot['qty']) {
                 q('UPDATE {inventory} SET location_id = ?, updated_at = ? WHERE id = ?', [$toId, $t, $lotId]);
             } else {
-                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
-                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $t]);
+                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, new_or_used, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
+                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['new_or_used'] ?? '', $t]);
             }
             if ($existing || $qty < (int) $lot['qty']) {
                 if ($qty === (int) $lot['qty']) {

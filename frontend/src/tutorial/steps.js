@@ -58,21 +58,37 @@ const studentList = [
   {
     chapter: 'Minifig-Finder',
     say: 'Erster Bereich: der Minifig-Finder. Zurück zur Startseite und tipp auf die Kachel.',
-    target: () => tile('Minifig-Finder'), wait: { route: /^\/modul\/minifig/ }, from: '/',
+    target: () => tile('Minifig-Finder'), wait: { route: /^\/minifig/ }, from: '/',
   },
   {
-    say: 'Der Minifig-Finder ist ein eigenes Programm vom Shop, das hier eingebunden wird. Damit findest du jede Figur und ihre Varianten.',
-    target: () => q('main .panel'), wait: 'next', go: '/modul/minifig',
+    say: 'Der Minifig-Finder schaut, welche Minifiguren sich aus losen Teilen in unserem Lager zusammenbauen lassen. Grün heißt: sofort baubar. Gelb heißt: Es fehlt nur noch ein Teil.',
+    target: () => q('main .kpis + .kpis') ?? q('main .kpis'), wait: 'next', go: '/minifig',
+  },
+  {
+    say: 'Der gemeinsame Bauplan verteilt die Teile so, dass keins doppelt verplant wird. Tipp bei einer Figur auf „Teile & Lagerorte“.',
+    target: () => panel('Gemeinsamer Bauplan')?.querySelector('summary'), wait: 'click', go: '/minifig',
+  },
+  {
+    say: 'Hier steht jedes Teil mit dem Kästchen, in dem es liegt. Das Kästchen kannst du antippen und direkt hingehen. Zusammenbauen, fertig!',
+    target: () => panel('Gemeinsamer Bauplan')?.querySelector('details[open] .parts'), wait: 'next', go: '/minifig', mood: 'cheer',
   },
   // ---------- Pickliste ----------
   {
     chapter: 'Pickliste',
     say: 'Weiter zur Pickliste: Startseite, dann die Kachel „Pickliste“.',
-    target: () => tile('Pickliste'), wait: { route: /^\/modul\/pickliste/ }, from: '/',
+    target: () => tile('Pickliste'), wait: { route: /^\/pickliste/ }, from: '/',
   },
   {
-    say: 'Mit der Pickliste sammelst du die Teile für Bestellungen zusammen und meldest, wenn etwas fehlt. Auch ein eigenes Programm, das hier angedockt wird.',
-    target: () => q('main .panel'), wait: 'next', go: '/modul/pickliste',
+    say: 'Das sind die offenen Bestellungen. Mit der Pickliste sammelst du die Teile zusammen. Tipp auf die erste Bestellung.',
+    target: () => q('.order'), wait: 'click', go: '/pickliste',
+  },
+  {
+    say: 'Jede Zeile ist ein Teil: rechts das Kästchen und die Menge. Hast du die Teile in der Hand, tipp auf die Zeile. Probier es aus!',
+    target: () => q('.row:not(.picked)'), wait: { api: /^POST picking\/items\/\d+\/toggle$/ }, go: '/pickliste',
+  },
+  {
+    say: 'Durchgestrichen heißt: gepickt, mit deinem Namen dran. Fehlt etwas oder stimmt der Lagerort nicht, tippst du auf das Ausrufezeichen und meldest es. Sind alle Zeilen gepickt, schließt du die Bestellung ab.',
+    target: () => q('.row.picked') ?? q('.rows'), wait: 'next', go: '/pickliste',
   },
   // ---------- Inventar und Lagerplan ----------
   {

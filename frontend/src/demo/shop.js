@@ -21,20 +21,43 @@ export function seedData(seed) {
   const inventory = seed.inventory.map((p, i) => ({
     id: i + 1, item_type: p.item_type, item_no: p.item_no, color_id: p.color_id, color_name: p.color_name,
     name: p.name, category: p.category, location_id: locId[p.location], qty: p.qty, price: p.price,
-    updated_at: ago(p.updated_days_ago),
+    new_or_used: p.new_or_used ?? '', bl_inventory_id: null, description: null, updated_at: ago(p.updated_days_ago),
   }))
   let itemId = 1
-  const orders = seed.orders.map((o, i) => ({
-    id: i + 1, order_no: o.order_no, buyer: o.buyer, status: o.status, ordered_at: ago(o.days_ago),
-    total: round(o.items.reduce((s, it) => s + it.qty * it.price, 0)),
-    items: o.items.map((it) => {
-      const p = seed.inventory[it.lot]
-      return { id: itemId++, inventory_id: it.lot + 1, item_no: p.item_no, color_name: p.color_name, name: p.name, qty: it.qty, price: it.price }
-    }),
-  }))
+  const orders = seed.orders.map((o, i) => {
+    const sum = o.items.reduce((s, it) => s + it.qty * it.price, 0)
+    return {
+      id: i + 1, platform: o.platform ?? 'TN', order_no: o.order_no, buyer: o.customer ?? o.buyer, status: o.status, platform_status: null,
+      ordered_at: ago(o.days_ago), total: round(sum), currency: 'EUR', shipping: shippingOf(o, sum),
+      items: o.items.map((it) => {
+        const p = seed.inventory[it.lot]
+        return {
+          id: itemId++, inventory_id: it.lot + 1, item_type: p.item_type, item_no: p.item_no, color_id: p.color_id, color_name: p.color_name,
+          name: p.name, qty: it.qty, price: it.price, new_or_used: p.new_or_used ?? '', remarks: p.location, ext_lot_id: null,
+          image_url: imageUrl(p.item_type, p.item_no, p.color_id),
+        }
+      }),
+    }
+  })
   const db = { locations, inventory, orders, transfers: [], stocktakes: [], nextLot: inventory.length + 1, nextTransfer: 1, nextStocktake: 1, nextStItem: 1 }
   for (const s of seed.stocktakes) createStocktake(db, locId[s.location])
   return db
+}
+
+/** Versanddaten im Format der Pickliste, wie DemoData::shipping() */
+function shippingOf(o, itemsTotal) {
+  const s = o.shipping
+  if (!s) return {}
+  return { shipping_method: s.method, shipping_cost_minor: Math.round(s.cost * 100), grand_total_minor: Math.round((itemsTotal + s.cost) * 100), recipient_address: s.address }
+}
+
+/** Bild ohne API direkt vom BrickLink-Bildserver, wie Sync::imageUrl() */
+export function imageUrl(type, no, colorId) {
+  if (!no) return null
+  const t = String(type).toUpperCase()
+  if ((t === 'P' || t === 'PART') && colorId !== null && colorId !== undefined) return `https://img.bricklink.com/ItemImage/PN/${colorId}/${encodeURIComponent(no)}.png`
+  const letter = { MINIFIG: 'M', M: 'M', SET: 'S', S: 'S', GEAR: 'G', BOOK: 'B' }[t]
+  return letter ? `https://img.bricklink.com/ItemImage/${letter}N/0/${encodeURIComponent(no)}.png` : null
 }
 
 // Schnelles Nachschlagen (über 1.000 Kästchen, mehrere tausend Lose): Index je Lagerort-Liste.
@@ -115,7 +138,7 @@ function order(db, id) {
   if (!o) return null
   const items = o.items.map((x) => {
     const lot = db.inventory.find((i) => i.id === x.inventory_id)
-    return { ...x, location_code: lot ? loc(db, lot.location_id)?.code ?? null : null, stock: lot?.qty ?? null }
+    return { ...x, location_code: lot ? loc(db, lot.location_id)?.code ?? x.remarks ?? null : x.remarks ?? null, stock: lot?.qty ?? null }
   }).sort((a, b) => natural(a.location_code, b.location_code) || a.item_no.localeCompare(b.item_no))
   return { ...o, items }
 }
@@ -266,7 +289,7 @@ function transfer(db, lotId, toId, qty, userId) {
     lot.location_id = toId
     lot.updated_at = t
   } else {
-    db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, updated_at: t })
+    db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, bl_inventory_id: null, updated_at: t })
   }
   if (existing || qty < lot.qty) {
     if (qty === lot.qty) db.inventory = db.inventory.filter((i) => i.id !== lotId)

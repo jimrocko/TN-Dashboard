@@ -5,10 +5,12 @@ import seed from '../../../api/sql/demo-data.json'
 import * as shop from './shop.js'
 import { predict } from '../utils/brickognize.js'
 import * as devRoutes from './dev.js'
+import * as picking from './picking.js'
+import * as minifig from './minifig.js'
 
 // Version erhöhen, wenn sich die Beispieldaten ändern: alte Browser-Daten werden dann verworfen.
 // Das Tutorial hat eigene Daten, damit es die normale Demo nicht verändert.
-export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v1' : 'tn-dashboard-demo-v7'
+export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v1' : 'tn-dashboard-demo-v8'
 
 export class DemoError extends Error {
   constructor(message, status) {
@@ -36,6 +38,7 @@ function fresh() {
     ],
     log: [],
     ...shop.seedData(seed),
+    minifig: minifig.seedMinifig(),
   }
 }
 
@@ -133,6 +136,8 @@ function dispatch(db, method, route, params, body) {
       const me = requireUser(db)
       return {
         ...shop.dashboard(db),
+        pickliste: { open: picking.openOrders(db).length },
+        minifig: db.minifigCounts ?? null,
         bricklink: { configured: false },
         recent: activityRows(db, isStaff(me) ? null : me.id, 8),
         demo_seedable: false,
@@ -192,6 +197,21 @@ function dispatch(db, method, route, params, body) {
   }
   const devResult = devRoutes.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (devResult !== undefined) return devResult
+  if (parts[0] === 'sync') {
+    requireUser(db)
+    if (method === 'GET' && parts[1] === 'status') {
+      const u = minifig.apiUsage(db)
+      return { inventory: { last_at: null, result: null, next_possible_at: null }, orders: { last_at: null, result: null, next_possible_at: null },
+        bricklink_configured: false, brickowl_configured: false, min_interval: 600, api_usage: u, demo: true }
+    }
+    throw new DemoError('In der Demo gibt es keine Verbindung zu BrickLink/BrickOwl. Auf dem Schulserver holt dieser Knopf Bestand bzw. Aufträge.', 503)
+  }
+  const pickResult = picking.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
+  if (pickResult !== undefined) return pickResult
+  if (parts[0] === 'minifig') {
+    return minifig.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a), (u) => devRoutes.devAllowed(db, u))
+      .then((r) => { if (parts[1] === 'results') db.minifigCounts = { buildable: r.individual_buildable_count, almost: r.almost_count }; return r })
+  }
   const result = shop.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (result !== undefined) return result
   if (method === 'GET' && parts[0] === 'bl' && parts[1] === 'item') {

@@ -1,5 +1,6 @@
 import * as demoBackend from './demo/backend.js'
 import { devFlags, recordApi } from './utils/devtools.js'
+import { saveBlob } from './utils/files.js'
 
 // Demo-Version (npm run build:demo): läuft ohne Server, Daten nur im Browser.
 // Tutorial (npm run build:tutorial): dieselbe Demo, dazu führt Klemmi Schritt für Schritt durch die App.
@@ -64,7 +65,20 @@ export const api = {
   get: (route, params) => request('GET', route, { params }),
   post: (route, body) => request('POST', route, { body }),
   /** Datei-Upload als multipart/form-data, z. B. ein Foto für die Teileerkennung. */
-  upload: (route, form) => request('POST', route, { form }),
+  upload: (route, form, params) => request('POST', route, { form, params }),
+  /** Datei einer Route herunterladen (CSV, BrickStore, ZIP): Server liefert sie direkt, die Demo erzeugt sie im Browser. */
+  async download(route, params = {}) {
+    if (!IS_DEMO) {
+      const a = Object.assign(document.createElement('a'), { href: apiUrl(route, params), download: '' })
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      return
+    }
+    const f = (await request('GET', route, { params }))?.__file
+    if (!f) throw new ApiError('Keine Datei erhalten', 500)
+    saveBlob(f.data instanceof Blob ? f.data : new Blob([f.data], { type: f.type }), f.name)
+  },
 }
 
 /** Aktion ins Protokoll schreiben, das der Lehrer einsehen kann. Fehler blockieren die Bedienung nicht. */

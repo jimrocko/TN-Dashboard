@@ -61,7 +61,7 @@ async function setStatus(s) {
             <thead><tr><th>Auftrag</th><th>Käufer</th><th>Datum</th><th class="num">Pos.</th><th class="num">Teile</th><th class="num">Summe</th><th>Status</th></tr></thead>
             <tbody>
               <tr v-for="o in orders" :key="o.id" class="clickable" :class="{ selected: current?.id === o.id }" @click="select(o.id)">
-                <td class="mono">{{ o.order_no }}</td>
+                <td class="mono">{{ o.order_no }}<div v-if="o.platform && o.platform !== 'TN'" class="faint small">{{ o.platform }}</div></td>
                 <td>{{ o.buyer }}</td>
                 <td class="faint nowrap">{{ dateTime(o.ordered_at) }}</td>
                 <td class="num">{{ o.positions }}</td>

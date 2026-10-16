@@ -5,6 +5,8 @@
  * Sobald ein Konto existiert, ist das Anlegen weiterer Konten hier gesperrt.
  *
  * Kommandozeile (lokale Entwicklung, mit Demo-Konten):  php api/install.php --demo
+ * Bestand aus einer BrickStore-Datei einlesen (Bemerkung = Lagerort):  php api/install.php --bsx bestand.bsx
+ * Bestand und Aufträge von BrickLink/BrickOwl holen (z. B. per Cron, sparsam!):  php api/install.php --sync
  */
 
 declare(strict_types=1);
@@ -14,16 +16,20 @@ require __DIR__ . '/lib/env.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/Shop.php';
 require __DIR__ . '/lib/DemoData.php';
+require __DIR__ . '/lib/auth.php';
+require __DIR__ . '/lib/Dev.php';
+require __DIR__ . '/lib/Schema.php';
+require __DIR__ . '/lib/Cache.php';
+require __DIR__ . '/lib/BrickLinkClient.php';
+require __DIR__ . '/lib/Bsx.php';
+require __DIR__ . '/lib/Sync.php';
+require __DIR__ . '/lib/Picking.php';
 
 $cli = PHP_SAPI === 'cli';
 
 function install_schema(): void
 {
-    $driver = config()['db']['driver'] === 'sqlite' ? 'sqlite' : 'mysql';
-    $sql = str_replace('{p}', t(''), file_get_contents(__DIR__ . "/sql/schema.$driver.sql"));
-    foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-        db()->exec($stmt);
-    }
+    Schema::install();
 }
 
 function user_count(): int
@@ -49,6 +55,23 @@ if ($cli) {
     if (in_array('--demo', $argv, true) && DemoData::isEmpty()) {
         $r = DemoData::seed();
         echo "Beispieldaten: {$r['locations']} Lagerorte, {$r['lots']} Lose, {$r['orders']} Aufträge\n";
+    }
+    if (($i = array_search('--bsx', $argv, true)) !== false) {
+        $file = $argv[$i + 1] ?? '';
+        if (!is_file($file)) { fwrite(STDERR, "Datei nicht gefunden: $file\n"); exit(1); }
+        [$rows] = Bsx::parse(file_get_contents($file));
+        $r = Sync::saveInventory(Bsx::toInventory($rows), [], 'BrickStore');
+        echo "Bestand aus BrickStore: {$r['lots']} Lose, {$r['parts']} Teile ({$r['removed']} alte Lose entfernt)\n";
+    }
+    if (in_array('--sync', $argv, true)) {
+        foreach (['inventory' => 'Bestand', 'orders' => 'Aufträge'] as $kind => $label) {
+            try {
+                $r = Sync::$kind(in_array('--force', $argv, true));
+                echo "$label: " . json_encode($r, JSON_UNESCAPED_UNICODE) . "\n";
+            } catch (Throwable $e) {
+                echo "$label: " . $e->getMessage() . "\n";
+            }
+        }
     }
     exit;
 }
@@ -82,10 +105,10 @@ $labels = [
     'db.name' => 'Datenbank-Name', 'db.user' => 'Datenbank-Benutzer', 'db.password' => 'Datenbank-Passwort',
     'db.prefix' => 'Tabellen-Präfix', 'db.path' => 'SQLite-Datei (nur lokal)', 'bricklink.consumer_key' => 'BrickLink Consumer Key',
     'bricklink.consumer_secret' => 'BrickLink Consumer Secret', 'bricklink.token' => 'BrickLink Token',
-    'bricklink.token_secret' => 'BrickLink Token Secret',
+    'bricklink.token_secret' => 'BrickLink Token Secret', 'brickowl.api_key' => 'BrickOwl API-Schlüssel',
 ];
 // Optional: diese Werte haben sinnvolle Standards und müssen nicht in der .env stehen.
-$optional = ['db.driver', 'db.port', 'db.prefix', 'db.path'];
+$optional = ['db.driver', 'db.port', 'db.prefix', 'db.path', 'brickowl.api_key'];
 ?>
 <!doctype html>
 <html lang="de">

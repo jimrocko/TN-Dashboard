@@ -18,6 +18,11 @@ require __DIR__ . '/lib/Brickognize.php';
 require __DIR__ . '/lib/Dev.php';
 require __DIR__ . '/lib/Shop.php';
 require __DIR__ . '/lib/DemoData.php';
+require __DIR__ . '/lib/Schema.php';
+require __DIR__ . '/lib/Bsx.php';
+require __DIR__ . '/lib/Sync.php';
+require __DIR__ . '/lib/Picking.php';
+require __DIR__ . '/lib/Minifig.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[tn-dashboard] ' . $e);
@@ -27,6 +32,44 @@ set_exception_handler(function (Throwable $e) {
 $method = $_SERVER['REQUEST_METHOD'];
 $route = trim((string) ($_GET['r'] ?? ''), '/');
 $parts = $route === '' ? [] : explode('/', $route);
+
+Schema::ensure();
+
+/** Datei zum Herunterladen senden (CSV, BrickStore, ZIP). */
+function send_file(string $content, string $name, string $type): never
+{
+    header("Content-Type: $type");
+    header('Content-Disposition: attachment; filename="' . $name . '"');
+    header('Content-Length: ' . strlen($content));
+    echo $content;
+    exit;
+}
+
+/** Hochgeladene Datei: multipart-Feld „file“ oder der rohe Anfragetext. */
+function upload_body(int $max = 25 * 1024 * 1024): array
+{
+    $f = $_FILES['file'] ?? null;
+    if ($f && ($f['error'] ?? 1) === UPLOAD_ERR_OK) {
+        if ($f['size'] > $max) json_error('Datei ist zu groß');
+        return [file_get_contents($f['tmp_name']), (string) $f['name']];
+    }
+    $raw = file_get_contents('php://input');
+    if ($raw === '' || $raw === false) json_error('Keine Datei übertragen');
+    if (strlen($raw) > $max) json_error('Datei ist zu groß');
+    return [$raw, (string) ($_SERVER['HTTP_X_FILENAME'] ?? '')];
+}
+
+/** Fehler der Plattform-APIs oder der Prüfungen als verständliche Meldung zurückgeben. */
+function api_try(callable $fn): mixed
+{
+    try {
+        return $fn();
+    } catch (ApiException $e) {
+        json_error($e->getMessage(), $e->status === 429 ? 429 : 502);
+    } catch (RuntimeException $e) {
+        json_error($e->getMessage(), 400);
+    }
+}
 
 const MODULES = ['minifig', 'pickliste', 'inventar', 'umlagern', 'scanner', 'auftraege', 'inventur', 'analyse', 'suche'];
 
@@ -55,6 +98,8 @@ switch (true) {
         $me = require_user();
         $isStaff = in_array($me['role'], ROLES_STAFF, true);
         json_response(Shop::dashboard() + [
+            'pickliste' => ['open' => (int) q('SELECT COUNT(*) FROM {orders} WHERE status IN (' . implode(',', array_fill(0, count(Picking::OPEN), '?')) . ')', Picking::OPEN)->fetchColumn()],
+            'minifig'   => json_decode(Dev::setting('minifig_counts') ?? 'null', true),
             'bricklink' => ['configured' => (new BrickLinkClient(config()['bricklink']))->isConfigured()],
             'recent'    => ActivityLog::list($isStaff ? null : (int) $me['id'], 8),
             'demo_seedable' => $isStaff && DemoData::isEmpty(),
@@ -341,6 +386,181 @@ switch (true) {
             json_error($e->getMessage(), 502);
         }
         json_response($result);
+
+    // ---- Daten von BrickLink/BrickOwl holen (nur Lehrer und Dev-Rolle, kostet API-Abrufe) ----
+    case $route === 'sync/status' && $method === 'GET':
+        require_user();
+        json_response(Sync::status());
+
+    case $route === 'sync/inventory' && $method === 'POST':
+        $me = Dev::require();
+        $r = api_try(fn () => Sync::inventory(!empty(request_json()['force'])));
+        ActivityLog::log((int) $me['id'], 'sync_inventory', 'inventar', ['lose' => $r['lots'], 'teile' => $r['parts']]);
+        json_response($r);
+
+    case $route === 'sync/orders' && $method === 'POST':
+        $me = Dev::require();
+        $r = api_try(fn () => Sync::orders(!empty(request_json()['force'])));
+        ActivityLog::log((int) $me['id'], 'sync_orders', 'auftraege', ['fehler' => count($r['errors'])]);
+        json_response($r);
+
+    // ---- Pickliste ----
+    case $route === 'picking/revision' && $method === 'GET':
+        require_user();
+        json_response(Picking::overviewRevision());
+
+    case $route === 'picking/orders' && $method === 'GET':
+        require_user();
+        json_response(['orders' => Picking::openOrders(), 'revision' => Picking::overviewRevision()['revision']]);
+
+    case $route === 'picking/pickers' && $method === 'GET':
+        require_user();
+        json_response(['pickers' => typed(q("SELECT id, display_name AS name FROM {users} WHERE active = 1 ORDER BY role DESC, display_name")->fetchAll(), ['id'])]);
+
+    case count($parts) === 3 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && $method === 'GET':
+        $me = require_user();
+        $d = Picking::detail((int) $parts[2], (int) $me['id']);
+        $d ? json_response($d) : json_error('Bestellung nicht gefunden', 404);
+
+    case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && $parts[3] === 'revision' && $method === 'GET':
+        require_user();
+        json_response(Picking::orderRevision((int) $parts[2]));
+
+    case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && in_array($parts[3], ['complete', 'reopen'], true) && $method === 'POST':
+        $me = require_user();
+        $id = (int) $parts[2];
+        $r = $parts[3] === 'complete' ? Picking::complete($id) : Picking::reopen($id);
+        $no = q('SELECT order_no FROM {orders} WHERE id = ?', [$id])->fetchColumn();
+        ActivityLog::log((int) $me['id'], $parts[3] === 'complete' ? 'pick_order_completed' : 'pick_order_reopened', 'pickliste', ['auftrag' => $no]);
+        json_response($r);
+
+    case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'items' && ctype_digit($parts[2]) && in_array($parts[3], ['toggle', 'claim', 'reports'], true) && $method === 'POST':
+        $me = require_user();
+        $item = (int) $parts[2];
+        $info = q('SELECT x.item_no, x.color_name, x.qty, o.order_no FROM {order_items} x JOIN {orders} o ON o.id = x.order_id WHERE x.id = ?', [$item])->fetch() ?: [];
+        $details = ['auftrag' => $info['order_no'] ?? null, 'teil' => trim(($info['item_no'] ?? '') . ' ' . ($info['color_name'] ?? '')), 'menge' => (int) ($info['qty'] ?? 0)];
+        if ($parts[3] === 'toggle') {
+            $r = Picking::toggle($item, $me);
+            ActivityLog::log((int) $me['id'], $r['picked'] ? 'pick_item' : 'pick_item_reset', 'pickliste', $details);
+        } elseif ($parts[3] === 'claim') {
+            $r = Picking::claim($item, $me);
+            ActivityLog::log((int) $me['id'], $r['claimed'] ? 'pick_claim' : 'pick_unclaim', 'pickliste', $details);
+        } else {
+            $in = request_json();
+            $r = Picking::report($item, (int) $me['id'], $in);
+            ActivityLog::log((int) $me['id'], 'pick_report', 'pickliste', $details + ['grund' => $r['issue_type']]);
+            json_response($r, 201);
+        }
+        json_response($r);
+
+    case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'reports' && ctype_digit($parts[2]) && $parts[3] === 'resolve' && $method === 'POST':
+        $me = require_user();
+        json_response(Picking::resolve((int) $parts[2], (int) $me['id']));
+
+    case $route === 'picking/location-order' && $method === 'GET':
+        require_user();
+        json_response(['groups' => Picking::locationOrder()]);
+
+    case $route === 'picking/location-order' && $method === 'POST':
+        $staff = require_staff();
+        $groups = request_json()['groups'] ?? [];
+        $r = Picking::saveLocationOrder(is_array($groups) ? $groups : []);
+        ActivityLog::log((int) $staff['id'], 'pick_location_order', 'pickliste', ['bereiche' => implode(', ', array_column($r, 'location_group'))]);
+        json_response(['groups' => $r]);
+
+    case $route === 'picking/location-order/available' && $method === 'GET':
+        require_user();
+        json_response(['locations' => Picking::availableLocations()]);
+
+    case $route === 'picking/reset' && $method === 'POST':
+        $staff = require_staff();
+        if ((request_json()['confirmation'] ?? '') !== 'RESET') json_error('Bitte mit RESET bestätigen');
+        $r = Picking::resetTestData();
+        ActivityLog::log((int) $staff['id'], 'pick_reset', 'pickliste', $r);
+        json_response($r);
+
+    case $route === 'picking/stats' && $method === 'GET':
+        require_user();
+        json_response(Picking::stats($_GET['date_from'] ?? null, $_GET['date_to'] ?? null,
+            isset($_GET['picker_id']) && $_GET['picker_id'] !== '' ? (int) $_GET['picker_id'] : null, $_GET['platform'] ?? null));
+
+    // ---- Minifig-Finder ----
+    case $route === 'minifig/status' && $method === 'GET':
+        require_user();
+        json_response(Minifig::status());
+
+    case $route === 'minifig/results' && $method === 'GET':
+        require_user();
+        $r = Minifig::analyze(max(1, min(10000, (int) ($_GET['limit'] ?? 500))));
+        // Für die Kachel auf der Startseite merken (ohne jedes Mal neu zu rechnen)
+        Dev::setSetting('minifig_counts', json_encode(['buildable' => $r['individual_buildable_count'], 'almost' => $r['almost_count']]));
+        json_response($r);
+
+    case in_array($route, ['minifig/scan', 'minifig/catalog-refresh', 'minifig/subsets'], true) && $method === 'POST':
+        // Kostet BrickLink-Abrufe: nur Lehrer und Dev-Rolle
+        $me = Dev::require();
+        if (!BrickLinkClient::fromConfig()->isConfigured()) json_error('BrickLink ist noch nicht eingerichtet (.env).', 503);
+        $batch = (int) (request_json()['batch_size'] ?? 25);
+        $r = match ($route) {
+            'minifig/scan' => Minifig::scan($batch),
+            'minifig/catalog-refresh' => Minifig::refreshCatalog($batch),
+            default => Minifig::fetchSubsets($batch),
+        };
+        ActivityLog::log((int) $me['id'], str_replace(['minifig/', '-'], ['minifig_', '_'], $route), 'minifig', ['abrufe' => $r['api_calls'] ?? 0]);
+        json_response($r);
+
+    case $route === 'minifig/decision' && $method === 'POST':
+        $me = require_user();
+        $in = request_json();
+        $r = Minifig::decide((string) ($in['minifig_no'] ?? ''), (string) ($in['action'] ?? ''), (string) ($in['reason'] ?? ''));
+        ActivityLog::log((int) $me['id'], 'minifig_decision', 'minifig', ['figur' => $r['minifig_no'], 'aktion' => $r['action'], 'grund' => $r['reason']]);
+        json_response($r);
+
+    case $route === 'minifig/export' && $method === 'GET':
+        require_user();
+        $kind = isset(Minifig::LIST_FILES[$_GET['kind'] ?? '']) ? $_GET['kind'] : 'all';
+        $name = 'minifig-' . Minifig::LIST_FILES[$kind];
+        ($_GET['format'] ?? 'csv') === 'bsx'
+            ? send_file(Minifig::listBsx($kind), "$name.bsx", 'application/xml')
+            : send_file(Minifig::listCsv($kind), "$name.csv", 'text/csv; charset=utf-8');
+
+    case $route === 'minifig/export-all' && $method === 'GET':
+        require_user();
+        $fmt = ($_GET['format'] ?? 'csv') === 'bsx' ? 'bsx' : 'csv';
+        send_file(Minifig::allListsZip($fmt), "minifig-listen-$fmt.zip", 'application/zip');
+
+    case $route === 'minifig/almost-joint-export' && $method === 'GET':
+        require_user();
+        ($_GET['format'] ?? 'csv') === 'bsx'
+            ? send_file(Minifig::almostJointBsx(), 'minifig-fehlteile.bsx', 'application/xml')
+            : send_file(Minifig::almostJointCsv(), 'minifig-fehlteile.csv', 'text/csv; charset=utf-8');
+
+    case $route === 'minifig/prices/status' && $method === 'GET':
+        require_user();
+        json_response(Minifig::offlinePriceStatus());
+
+    case $route === 'minifig/prices/export' && $method === 'GET':
+        require_user();
+        send_file(Minifig::priceExport(), 'minifig-preispaket.bsx', 'application/xml');
+
+    case $route === 'minifig/prices/import' && $method === 'POST':
+        $me = Dev::require();
+        [$content, $name] = upload_body();
+        $apply = !empty($_GET['apply']);
+        $r = api_try(fn () => Minifig::priceImport($content, $apply, $name));
+        if ($apply) ActivityLog::log((int) $me['id'], 'minifig_price_import', 'minifig', ['preise' => $r['imported_combinations']]);
+        json_response($r);
+
+    case $route === 'minifig/transfer/export' && $method === 'GET':
+        Dev::require();
+        send_file(Minifig::transferExport(), 'minifig-transfer.zip', 'application/zip');
+
+    case $route === 'minifig/transfer/import' && $method === 'POST':
+        $me = Dev::require();
+        [$content] = upload_body(60 * 1024 * 1024);
+        $r = api_try(fn () => Minifig::transferImport($content));
+        ActivityLog::log((int) $me['id'], 'minifig_transfer_import', 'minifig', $r['imported']);
+        json_response($r);
 
     default:
         json_error('Nicht gefunden', 404);

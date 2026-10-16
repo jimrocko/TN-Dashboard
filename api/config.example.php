@@ -25,6 +25,7 @@ return [
         'bricklink.consumer_secret' => ['BRICKLINK_CONSUMER_SECRET', 'BL_CONSUMER_SECRET'],
         'bricklink.token'           => ['BRICKLINK_TOKEN', 'BRICKLINK_TOKEN_VALUE', 'BL_TOKEN'],
         'bricklink.token_secret'    => ['BRICKLINK_TOKEN_SECRET', 'BL_TOKEN_SECRET'],
+        'brickowl.api_key'          => ['BRICKOWL_API_KEY', 'BO_API_KEY'],
     ],
 
     'db' => [
@@ -50,6 +51,30 @@ return [
         'token_secret'    => '',
         // Standard-Cachedauer für API-Antworten in Sekunden (24 h)
         'cache_ttl'       => 86400,
+        // Nur zum Testen ohne Internet: Ordner mit JSON-Antworten (z. B. orders.json, inventories.json)
+        'fixture_dir'     => null,
+    ],
+
+    // BrickOwl API (nur Bestellungen lesen) – Schlüssel unter https://www.brickowl.com/user/api_keys
+    'brickowl' => [
+        'api_key'     => '',
+        'fixture_dir' => null,
+    ],
+
+    // Absender für die Briefvorschau in der Pickliste (Großbrief)
+    'shop' => [
+        'sender' => ['TN Lego-Shop', 'Musterstraße 1', '12345 Musterstadt'],
+    ],
+
+    // Abrufe bei BrickLink/BrickOwl nur auf Knopfdruck; frühestens wieder nach so vielen Sekunden (spart Tageslimit)
+    'sync' => [
+        'min_interval' => 600,
+    ],
+
+    // Minifig-Finder: Tageslimit der BrickLink-API und Reserve, die nie verbraucht wird
+    'minifig' => [
+        'daily_budget' => 5000,
+        'reserve'      => 500,
     ],
 
     // Teileerkennung per Foto (Teile-Scanner) über den kostenlosen Dienst Brickognize (https://brickognize.com).

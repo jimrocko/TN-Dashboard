@@ -187,3 +187,12 @@
 /* Große Suchleiste im Fenster als XP-Eingabefeld */
 :root[data-tn-style='xp'] .search { height: 52px; border-radius: 0; background: var(--surface); border: 1px solid var(--border-strong); padding: 0 16px; }
 :root[data-tn-style='xp'] .search input { font-size: 17px; }
+
+/* Kennzahlen und Fortschritt (Pickliste, Minifig-Finder) */
+:root[data-tn-style='xp'] .kpi { border-color: var(--border-strong); border-radius: 3px; }
+:root[data-tn-style='xp'] .kpi .value { color: var(--accent-text); font-family: 'Trebuchet MS', Tahoma, sans-serif; }
+:root[data-tn-style='xp'] .progress { height: 16px; padding: 2px; border: 1px solid #686868; border-radius: 3px; background: var(--surface); }
+:root[data-tn-style='xp'] .progress > i { background: repeating-linear-gradient(90deg, #2fb32f 0 8px, transparent 8px 10px); }
+:root[data-tn-style='xp'] .tn-dialog { border: 3px solid var(--xp-frame); border-radius: 8px 8px 3px 3px; }
+:root[data-tn-style='xp'] .tn-dialog > .panel-head { background: var(--xp-title); color: var(--xp-title-text); }
+:root[data-tn-style='xp'] .tn-dialog > .panel-head .btn-ghost { color: #fff; }

@@ -164,3 +164,15 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .error { color: var(--danger); }
 .success { color: var(--ok); }
 .small { font-size: 0.85rem; }
+
+/* Kennzahlen-Kacheln (Pickliste, Minifig-Finder) */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.kpi .label { color: var(--text-3); font-size: 0.82rem; }
+.kpi .value { font-size: 1.45rem; font-weight: 700; line-height: 1.25; }
+.kpi .hint { color: var(--text-3); font-size: 0.8rem; }
+.kpi.good .value { color: var(--ok); }
+.kpi.warn .value { color: var(--warn); }
+.progress { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent); }
+.progress.ok > i { background: var(--ok); }

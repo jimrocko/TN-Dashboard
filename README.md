@@ -52,7 +52,8 @@ Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr.
 | **Inventur & Bestandsprüfung** | Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren. |
 | **Auftragszentrale** | Bestellungen nach Status, Positionen sortiert nach Lagerort (Laufweg beim Picken), Status weiterschalten. |
 | **Lager- & Auftragsanalyse** | Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge nach Status, Aktivität pro Teilnehmer. |
-| **Minifig-Finder, Pickliste** | Die bestehenden Programme der Schule, im Dashboard mit gemeinsamem Login. |
+| **Pickliste** | Offene Bestellungen von BrickLink und BrickOwl kommissionieren. Positionen sind nach Laufweg sortiert (Reihenfolge der Lagerbereiche legt der Lehrer fest), zeigen Kästchen, Menge, Zustand und Restbestand. Antippen = gepickt (mit Namen), „Markieren“ = Positionen für sich vormerken, „!“ = Fehlteil, falscher Lagerort oder falsche Restmenge melden. Gleiche Kästchen nebeneinander sind orange umrandet. Ist alles gepickt, wird die Bestellung abgeschlossen; bei Großbriefen gibt es eine Briefvorschau. Mehrere Picker gleichzeitig: Die Seite aktualisiert sich jede Sekunde. Dazu eine **Pick-Statistik** (Zeitraum, Picker, Plattform, Dauer je Bestellung). |
+| **Minifig-Finder** | Findet Minifiguren, die sich aus losen Teilen im Lager bauen lassen: einzeln baubar, gemeinsam baubar (kein Teil wird doppelt verplant), „nur 1 Teil fehlt“ mit Fehlteilkosten und wirtschaftlichem Vorteil, häufigste Fehlteile, Teileliste mit Kästchen zum Zusammensuchen. Figuren lassen sich ausschließen („Nicht bauen“). Listen als CSV oder BrickStore-Datei, Preise ohne API über ein BrickStore-Preispaket. Abrufe bei BrickLink (Teile prüfen, Stücklisten laden, neue Figuren) nur mit Dev-Rolle, mit Tageslimit. |
 | **Meine Aktivitäten** | Das eigene Protokoll. |
 | **Einstellungen** | Hell/Dunkel, Dichte, Schriftgröße und Animationen, pro Gerät. |
 | **Lehrer-Ansicht** | Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), Protokoll aller oder einzelner Teilnehmer, CSV-Export, Dev-Rolle vergeben. |
@@ -115,7 +116,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 - **Backend:** PHP 8.1+ ohne Framework, läuft auf jedem normalen Webspace. Einstieg ist `api/index.php` (Routen über `?r=…`, keine Rewrite-Regeln nötig).
 - **Datenbank:** die vorhandene MySQL/MariaDB der Schule. Alle Tabellen beginnen mit `tn_` und bleiben so getrennt vom Lehrer-Dashboard.
 - **Zugangsdaten:** kommen aus der vorhandenen `.env` des Servers. Sie wird nur gelesen und nie verändert; eine `.htaccess` sperrt sie für den Zugriff über das Web.
-- **BrickLink:** API-Antworten werden in der Datenbank zwischengespeichert, um das Tageslimit zu schonen.
+- **BrickLink und BrickOwl:** Bestand und Aufträge werden nur auf Knopfdruck geholt (Lehrer-Ansicht → „Shop-Daten holen“, frühestens alle 10 Minuten) und in der eigenen Datenbank gespeichert. Alle Bereiche rechnen danach nur mit diesen Daten. Auftragspositionen und Kundendaten werden pro Auftrag nur einmal geladen, Stücklisten des Minifig-Finders dauerhaft gespeichert. Jeder Abruf wird gezählt (Dev-Bereich, Minifig-Finder). Lagerort = Bemerkung des Loses bei BrickLink (bei BrickOwl die öffentliche Notiz).
 - **Teileerkennung:** Der Server schickt das Foto an Brickognize und verknüpft die Treffer mit dem eigenen Lager. Dafür braucht der Server Internetzugang zu `api.brickognize.com`, und die Kamera im Browser braucht HTTPS. Abschalten: `brickognize.url` in `api/config.php` auf `null`.
 
 ```
@@ -141,7 +142,9 @@ CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte,
 
 Liegt die `.env` woanders oder heißen die Variablen anders: `api/config.example.php` nach `api/config.php` kopieren und `'env_file'` bzw. `'env_map'` anpassen. Ohne `.env` lassen sich die Werte auch direkt in `api/config.php` eintragen.
 
-Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`.
+Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`, `BRICKOWL_API_KEY` (gleiche Namen wie im bisherigen Shop-Programm).
+
+**Erster Bestand:** In der Lehrer-Ansicht „Bestand holen“ und „Aufträge holen“ tippen. Alternativ auf der Kommandozeile `php api/install.php --sync` oder aus einer BrickStore-Datei `php api/install.php --bsx bestand.bsx` (Bemerkung = Lagerort). Absender für die Briefvorschau: `shop.sender` in `api/config.php`.
 
 Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für die Kamera.
 

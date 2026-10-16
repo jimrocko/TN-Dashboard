@@ -19,6 +19,9 @@ import ProfileView from './views/ProfileView.vue'
 import SettingsView from './views/SettingsView.vue'
 import DevView from './views/DevView.vue'
 import TeacherView from './views/teacher/TeacherView.vue'
+import PicklisteView from './views/PicklisteView.vue'
+import PicklisteStatsView from './views/PicklisteStatsView.vue'
+import MinifigView from './views/MinifigView.vue'
 import XpBrowser from './views/xp/XpBrowser.vue'
 import XpMail from './views/xp/XpMail.vue'
 import XpCalendar from './views/xp/XpCalendar.vue'
@@ -39,6 +42,9 @@ const router = createRouter({
     { path: '/umlagern', component: TransferView, meta: { title: 'Umlagern', module: 'umlagern' } },
     { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur & Bestandsprüfung', module: 'inventur' } },
     { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
+    { path: '/pickliste', component: PicklisteView, meta: { title: 'Pickliste', module: 'pickliste' } },
+    { path: '/pickliste/statistik', component: PicklisteStatsView, meta: { title: 'Pick-Statistik', module: 'pickliste' } },
+    { path: '/minifig', component: MinifigView, meta: { title: 'Minifig-Finder', module: 'minifig' } },
     { path: '/scanner', component: ScannerView, meta: { title: 'Teile-Scanner', module: 'scanner' } },
     { path: '/teil/:no', component: PartView, meta: { title: 'Teil', module: 'inventar' } },
     { path: '/lagerort/:code', component: LocationView, meta: { title: 'Lagerort', module: 'inventar' } },
