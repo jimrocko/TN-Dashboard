@@ -21,7 +21,7 @@ const conditionFor = (code) => (/^(N|FN)\d+$/i.test(code) ? 'N' : 'U')
 
 /**
  * Was sich in BrickLink ändern muss (Lagerort steht in den Remarks), wie BrickLinkSync::changes() in PHP.
- * Einträge: update (lot_id, qty = +/- Menge, remarks, delete), upload (neues Los), fehlt (Los ohne BrickLink-Lot-ID).
+ * Einträge: update (lot_id, qty = +/- Menge, remarks, delete), upload (neues Lot), fehlt (Lot ohne BrickLink-Lot-ID).
  */
 function blChanges(lot, existing, qty, toCode) {
   const upd = (row, set) => (row.bl_lot_id
@@ -61,14 +61,14 @@ export function seedData(seed) {
   return db
 }
 
-// Schnelles Nachschlagen (über 1.000 Kästchen, mehrere tausend Lose): Index je Lagerort-Liste.
+// Schnelles Nachschlagen (über 1.000 Kästchen, mehrere tausend Lots): Index je Lagerort-Liste.
 const locIndex = new WeakMap()
 const loc = (db, id) => {
   let m = locIndex.get(db.locations)
   if (!m || m.size !== db.locations.length) locIndex.set(db.locations, (m = new Map(db.locations.map((l) => [l.id, l]))))
   return m.get(id)
 }
-/** Lose und Teile je Lagerort in einem Durchlauf: Map(location_id → { lots, qty }) */
+/** Lots und Teile je Lagerort in einem Durchlauf: Map(location_id → { lots, qty }) */
 const totalsByLocation = (db) => {
   const m = new Map()
   for (const i of db.inventory) {
@@ -153,7 +153,7 @@ const byteCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
  * Umlagerungsvorschläge, gleiche Regeln und Reihenfolge wie Shop::suggestions():
  *  1. 'falsch' – gleiches Teil + Farbe im selben Bereich in mehreren Kästchen → ins Kästchen mit der größten Menge
  *  2. 'farben' – gleiches Teil in anderen Farben verstreut → in ein Kästchen, das nur dieses Teil enthält
- *     (Ziel höchstens SLOT_MAX_LOTS Lose; Quelle enthält auch andere Teile)
+ *     (Ziel höchstens SLOT_MAX_LOTS Lots; Quelle enthält auch andere Teile)
  *  3. 'art' – gleiche Teile-Art (Kategorie) verstreut → in ein Kästchen, das nur diese Art enthält (gleiche Grenzen)
  */
 function suggestions(db) {
@@ -181,7 +181,7 @@ function suggestions(db) {
   }
 
   // 2. Farben zusammenlegen
-  const planned = new Map() // Los-ID → Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
+  const planned = new Map() // Lot-ID → Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
   const boxLots = new Map()
   const boxItems = new Map()
   for (const l of all) {
@@ -275,7 +275,7 @@ function suggestions(db) {
 
 function transfer(db, lotId, toId, qty, userId) {
   const lot = db.inventory.find((i) => i.id === lotId)
-  if (!lot) throw new DemoError('Los nicht gefunden', 404)
+  if (!lot) throw new DemoError('Lot nicht gefunden', 404)
   const to = loc(db, toId)
   if (!to) throw new DemoError('Ziel-Lagerort nicht gefunden', 404)
   if (lot.location_id === toId) throw new DemoError('Quelle und Ziel sind gleich', 400)
@@ -291,7 +291,7 @@ function transfer(db, lotId, toId, qty, userId) {
     lot.location_id = toId
     lot.updated_at = t
   } else {
-    // Neues Los bekommt seine BrickLink-Lot-ID erst beim nächsten Import
+    // Neues Lot bekommt seine BrickLink-Lot-ID erst beim nächsten Import
     db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, updated_at: t, bl_lot_id: null })
   }
   if (existing || qty < lot.qty) {
@@ -371,7 +371,7 @@ function part(db, no) {
   }
 }
 
-/** Lose zu Teil-Nummern, gruppiert (entspricht Shop::lotsByItem). */
+/** Lots zu Teil-Nummern, gruppiert (entspricht Shop::lotsByItem). */
 export function lotsByItem(db, itemNos) {
   const out = {}
   for (const i of db.inventory) {

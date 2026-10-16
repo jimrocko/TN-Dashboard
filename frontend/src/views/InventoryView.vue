@@ -38,7 +38,7 @@ onMounted(async () => {
   load()
 })
 
-// Bei über 3.000 Losen nur die ersten LIMIT laden (schnell auf dem iPad); Filter grenzen ein.
+// Bei über 3.000 Lots nur die ersten LIMIT laden (schnell auf dem iPad); Filter grenzen ein.
 const LIMIT = 500
 const capped = computed(() => items.value.length >= LIMIT)
 const totals = computed(() => ({
@@ -55,7 +55,7 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
 
 <template>
   <div class="page stack">
-    <PageHead title="Inventar" :sub="capped ? `Erste ${num(items.length)} Lose (Filter nutzen, um gezielt zu suchen)` : `${num(items.length)} Lose · ${num(totals.qty)} Teile · ${eur(totals.value)}`">
+    <PageHead title="Inventar" :sub="capped ? `Erste ${num(items.length)} Lots (Filter nutzen, um gezielt zu suchen)` : `${num(items.length)} Lots · ${num(totals.qty)} Teile · ${eur(totals.value)}`">
       <button type="button" class="btn" :class="{ 'btn-primary': showPlan }" :aria-expanded="showPlan" @click="showPlan = !showPlan">
         <MapIcon :size="16" /> {{ showPlan ? 'Lagerplan ausblenden' : 'Lagerplan' }}
       </button>
@@ -110,8 +110,8 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
               <td class="faint nowrap">{{ date(i.updated_at) }}</td>
               <td><button class="btn btn-ghost btn-sm" title="Umlagern" @click="router.push({ path: '/umlagern', query: { lot: i.id } })"><ArrowLeftRight :size="15" /></button></td>
             </tr>
-            <tr v-if="!items.length && !loading"><td colspan="10" class="empty">Keine Lose gefunden.</td></tr>
-            <tr v-if="capped"><td colspan="10" class="empty">Es werden die ersten {{ num(LIMIT) }} Lose gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
+            <tr v-if="!items.length && !loading"><td colspan="10" class="empty">Keine Lots gefunden.</td></tr>
+            <tr v-if="capped"><td colspan="10" class="empty">Es werden die ersten {{ num(LIMIT) }} Lots gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
           </tbody>
         </table>
       </div>

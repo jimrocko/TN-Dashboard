@@ -105,8 +105,8 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
       <div class="dhead">
         <div>
           <strong>{{ zone.title }}</strong> <span class="muted">· {{ zone.sub }}</span>
-          <div class="faint small">{{ zone.s.boxes }} Kästchen belegt · {{ num(zone.s.lots) }} Lose · {{ num(zone.s.qty) }} Teile</div>
-          <div v-if="markMixed && area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lose, noch aufteilen ({{ zone.s.mixed }})</div>
+          <div class="faint small">{{ zone.s.boxes }} Kästchen belegt · {{ num(zone.s.lots) }} Lots · {{ num(zone.s.qty) }} Teile</div>
+          <div v-if="markMixed && area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lots, noch aufteilen ({{ zone.s.mixed }})</div>
         </div>
         <button type="button" class="btn btn-sm" @click="pick(zone.key)">Schließen</button>
       </div>
@@ -124,7 +124,7 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
         <div v-if="block !== null" class="cells" role="grid" :aria-label="`Kästchen ${formatCode(area.id, block)} bis ${formatCode(area.id, block + 99)}`">
           <template v-for="c in cells" :key="c.n">
             <RouterLink v-if="c.loc" :to="`/lagerort/${encodeURIComponent(c.code)}`" class="cell used" :class="{ empty: !c.loc.lots, mixed: c.mixed }"
-              :title="`${c.code}: ${c.loc.lots} Lose, ${num(c.loc.qty)} Teile${c.mixed ? ' · Mischkiste, aufteilen' : ''}`">
+              :title="`${c.code}: ${c.loc.lots} Lots, ${num(c.loc.qty)} Teile${c.mixed ? ' · Mischkiste, aufteilen' : ''}`">
               {{ c.code.slice(area.id.length) }}<i v-if="open[c.code]" class="dot"></i>
             </RouterLink>
             <span v-else class="cell" :title="`${c.code}: nicht angelegt`">{{ c.code.slice(area.id.length) }}</span>
@@ -138,7 +138,7 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
           <div class="subname">{{ g.id }} · {{ g.label }}</div>
           <div class="tiles">
             <RouterLink v-for="l in g.items" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="tile2" :class="{ empty: !l.lots }">
-              <span class="mono code">{{ l.code }}</span><span class="faint small">{{ l.lots }} Lose · {{ num(l.qty) }}</span>
+              <span class="mono code">{{ l.code }}</span><span class="faint small">{{ l.lots }} Lots · {{ num(l.qty) }}</span>
             </RouterLink>
             <span v-if="!g.items.length" class="faint small">Noch keine Kästchen angelegt.</span>
           </div>

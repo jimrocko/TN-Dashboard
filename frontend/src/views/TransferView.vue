@@ -62,7 +62,7 @@ function pick(l) {
 }
 const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?.location_id))
 
-// Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Losen kann die Liste lang werden).
+// Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Lots kann die Liste lang werden).
 const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }
 const reasonClass = { falsch: 'warn', farben: 'accent', art: 'ok' }
 const reason = ref('alle')
@@ -149,7 +149,7 @@ onMounted(async () => {
         <div class="panel-head"><h2>Manuell umbuchen</h2></div>
         <div class="panel-body">
           <label class="field">
-            <span>Los suchen</span>
+            <span>Lot suchen</span>
             <input class="input" v-model="lotQuery" type="search" placeholder="Teil-Nr., Name, Farbe oder Lagerort" />
           </label>
           <div v-if="lotResults.length" class="results">
@@ -178,7 +178,7 @@ onMounted(async () => {
             </div>
             <button class="btn btn-primary" :disabled="busy || !to">Umbuchen</button>
           </form>
-          <p v-else-if="!lotResults.length" class="faint small">Wähle ein Los aus, um es an einen anderen Lagerort zu buchen. Gleiches Teil am Ziel wird zusammengeführt.</p>
+          <p v-else-if="!lotResults.length" class="faint small">Wähle ein Lot aus, um es an einen anderen Lagerort zu buchen. Gleiches Teil am Ziel wird zusammengeführt.</p>
         </div>
       </section>
 

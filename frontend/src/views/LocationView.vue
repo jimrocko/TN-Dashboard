@@ -62,13 +62,13 @@ async function startStocktake() {
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 const kindLabel = { regal: 'Regalplatz', mischkiste: 'Mischkiste' }
-// Kästchen mit zu vielen verschiedenen Losen (bei G mehr als 3) = Mischkiste, muss noch aufgeteilt werden
+// Kästchen mit zu vielen verschiedenen Lots (bei G mehr als 3) = Mischkiste, muss noch aufgeteilt werden
 const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value.lots.length))
 </script>
 
 <template>
   <div class="page stack">
-    <PageHead :title="loc ? `${loc.code} · ${loc.name}` : `Lagerort ${route.params.code}`" :sub="loc ? `${kindLabel[loc.kind]} · ${num(loc.lots.length)} Lose` : ''">
+    <PageHead :title="loc ? `${loc.code} · ${loc.name}` : `Lagerort ${route.params.code}`" :sub="loc ? `${kindLabel[loc.kind]} · ${num(loc.lots.length)} Lots` : ''">
       <template v-if="loc">
         <RouterLink v-if="loc.prev" class="btn btn-sm" :to="`/lagerort/${loc.prev}`" :title="`Vorheriger: ${loc.prev}`"><ChevronLeft :size="16" /> {{ loc.prev }}</RouterLink>
         <RouterLink v-if="loc.next" class="btn btn-sm" :to="`/lagerort/${loc.next}`" :title="`Nächster: ${loc.next}`">{{ loc.next }} <ChevronRight :size="16" /></RouterLink>
@@ -77,13 +77,13 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
     <div v-if="mixed" class="mixed-note" role="status">
-      <strong>Mischkiste:</strong> {{ loc.lots.length }} verschiedene Lose, erlaubt sind höchstens {{ maxLotsFor(loc.code) }}.
-      Bitte aufteilen und überzählige Lose in andere Kästchen umlagern.
+      <strong>Mischkiste:</strong> {{ loc.lots.length }} verschiedene Lots, erlaubt sind höchstens {{ maxLotsFor(loc.code) }}.
+      Bitte aufteilen und überzählige Lots in andere Kästchen umlagern.
     </div>
 
     <template v-if="loc">
       <div class="stats">
-        <div class="stat"><div class="label">Teile</div><div class="value">{{ num(stats.qty) }}</div><div class="faint small">in {{ num(loc.lots.length) }} Losen</div></div>
+        <div class="stat"><div class="label">Teile</div><div class="value">{{ num(stats.qty) }}</div><div class="faint small">in {{ num(loc.lots.length) }} Lots</div></div>
         <div class="stat"><div class="label">Verschiedene Teile</div><div class="value">{{ num(stats.parts) }}</div><div class="faint small">Teil-Nummern</div></div>
         <div class="stat"><div class="label">Wert</div><div class="value">{{ eur(stats.value) }}</div><div class="faint small">zum Lagerpreis</div></div>
         <div class="stat">

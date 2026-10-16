@@ -1,5 +1,5 @@
 // BrickLink-XML aus offenen Umlagerungen (Antwort von GET bricklink/pending).
-// Mass Update ändert bestehende Lose (per Lot-ID), Mass Upload legt neue an. Der Lagerort steht in den Remarks.
+// Mass Update ändert bestehende Lots (per Lot-ID), Mass Upload legt neue an. Der Lagerort steht in den Remarks.
 // Regeln von BrickLink: Menge nur relativ (+5 / -3), nie auf 0 oder darunter (dann <DELETE>Y</DELETE>),
 // keine XML-Deklaration am Anfang, höchstens 200 KB.
 
@@ -13,7 +13,7 @@ const wrap = (items) => (items.length ? `<INVENTORY>\n${items.map((i) => `<ITEM>
 
 /**
  * Alle Änderungen zusammenfassen: pro Lot-ID eine Zeile (Mengen addiert, letzter Lagerort, Löschen gewinnt).
- * Ergebnis: { update, upload } als XML-Text (oder null), dazu missing = Lose ohne BrickLink-Lot-ID.
+ * Ergebnis: { update, upload } als XML-Text (oder null), dazu missing = Lots ohne BrickLink-Lot-ID.
  */
 export function buildBrickLinkXml(transfers) {
   const lots = new Map()

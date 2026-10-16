@@ -25,10 +25,10 @@ function typed(array $rows, array $ints = [], array $floats = []): array
 
 const LOT_INTS = ['id', 'color_id', 'location_id', 'qty'];
 const ORDER_STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen'];
-// Mischkiste: Kästchen in Bereich G mit mehr als 3 verschiedenen Losen (Regel des Inhabers)
+// Mischkiste: Kästchen in Bereich G mit mehr als 3 verschiedenen Lots (Regel des Inhabers)
 const MIXED_AREA_PATTERN = '/^G\\d+$/i';
 const MIXED_MAX_LOTS = 3;
-// Beim Zusammenlegen von Farben bekommt ein Kästchen höchstens so viele Lose
+// Beim Zusammenlegen von Farben bekommt ein Kästchen höchstens so viele Lots
 const SLOT_MAX_LOTS = 3;
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt'];
 
@@ -64,7 +64,7 @@ final class Shop
             $where[] = 'i.location_id = ?';
             $p[] = (int) $f['location'];
         }
-        if (!empty($f['id'])) { // ein bestimmtes Los (z. B. Umlagern aus dem Inventar)
+        if (!empty($f['id'])) { // ein bestimmtes Lot (z. B. Umlagern aus dem Inventar)
             $where[] = 'i.id = ?';
             $p[] = (int) $f['id'];
         }
@@ -153,10 +153,10 @@ final class Shop
      * Umlagerungsvorschläge, zwei Arten (immer nur innerhalb eines Bereichs, also gebraucht nie zu neu):
      *  1. 'falsch'   – gleiches Teil in gleicher Farbe liegt in mehreren Kästchen: alles in das Kästchen mit der größten Menge.
      *  2. 'farben'   – gleiches Teil in anderen Farben liegt verstreut: in ein Kästchen legen, das nur dieses Teil enthält,
-     *                  damit Slots „reiner“ werden. Ziel bekommt höchstens SLOT_MAX_LOTS Lose,
+     *                  damit Slots „reiner“ werden. Ziel bekommt höchstens SLOT_MAX_LOTS Lots,
      *                  Quelle muss auch andere Teile enthalten.
      *  3. 'art'      – gleiche Teile-Art (Kategorie, z. B. Brick, Plate) verstreut: in ein Kästchen, das nur diese Art
-     *                  enthält, höchstens SLOT_MAX_LOTS Lose; Quelle enthält auch andere Arten.
+     *                  enthält, höchstens SLOT_MAX_LOTS Lots; Quelle enthält auch andere Arten.
      * Gleiche Regeln und Reihenfolge wie suggestions() in frontend/src/demo/shop.js.
      */
     public static function suggestions(): array
@@ -183,9 +183,9 @@ final class Shop
         }
 
         // 2. Farben zusammenlegen
-        $planned = []; // Los-ID => Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
-        $boxLots = [];   // location_id => Anzahl Lose
-        $boxItems = [];  // location_id => [item_no => Anzahl Lose]
+        $planned = []; // Lot-ID => Ziel-Kästchen der Farben-Vorschläge (für Schritt 3)
+        $boxLots = [];   // location_id => Anzahl Lots
+        $boxItems = [];  // location_id => [item_no => Anzahl Lots]
         foreach ($all as $l) {
             if (isset($moved[$l['id']])) continue;
             $boxLots[$l['location_id']] = ($boxLots[$l['location_id']] ?? 0) + 1;
@@ -230,8 +230,8 @@ final class Shop
         }
 
         // 3. Gleiche Teile-Art (Kategorie, z. B. Brick, Plate, Tile): in ein Kästchen, das nur diese Art enthält
-        $catLots = [];  // location_id => Anzahl Lose (nach den Vorschlägen aus 1 und 2)
-        $catCount = []; // location_id => [Kategorie => Anzahl Lose]
+        $catLots = [];  // location_id => Anzahl Lots (nach den Vorschlägen aus 1 und 2)
+        $catCount = []; // location_id => [Kategorie => Anzahl Lots]
         $namesIn = [];  // location_id => [Teil-Namen]
         foreach ($all as $l) {
             if (isset($moved[$l['id']]) && !isset($planned[$l['id']])) continue; // zusammengeführt (falsch)
@@ -272,7 +272,7 @@ final class Shop
         return $out;
     }
 
-    /** Menge eines Loses an einen anderen Lagerort buchen. Gleiches Teil am Ziel wird zusammengeführt. */
+    /** Menge eines Lots an einen anderen Lagerort buchen. Gleiches Teil am Ziel wird zusammengeführt. */
     public static function transfer(int $lotId, int $toId, int $qty, int $userId): array
     {
         BrickLinkSync::ensureSchema(); // vor der Transaktion: ALTER TABLE beendet sie in MySQL
@@ -280,7 +280,7 @@ final class Shop
         $pdo->beginTransaction();
         try {
             $lot = q('SELECT * FROM {inventory} WHERE id = ?', [$lotId])->fetch();
-            if (!$lot) json_error('Los nicht gefunden', 404);
+            if (!$lot) json_error('Lot nicht gefunden', 404);
             $to = q('SELECT * FROM {locations} WHERE id = ?', [$toId])->fetch();
             if (!$to) json_error('Ziel-Lagerort nicht gefunden', 404);
             if ((int) $lot['location_id'] === $toId) json_error('Quelle und Ziel sind gleich');
@@ -296,7 +296,7 @@ final class Shop
             } elseif ($qty === (int) $lot['qty']) {
                 q('UPDATE {inventory} SET location_id = ?, updated_at = ? WHERE id = ?', [$toId, $t, $lotId]);
             } else {
-                // Neues Los bekommt seine BrickLink-Lot-ID erst beim nächsten Import (BrickLink vergibt sie beim Mass Upload)
+                // Neues Lot bekommt seine BrickLink-Lot-ID erst beim nächsten Import (BrickLink vergibt sie beim Mass Upload)
                 q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
                    $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['bl_condition'], $t]);
@@ -463,7 +463,7 @@ final class Shop
         ];
     }
 
-    /** Alle Lose zu den angegebenen Teil-Nummern, gruppiert nach Nummer (für die Teileerkennung). */
+    /** Alle Lots zu den angegebenen Teil-Nummern, gruppiert nach Nummer (für die Teileerkennung). */
     public static function lotsByItem(array $itemNos): array
     {
         $itemNos = array_values(array_unique(array_filter(array_map('strval', $itemNos))));
@@ -491,7 +491,7 @@ final class Shop
         $activity = typed(q("SELECT u.display_name AS label, COUNT(a.id) AS count FROM {users} u
             LEFT JOIN {activity_log} a ON a.user_id = u.id AND a.action NOT IN ('login', 'logout')
             WHERE u.role = 'teilnehmer' AND u.active = 1 GROUP BY u.id, u.display_name ORDER BY COUNT(a.id) DESC")->fetchAll(), ['count']);
-        // Mischkisten (G-Kästchen mit zu vielen Losen), die vollsten zuerst
+        // Mischkisten (G-Kästchen mit zu vielen Lots), die vollsten zuerst
         $mixed = array_values(array_filter($byLocation, fn ($l) => preg_match(MIXED_AREA_PATTERN, $l['label']) && $l['lots'] > MIXED_MAX_LOTS));
         usort($mixed, fn ($a, $b) => $b['lots'] <=> $a['lots'] ?: strnatcasecmp($a['label'], $b['label']));
         $mixed = array_slice($mixed, 0, 10);

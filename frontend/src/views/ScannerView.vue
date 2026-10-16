@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
           </div>
           <div v-if="best.type === 'part'">
             <div v-if="best.lots.length" class="stack-sm">
-              <div class="small"><strong>Bei uns im Lager:</strong> {{ num(totalQty(best.lots)) }} Stück in {{ best.lots.length }} {{ best.lots.length === 1 ? 'Los' : 'Losen' }}</div>
+              <div class="small"><strong>Bei uns im Lager:</strong> {{ num(totalQty(best.lots)) }} Stück in {{ best.lots.length }} {{ best.lots.length === 1 ? 'Lot' : 'Lots' }}</div>
               <div class="table-wrap">
                 <table class="table">
                   <thead><tr><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th></tr></thead>

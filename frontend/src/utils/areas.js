@@ -2,9 +2,9 @@
 // G, H und N haben immer drei Stellen (N005), FG/FN/FT/Plate ohne führende Nullen.
 // G = gebraucht (linke Wand), H (rechte Wand oben), N = neu (rechte Wand unten),
 // FG/FN/FT/Plate = Figuren gebraucht/neu, Figurenteile, Plates (unten links).
-// „Mischkiste“ ist kein eigener Ort, sondern ein G-Kästchen mit mehr als 3 Losen (siehe maxLots, isMixedBox).
+// „Mischkiste“ ist kein eigener Ort, sondern ein G-Kästchen mit mehr als 3 Lots (siehe maxLots, isMixedBox).
 export const AREAS = [
-  // maxLots: Kästchen mit mehr verschiedenen Losen gelten als Mischkiste (noch nicht aufgeteilt) und werden rot markiert.
+  // maxLots: Kästchen mit mehr verschiedenen Lots gelten als Mischkiste (noch nicht aufgeteilt) und werden rot markiert.
   { id: 'G', label: 'Gebraucht', color: '#3f8f3a', from: 100, to: 999, digits: 3, maxLots: 3 },
   { id: 'H', label: 'Regal H', color: '#2f63d8', from: 0, to: 999, digits: 3 },
   { id: 'N', label: 'Neu', color: '#e3b81c', from: 0, to: 999, digits: 3 },
@@ -34,7 +34,7 @@ export function parseCode(code) {
 
 export const areaById = (id) => AREAS.find((a) => a.id === id)
 
-/** Ist das Kästchen eine Mischkiste, also noch nicht auf die erlaubte Zahl Lose aufgeteilt? (G: mehr als 3 verschiedene Lose) */
+/** Ist das Kästchen eine Mischkiste, also noch nicht auf die erlaubte Zahl Lots aufgeteilt? (G: mehr als 3 verschiedene Lots) */
 export function isMixedBox(code, lots) {
   const max = areaById(parseCode(code)?.area)?.maxLots
   return max !== undefined && lots > max

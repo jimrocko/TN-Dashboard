@@ -72,7 +72,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
       <form class="toolbar" @submit.prevent="create">
         <select class="select" v-model="newLoc" required aria-label="Lagerort für neue Inventur">
           <option value="" disabled>Lagerort wählen</option>
-          <option v-for="l in locations" :key="l.id" :value="l.id" :disabled="openLocations.has(l.code)">{{ l.code }} · {{ l.lots }} Lose</option>
+          <option v-for="l in locations" :key="l.id" :value="l.id" :disabled="openLocations.has(l.code)">{{ l.code }} · {{ l.lots }} Lots</option>
         </select>
         <button class="btn btn-primary" :disabled="busy || !newLoc">Inventur starten</button>
       </form>

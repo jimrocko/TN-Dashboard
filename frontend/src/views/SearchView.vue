@@ -27,7 +27,7 @@ watch(() => route.query.q, async (q) => {
 <template>
   <div class="page stack">
     <PageHead :title="route.query.q ? `Ergebnisse für „${route.query.q}“` : 'Suche'"
-      :sub="route.query.q ? `${r.parts.length} Lose · ${r.locations.length} Lagerorte · ${r.orders.length} Aufträge` : 'Teil-Nr., Name, Farbe, Kategorie, Lagerort oder Auftrag eingeben.'" />
+      :sub="route.query.q ? `${r.parts.length} Lots · ${r.locations.length} Lagerorte · ${r.orders.length} Aufträge` : 'Teil-Nr., Name, Farbe, Kategorie, Lagerort oder Auftrag eingeben.'" />
     <GlobalSearch :initial="route.query.q || ''" />
     <p v-if="error" class="error">{{ error }}</p>
 

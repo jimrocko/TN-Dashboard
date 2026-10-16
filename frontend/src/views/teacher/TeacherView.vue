@@ -74,7 +74,7 @@ async function importBrickLink() {
   importMsg.value = importErr.value = ''
   try {
     const r = await api.post('bricklink/import')
-    importMsg.value = `${r.lots} Lose übernommen (${r.new} neu, ${r.updated} aktualisiert, ${r.removed} entfernt, ${r.new_locations} neue Lagerorte`
+    importMsg.value = `${r.lots} Lots übernommen (${r.new} neu, ${r.updated} aktualisiert, ${r.removed} entfernt, ${r.new_locations} neue Lagerorte`
       + (r.without_location ? `, ${r.without_location} ohne Lagerort in den Remarks` : '') + ').'
     importAsk.value = false
   } catch (e) { importErr.value = e.message } finally { importBusy.value = false }

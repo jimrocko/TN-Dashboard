@@ -5,7 +5,7 @@
  * - Jede Umlagerung merkt sich, was sich in BrickLink ändern muss (Spalte bl_changes in tn_transfers).
  *   Der Schüler kopiert danach eine XML für „Mass Update“ bzw. „Mass Upload“ und fügt sie bei BrickLink ein.
  *   Die App selbst schreibt nie zu BrickLink.
- * - Der Lagerort steht in BrickLink in den Remarks des Loses.
+ * - Der Lagerort steht in BrickLink in den Remarks des Lots.
  * - Import (nur Lehrer): Lager komplett aus dem BrickLink-Shop übernehmen, mit Lot-IDs.
  * Gleiche Regeln in frontend/src/demo/shop.js (blChanges), XML-Aufbau in frontend/src/utils/bricklinkXml.js.
  */
@@ -43,7 +43,7 @@ final class BrickLinkSync
     /**
      * Was sich in BrickLink ändern muss, wenn $qty Stück von $lot nach $toCode gehen.
      * $existing = gleiches Teil + Farbe, das am Ziel schon liegt (oder null).
-     * Einträge: update (lot_id, qty = +/- Menge, remarks, delete), upload (neues Los), fehlt (Los ohne BrickLink-Lot-ID).
+     * Einträge: update (lot_id, qty = +/- Menge, remarks, delete), upload (neues Lot), fehlt (Lot ohne BrickLink-Lot-ID).
      */
     public static function changes(array $lot, ?array $existing, int $qty, string $toCode): array
     {
@@ -93,8 +93,8 @@ final class BrickLinkSync
     }
 
     /**
-     * Lager komplett aus dem BrickLink-Shop übernehmen (Lose per Lot-ID abgleichen).
-     * Lagerort = Remarks. Lose, die es in BrickLink nicht gibt, werden entfernt.
+     * Lager komplett aus dem BrickLink-Shop übernehmen (Lots per Lot-ID abgleichen).
+     * Lagerort = Remarks. Lots, die es in BrickLink nicht gibt, werden entfernt.
      * Offene, noch nicht übertragene Umlagerungen werden verworfen, weil BrickLink jetzt der Stand ist.
      * $bl = BrickLinkClient (oder ein Objekt mit get() für Tests).
      */

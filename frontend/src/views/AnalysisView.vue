@@ -29,7 +29,7 @@ onMounted(async () => {
           <select class="select" v-model="metric" aria-label="Kennzahl">
             <option value="qty">Teile</option>
             <option value="value">Lagerwert</option>
-            <option value="lots">Lose</option>
+            <option value="lots">Lots</option>
           </select>
         </div>
         <div class="panel-body">
@@ -48,7 +48,7 @@ onMounted(async () => {
       </section>
 
       <section class="panel">
-        <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">G-Kästchen mit mehr als 3 Losen, die vollsten zuerst</span></div>
+        <div class="panel-head"><h2>Mischkisten</h2><span class="faint small">G-Kästchen mit mehr als 3 Lots, die vollsten zuerst</span></div>
         <div class="panel-body"><BarList :rows="a.mixed_bins" value-key="lots" :format="num" :link="(r) => `/lagerort/${r.label}`" /></div>
       </section>
 

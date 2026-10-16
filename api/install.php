@@ -49,7 +49,7 @@ if ($cli) {
     }
     if (in_array('--demo', $argv, true) && DemoData::isEmpty()) {
         $r = DemoData::seed();
-        echo "Beispieldaten: {$r['locations']} Lagerorte, {$r['lots']} Lose, {$r['orders']} Aufträge\n";
+        echo "Beispieldaten: {$r['locations']} Lagerorte, {$r['lots']} Lots, {$r['orders']} Aufträge\n";
     }
     exit;
 }

@@ -81,7 +81,7 @@ const studentList = [
     target: () => tile('Inventar'), wait: { route: /^\/inventar/ }, from: '/',
   },
   {
-    say: 'Das ist das Inventar: Jede Zeile ist ein Los, also ein Teil in einer Farbe an einem Lagerort. Ganz schön viele Steine … Tipp oben auf „Lagerplan“, dann zeig ich dir unser Lagerzimmer.',
+    say: 'Das ist das Inventar: Jede Zeile ist ein Lot, also ein Teil in einer Farbe an einem Lagerort. Ganz schön viele Steine … Tipp oben auf „Lagerplan“, dann zeig ich dir unser Lagerzimmer.',
     target: () => byText('.btn', 'Lagerplan'), wait: 'click', go: '/inventar',
   },
   {
@@ -98,7 +98,7 @@ const studentList = [
   },
   {
     chapter: 'Lagerort',
-    say: 'Hier siehst du, was im Kästchen liegt. Bei G gilt: höchstens 3 verschiedene Lose pro Kästchen. Sind es mehr, ist es eine Mischkiste und gehört aufgeteilt. Tippst du später ein Teil an, siehst du, wo es sonst noch liegt.',
+    say: 'Hier siehst du, was im Kästchen liegt. Bei G gilt: höchstens 3 verschiedene Lots pro Kästchen. Sind es mehr, ist es eine Mischkiste und gehört aufgeteilt. Tippst du später ein Teil an, siehst du, wo es sonst noch liegt.',
     target: () => panel('Inhalt'), wait: 'next', go: '/lagerort/G101',
   },
   // ---------- Inventur ----------

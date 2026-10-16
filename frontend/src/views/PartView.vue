@@ -78,7 +78,7 @@ const pct = (s) => `${Math.round(s * 100)} %`
       <div class="stack grow">
         <div class="stats">
           <div class="stat"><div class="label">Im Bestand</div><div class="value">{{ num(stats.qty) }}</div><div class="faint small">Stück</div></div>
-          <div class="stat"><div class="label">Farben</div><div class="value">{{ num(stats.colors) }}</div><div class="faint small">{{ num(lots.length) }} Lose</div></div>
+          <div class="stat"><div class="label">Farben</div><div class="value">{{ num(stats.colors) }}</div><div class="faint small">{{ num(lots.length) }} Lots</div></div>
           <div class="stat"><div class="label">Wert</div><div class="value">{{ eur(stats.value) }}</div><div class="faint small">zum Lagerpreis</div></div>
           <div class="stat"><div class="label">In offenen Aufträgen</div><div class="value">{{ num(stats.reserved) }}</div><div class="faint small">Stück reserviert</div></div>
         </div>

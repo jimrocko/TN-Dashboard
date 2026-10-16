@@ -26,8 +26,8 @@ onMounted(refresh)
 const xml = computed(() => buildBrickLinkXml(pending.value))
 const steps = computed(() => {
   const s = []
-  if (xml.value.update) s.push({ key: 'update', mode: 'Mass Update', label: `${xml.value.updateCount} ${xml.value.updateCount === 1 ? 'Los ändern' : 'Lose ändern'}`, xml: xml.value.update })
-  if (xml.value.upload) s.push({ key: 'upload', mode: 'Mass Upload', label: `${xml.value.uploadCount} ${xml.value.uploadCount === 1 ? 'neues Los' : 'neue Lose'} anlegen`, xml: xml.value.upload })
+  if (xml.value.update) s.push({ key: 'update', mode: 'Mass Update', label: `${xml.value.updateCount} ${xml.value.updateCount === 1 ? 'Lot ändern' : 'Lots ändern'}`, xml: xml.value.update })
+  if (xml.value.upload) s.push({ key: 'upload', mode: 'Mass Upload', label: `${xml.value.uploadCount} ${xml.value.uploadCount === 1 ? 'neues Lot' : 'neue Lots'} anlegen`, xml: xml.value.upload })
   return s
 })
 
