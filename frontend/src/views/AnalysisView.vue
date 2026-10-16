@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { onMounted, ref } from 'vue'
 import PageHead from '../components/PageHead.vue'
 import BarList from '../components/BarList.vue'
@@ -59,7 +60,7 @@ onMounted(async () => {
             <thead><tr><th>Teil</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th></tr></thead>
             <tbody>
               <tr v-for="i in a.low_stock" :key="i.id">
-                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
+                <td><div class="partcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td><LocationTag :code="i.location_code" /></td>
                 <td class="num low">{{ num(i.qty) }}</td>

@@ -176,3 +176,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .progress { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
 .progress > i { display: block; height: 100%; background: var(--accent); }
 .progress.ok > i { background: var(--ok); }
+
+/* Teilebild neben Teil-Nummern in Tabellen */
+.partcell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.partcell > div, .partcell > span { min-width: 0; }
+.table td.imgcell { width: 1%; padding-right: 0; }

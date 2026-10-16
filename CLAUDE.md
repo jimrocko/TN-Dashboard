@@ -100,7 +100,8 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Konfiguration: `brickognize.url` in `api/config.php` (null = aus). Kamera braucht auf dem Server **HTTPS**.
 ### Teile-Seite (`/teil/:no`, `PartView.vue`, `GET api/?r=part/<nr>`)
 - Kennzahlen (Bestand, Farben, Wert, in offenen Aufträgen reserviert), Bestand nach Farbe und Lagerort mit Umlagern-Knopf, Aufträge mit dem Teil, letzte Umlagerungen, Alternativen aus der Erkennung.
-- Bilder: `PartImage.vue` nimmt das Erkennungsbild, sonst BrickLink (`img.bricklink.com/ItemImage/PN/<farbe>/<nr>.png`; `color_id` sind BrickLink-Farb-IDs), sonst Platzhalter.
+- Bilder: `PartImage.vue` nimmt das Erkennungsbild, sonst BrickLink (`img.bricklink.com/ItemImage/PN/<farbe>/<nr>.png`; `color_id` sind BrickLink-Farb-IDs; mit `type` MINIFIG/SET die Pfade `MN`/`SN`), sonst Platzhalter.
+- **Überall, wo Teile genannt werden, steht ein Bild daneben** (Wunsch des Inhabers, Sitzung 5): Inventar und Suche mit eigener Bildspalte (`td.imgcell`), sonst `.partcell` (Bild + Text) in Analyse, Lagerort, Aufträgen, Inventur, Umlagern, Minifig-Finder, Pickliste. Neue Listen mit Teilen genauso bauen; dafür `color_id` und `item_type` mitliefern (PHP und Demo).
 - Teil-Nummern in Inventar, Suche, Aufträgen und Analyse verlinken hierher.
 ### Lagerort-Seite (`/lagerort/:code`, `LocationView.vue`, `GET api/?r=location/<code>`)
 - Inhalt, Kennzahlen, Inventur-Stand, Vorschläge rein/raus, offene Aufträge mit Teilen von hier, Umlagerungen, Blättern zum Nachbarfach.

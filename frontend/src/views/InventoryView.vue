@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftRight, Map as MapIcon } from 'lucide-vue-next'
@@ -94,11 +95,12 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Kategorie</th><th>Lagerort</th>
+            <tr><th></th><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Kategorie</th><th>Lagerort</th>
               <th class="num">Menge</th><th class="num">Stückpreis</th><th class="num">Wert</th><th>Geändert</th><th></th></tr>
           </thead>
           <tbody>
             <tr v-for="i in items" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
+              <td class="imgcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="36" /></td>
               <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
@@ -110,8 +112,8 @@ const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item
               <td class="faint nowrap">{{ date(i.updated_at) }}</td>
               <td><button class="btn btn-ghost btn-sm" title="Umlagern" @click="router.push({ path: '/umlagern', query: { lot: i.id } })"><ArrowLeftRight :size="15" /></button></td>
             </tr>
-            <tr v-if="!items.length && !loading"><td colspan="10" class="empty">Keine Lose gefunden.</td></tr>
-            <tr v-if="capped"><td colspan="10" class="empty">Es werden die ersten {{ num(LIMIT) }} Lose gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
+            <tr v-if="!items.length && !loading"><td colspan="11" class="empty">Keine Lose gefunden.</td></tr>
+            <tr v-if="capped"><td colspan="11" class="empty">Es werden die ersten {{ num(LIMIT) }} Lose gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
           </tbody>
         </table>
       </div>

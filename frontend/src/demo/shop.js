@@ -320,7 +320,7 @@ function createStocktake(db, locationId) {
   const s = {
     id: db.nextStocktake++, location_id: locationId, status: 'offen', created_at: now(), closed_at: null,
     items: db.inventory.filter((i) => i.location_id === locationId)
-      .map((i) => ({ id: db.nextStItem++, inventory_id: i.id, item_no: i.item_no, color_name: i.color_name, name: i.name, expected: i.qty, counted: null }))
+      .map((i) => ({ id: db.nextStItem++, inventory_id: i.id, item_type: i.item_type, item_no: i.item_no, color_id: i.color_id, color_name: i.color_name, name: i.name, expected: i.qty, counted: null }))
       .sort((a, b) => a.item_no.localeCompare(b.item_no) || a.color_name.localeCompare(b.color_name)),
   }
   db.stocktakes.push(s)
@@ -337,7 +337,7 @@ function location(db, code) {
   const picks = db.orders.filter((o) => ORDER_ACTIVE.includes(o.status))
     .sort((a, b) => a.ordered_at.localeCompare(b.ordered_at))
     .flatMap((o) => o.items.filter((x) => db.inventory.find((i) => i.id === x.inventory_id)?.location_id === l.id)
-      .map((x) => ({ id: o.id, order_no: o.order_no, status: o.status, item_no: x.item_no, color_name: x.color_name, name: x.name, qty: x.qty })))
+      .map((x) => ({ id: o.id, order_no: o.order_no, status: o.status, item_type: x.item_type, item_no: x.item_no, color_id: x.color_id, color_name: x.color_name, name: x.name, qty: x.qty })))
   const transfers = db.transfers.filter((t) => t.from_code === l.code || t.to_code === l.code).reverse().slice(0, 15)
     .map((t) => ({ ...t, display_name: db.users.find((u) => u.id === t.user_id)?.display_name }))
   const same = db.locations.filter((x) => x.kind === l.kind).map((x) => x.code).sort(natural)

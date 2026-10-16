@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Download, Upload, RefreshCw, Search } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
@@ -311,7 +312,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <thead><tr><th>Minifigur</th><th>Status</th><th class="num">Figurenwert</th><th class="num">Lagerteile</th><th class="num">Fehlteil</th><th class="num">Vorteil</th><th>Teile / Lagerort</th></tr></thead>
             <tbody>
               <tr v-for="r in pageRows" :key="r.minifig_no">
-                <td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
                 <td><span class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
                   <div class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
@@ -346,7 +347,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
               <thead><tr><th>Fehlteil</th><th class="num">Figuren</th><th class="num">Menge</th><th class="num">Preis</th></tr></thead>
               <tbody>
                 <tr v-for="m in res.missing_frequency.slice(0, 100)" :key="`${m.item_no}|${m.color_id}`">
-                  <td><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ m.item_name }}</div></td>
+                  <td><div class="partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ m.item_name }}</div></div></div></td>
                   <td class="num"><strong>{{ m.figures_affected }}</strong></td><td class="num">{{ m.total_shortfall }}</td>
                   <td class="num">{{ eur(m.estimated_unit_price) }}<div v-if="m.price_source" class="small faint">{{ m.price_source }}</div></td>
                 </tr>
@@ -375,7 +376,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <thead><tr><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Teilewert</th><th class="num">Vorteil</th><th>Teile zum Bauen</th></tr></thead>
             <tbody>
               <tr v-for="r in res.joint_buildable" :key="r.minifig_no">
-                <td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}</td><td class="num">{{ eur(r.parts_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide"><MinifigParts :row="{ ...r, catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`, image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` }" /></td>
               </tr>
@@ -398,8 +399,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <thead><tr><th>Minifigur</th><th>Fehlteil</th><th class="num">Fehlteilkosten</th><th class="num">Figurenwert</th><th class="num">Vorteil nach Zukauf</th><th>Teile / Entscheidung</th></tr></thead>
             <tbody>
               <tr v-for="r in res.almost_joint_buildable" :key="r.minifig_no">
-                <td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
-                <td><RouterLink class="mono" :to="`/teil/${encodeURIComponent(r.missing[0]?.item_no ?? '')}`">{{ r.missing[0]?.item_no }}</RouterLink> · Farbe {{ r.missing[0]?.color_id }}<div class="small muted">{{ r.missing[0]?.item_name }}</div></td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
+                <td><div class="partcell"><PartImage :no="r.missing[0]?.item_no" :color="r.missing[0]?.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(r.missing[0]?.item_no ?? '')}`">{{ r.missing[0]?.item_no }}</RouterLink> · Farbe {{ r.missing[0]?.color_id }}<div class="small muted">{{ r.missing[0]?.item_name }}</div></div></div></td>
                 <td class="num">{{ eur(r.completion_cost) }}</td><td class="num">{{ eur(r.figure_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide"><MinifigParts :row="r" />
                   <div class="toolbar rej"><button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button></div></td>
@@ -413,7 +414,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <div class="table-wrap">
             <table class="table"><tbody>
               <tr v-for="r in res.almost_joint_excluded" :key="r.minifig_no">
-                <td><strong class="mono">{{ r.minifig_no }}</strong> {{ r.name }}</td><td>{{ REASONS[r.reason] ?? 'Nicht bauen' }}</td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" /><span><strong class="mono">{{ r.minifig_no }}</strong> {{ r.name }}</span></div></td><td>{{ REASONS[r.reason] ?? 'Nicht bauen' }}</td>
                 <td class="num"><button class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
               </tr>
             </tbody></table>
@@ -428,7 +429,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <table class="table">
               <thead><tr><th>Minifigur</th><th>Treffer</th><th class="num">Baubar</th></tr></thead>
               <tbody>
-                <tr v-for="r in res.buildable" :key="r.minifig_no"><td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
+                <tr v-for="r in res.buildable" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
                   <td><span class="pill ok">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td><td class="num"><strong>{{ r.buildable_qty }}×</strong></td></tr>
                 <tr v-if="!res.buildable.length"><td colspan="3" class="empty">Noch keine Treffer.</td></tr>
               </tbody>
@@ -441,9 +442,9 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <table class="table">
               <thead><tr><th>Minifigur</th><th>Treffer</th><th>Fehlend</th></tr></thead>
               <tbody>
-                <tr v-for="r in res.almost" :key="r.minifig_no"><td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
+                <tr v-for="r in res.almost" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
                   <td><span class="pill warn">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td>
-                  <td><div v-for="m in r.missing" :key="m.item_no" class="small"><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</div></td></tr>
+                  <td><div v-for="m in r.missing" :key="m.item_no" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div></td></tr>
                 <tr v-if="!res.almost.length"><td colspan="3" class="empty">Noch keine Treffer.</td></tr>
               </tbody>
             </table>
@@ -458,8 +459,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <table class="table">
             <thead><tr><th>Minifigur</th><th>Nach Reservierung fehlend</th></tr></thead>
             <tbody>
-              <tr v-for="r in res.joint_conflicts" :key="r.minifig_no"><td><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></td>
-                <td><div v-for="m in r.missing_after_reservations" :key="`${m.item_no}|${m.color_id}`" class="small"><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · Rest {{ m.have || 0 }}, benötigt {{ m.quantity }}</div>
+              <tr v-for="r in res.joint_conflicts" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
+                <td><div v-for="m in r.missing_after_reservations" :key="`${m.item_no}|${m.color_id}`" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · Rest {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div>
                   <span v-if="!r.missing_after_reservations.length" class="faint small">Gemeinsame Teile bereits reserviert</span></td></tr>
               <tr v-if="!res.joint_conflicts.length"><td colspan="2" class="empty">Keine Konflikte – alle einzeln baubaren Figuren passen gleichzeitig.</td></tr>
             </tbody>
