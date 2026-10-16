@@ -8,6 +8,7 @@ import LocationTag from '../components/LocationTag.vue'
 import RoomPlan from '../components/RoomPlan.vue'
 import { api } from '../api'
 import { num, eur, date } from '../utils/format'
+import { appSettings } from '../utils/appSettings'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,7 +16,7 @@ const items = ref([])
 const meta = ref({ categories: [], locations: [] })
 const loading = ref(false)
 const error = ref('')
-const f = ref({ q: route.query.q ?? '', category: route.query.category ?? '', location: route.query.location ?? '', sort: 'item' })
+const f = ref({ q: route.query.q ?? '', category: route.query.category ?? '', location: route.query.location ?? '', sort: appSettings.inventar.sort })
 // Links wie /inventar?category=Brick oder ?location=3 setzen die Filter, auch wenn die Ansicht schon offen ist.
 watch(() => [route.query.category, route.query.location, route.query.q], ([c, l, q]) => {
   if (c !== undefined) f.value.category = c
@@ -38,19 +39,20 @@ onMounted(async () => {
   load()
 })
 
-// Bei über 3.000 Lots nur die ersten LIMIT laden (schnell auf dem iPad); Filter grenzen ein.
-const LIMIT = 500
+// Bei über 3.000 Lots nur die ersten LIMIT laden (schnell auf dem iPad); Filter grenzen ein. Wert im Dev-Bereich einstellbar.
+const LIMIT = appSettings.inventar.limit
 const capped = computed(() => items.value.length >= LIMIT)
 const totals = computed(() => ({
   qty: items.value.reduce((s, i) => s + i.qty, 0),
   value: items.value.reduce((s, i) => s + i.qty * i.price, 0),
 }))
-// Lagerplan zum Aufklappen; die Wahl merkt sich das Gerät.
+// Lagerplan zum Aufklappen; die Wahl merkt sich das Gerät (Dev-Einstellung: merken, immer offen oder immer zu).
 const PLAN_KEY = 'tn-inventar-lagerplan'
-const showPlan = ref((() => { try { return localStorage.getItem(PLAN_KEY) === '1' } catch { return false } })())
+const planMode = appSettings.inventar.plan
+const showPlan = ref(planMode === 'offen' || (planMode === 'merken' && (() => { try { return localStorage.getItem(PLAN_KEY) === '1' } catch { return false } })()))
 watch(showPlan, (v) => { try { localStorage.setItem(PLAN_KEY, v ? '1' : '0') } catch { /* egal */ } })
 
-const reset = () => { f.value = { q: '', category: '', location: '', sort: 'item' } }
+const reset = () => { f.value = { q: '', category: '', location: '', sort: appSettings.inventar.sort } }
 </script>
 
 <template>

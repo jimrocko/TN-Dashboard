@@ -10,6 +10,7 @@ import RoomPlan from '../components/RoomPlan.vue'
 import SegControl from '../components/SegControl.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
+import { appSettings } from '../utils/appSettings'
 
 const route = useRoute()
 const suggestions = ref([])
@@ -29,7 +30,7 @@ const qty = ref(1)
 
 async function load() {
   try {
-    const [s, h, m] = await Promise.all([api.get('transfers/suggestions'), api.get('transfers', { limit: 15 }), api.get('inventory/meta')])
+    const [s, h, m] = await Promise.all([api.get('transfers/suggestions'), api.get('transfers', { limit: appSettings.umlagern.history }), api.get('inventory/meta')])
     suggestions.value = s.suggestions
     history.value = h.transfers
     locations.value = m.locations
@@ -45,7 +46,7 @@ async function book(l, toId, amount) {
       expect_location_id: l.location_id, expect_qty: l.qty })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
     lot.value = null
-    await Promise.all([load(), blExport.value?.refresh({ popup: true })])
+    await Promise.all([load(), blExport.value?.refresh({ popup: appSettings.umlagern.popup })])
   } catch (e) {
     error.value = e.message
     if (e.status === 409) { lot.value = null; await load() }
@@ -70,8 +71,8 @@ const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?
 // Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Lots kann die Liste lang werden).
 const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }
 const reasonClass = { falsch: 'warn', farben: 'accent', art: 'ok' }
-const reason = ref('alle')
-const PAGE = 30
+const reason = ref(appSettings.umlagern.reason)
+const PAGE = appSettings.umlagern.page
 const shown = ref(PAGE)
 const count = (r) => suggestions.value.filter((s) => s.reason === r).length
 const reasonOptions = computed(() => [
@@ -139,7 +140,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="panel">
+    <section v-if="appSettings.umlagern.plan" class="panel">
       <div class="panel-head">
         <h2>Lagerplan</h2>
         <span class="faint small">Bereich und Kästchen antippen, um den Inhalt zu sehen</span>

@@ -5,6 +5,8 @@ import SegControl from '../../components/SegControl.vue'
 import { IS_DEMO } from '../../api'
 import { useAuth } from '../../stores/auth'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
+import { appSettings, resetAppSettings, isChanged } from '../../utils/appSettings'
+import { modules } from '../../modules'
 import { resetDemo } from '../../demo/backend'
 
 // Einstellungen für Entwickler: Debug-Hilfen und lokale Daten. Der Stil ist hier bewusst nicht umschaltbar.
@@ -33,6 +35,39 @@ async function clearCaches() {
     say(`${regs.length} Service Worker und ${keys.length} Caches entfernt. Beim nächsten Laden wird alles neu geholt.`)
   } catch (e) { err.value = e.message }
 }
+// Einstellungen je Bereich: Reihenfolge wie auf der Startseite, externe Programme ohne eigene Einstellungen.
+const n = (v) => v.toLocaleString('de-DE')
+const appOptions = {
+  inventar: [
+    { key: 'limit', k: 'Lots pro Abruf', h: 'So viele Lots lädt die Liste höchstens. Mehr ist langsamer auf dem iPad.', options: [100, 500, 1000, 2000].map((v) => ({ value: v, label: n(v) })) },
+    { key: 'sort', k: 'Sortierung beim Öffnen', h: 'Auch der Knopf „Zurücksetzen“ springt hierhin.', options: [{ value: 'item', label: 'Teil-Nr.' }, { value: 'location', label: 'Lagerort' }, { value: 'qty', label: 'Menge' }, { value: 'updated', label: 'Zuletzt geändert' }] },
+    { key: 'plan', k: 'Lagerplan beim Öffnen', h: '„Merken“ = wie zuletzt auf diesem Gerät.', options: [{ value: 'merken', label: 'Merken' }, { value: 'offen', label: 'Offen' }, { value: 'zu', label: 'Zu' }] },
+  ],
+  umlagern: [
+    { key: 'page', k: 'Vorschläge pro Seite', h: 'So viele Zeilen zeigt die Liste, bevor „Weitere anzeigen“ kommt.', options: [15, 30, 60, 100].map((v) => ({ value: v, label: String(v) })) },
+    { key: 'reason', k: 'Filter beim Öffnen', h: 'Welche Vorschläge zuerst zu sehen sind.', options: [{ value: 'alle', label: 'Alle' }, { value: 'falsch', label: 'Falsch einsortiert' }, { value: 'farben', label: 'Farben' }, { value: 'art', label: 'Teile-Art' }] },
+    { key: 'history', k: 'Letzte Umlagerungen', h: 'Länge der Liste unten auf der Seite.', options: [15, 30, 50].map((v) => ({ value: v, label: String(v) })) },
+    { key: 'plan', k: 'Lagerplan anzeigen', h: 'Raumplan mit roten Mischkisten zwischen Vorschlägen und Umbuchen.', options: onOff },
+    { key: 'popup', k: 'BrickLink-Pop-up nach dem Umlagern', h: 'Aus = kein Pop-up, die Übertragung steht nur unten auf der Seite.', options: onOff },
+  ],
+  scanner: [
+    { key: 'maxPx', k: 'Fotogröße', h: 'Längste Seite vor dem Hochladen. Kleiner = schneller im WLAN, größer = genauer.', options: [640, 1024, 1600].map((v) => ({ value: v, label: `${n(v)} px` })) },
+    { key: 'openPart', k: 'Teile-Seite direkt öffnen', h: 'Aus = Ergebnis mit Alternativen bleibt im Scanner stehen.', options: onOff },
+    { key: 'autoCam', k: 'Kamera beim Öffnen starten', h: 'Spart einen Tipp. Der Browser fragt beim ersten Mal nach der Erlaubnis.', options: onOff },
+  ],
+  auftraege: [
+    { key: 'status', k: 'Filter beim Öffnen', h: 'Welche Aufträge die Liste zuerst zeigt.', options: [{ value: 'aktiv', label: 'Aktiv' }, { value: '', label: 'Alle' }, { value: 'Neu', label: 'Neu' }, { value: 'Bezahlt', label: 'Bezahlt' }, { value: 'Verpackt', label: 'Verpackt' }] },
+    { key: 'nextButton', k: 'Knopf „Weiter zu …“', h: 'Aus = Status nur über die Auswahlliste ändern.', options: onOff },
+  ],
+  inventur: [
+    { key: 'blind', k: 'Blind zählen', h: 'Soll-Menge und Abweichungen bleiben verborgen, bis die Inventur abgeschlossen ist.', options: onOff },
+  ],
+  analyse: [
+    { key: 'metric', k: 'Kennzahl „Bestand nach Kategorie“', h: 'Was die Balken beim Öffnen zeigen.', options: [{ value: 'qty', label: 'Teile' }, { value: 'value', label: 'Lagerwert' }, { value: 'lots', label: 'Lots' }] },
+  ],
+}
+const appModules = modules.filter((m) => appOptions[m.id] || m.status === 'extern')
+
 const confirmDemo = ref(false)
 async function resetDemoData() {
   resetDemo()
@@ -67,6 +102,25 @@ async function resetDemoData() {
     </section>
 
     <section class="panel">
+      <div class="panel-head">
+        <h2>Bereiche</h2>
+        <span class="faint small">nur dieses Gerät · gilt beim nächsten Öffnen des Bereichs</span>
+      </div>
+      <div v-for="m in appModules" :key="m.id" class="app">
+        <div class="app-head">
+          <component :is="m.icon" :size="18" class="app-icon" :style="{ color: m.xpColor }" />
+          <h3>{{ m.title }}</h3>
+          <button v-if="appOptions[m.id] && isChanged(m.id)" class="btn btn-sm btn-ghost" type="button" @click="resetAppSettings(m.id)">Standard</button>
+        </div>
+        <div v-if="!appOptions[m.id]" class="row"><div class="h">Eigenes Programm. Einstellungen kommen mit der Einbindung.</div></div>
+        <div v-for="o in appOptions[m.id]" v-else :key="o.key" class="row">
+          <div><div class="k">{{ o.k }}</div><div class="h">{{ o.h }}</div></div>
+          <SegControl v-model="appSettings[m.id][o.key]" :options="o.options" :label="`${m.title}: ${o.k}`" />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
       <div class="panel-head"><h2>Lokale Daten</h2></div>
       <div class="rows">
         <div class="row">
@@ -76,6 +130,10 @@ async function resetDemoData() {
         <div class="row">
           <div><div class="k">Dev-Optionen</div><div class="h">Debug-Anzeige, Verzögerung und API-Protokoll auf Standard.</div></div>
           <button class="btn btn-sm" @click="clearLocal('settings')">Zurücksetzen</button>
+        </div>
+        <div class="row">
+          <div><div class="k">Einstellungen der Bereiche</div><div class="h">Alle Einstellungen unter „Bereiche“ auf Standard.</div></div>
+          <button class="btn btn-sm" @click="resetAppSettings(); say('Einstellungen der Bereiche zurückgesetzt.')">Zurücksetzen</button>
         </div>
         <div class="row">
           <div><div class="k">App-Cache</div><div class="h">Service Worker und gespeicherte Dateien entfernen, falls eine alte Version hängt.</div></div>
@@ -107,5 +165,11 @@ async function resetDemoData() {
 .h { color: var(--text-3); font-size: 0.85rem; margin-top: 2px; }
 .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .short { width: 120px; }
+.app { border-bottom: 1px solid var(--border); }
+.app:last-child { border-bottom: 0; }
+.app .row { border-bottom: 0; padding-top: 8px; padding-bottom: 8px; padding-left: calc(var(--pad) + 26px); }
+.app-head { display: flex; align-items: center; gap: 8px; padding: 14px var(--pad) 4px; }
+.app-head h3 { margin: 0; font-size: 0.98rem; flex: 1; }
+.app-icon { flex: none; }
 .danger { color: var(--danger); border-color: var(--danger); }
 </style>

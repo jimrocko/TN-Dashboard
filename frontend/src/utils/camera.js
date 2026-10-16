@@ -1,4 +1,5 @@
 // Kamera und Fotos für den Teile-Scanner (Teileerkennung per Foto).
+import { appSettings } from './appSettings'
 
 export const cameraAvailable = () => !!navigator.mediaDevices?.getUserMedia
 
@@ -18,10 +19,9 @@ export async function startCamera(video) {
 }
 
 // Fotos werden vor dem Hochladen verkleinert: schneller im Schul-WLAN, für die Erkennung reicht das.
-const MAX = 1024
-
+// Größe (Standard 1024 px) im Dev-Bereich einstellbar.
 function toJpeg(source, w, h) {
-  const scale = Math.min(1, MAX / Math.max(w, h))
+  const scale = Math.min(1, appSettings.scanner.maxPx / Math.max(w, h))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w * scale)
   canvas.height = Math.round(h * scale)

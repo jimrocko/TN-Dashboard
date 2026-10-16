@@ -6,6 +6,7 @@ import LocationTag from '../components/LocationTag.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
+import { appSettings } from '../utils/appSettings'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,6 +64,9 @@ async function close() {
     await Promise.all([loadList(), open(current.value.id)])
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
+// Dev-Einstellung „Blind zählen“: Soll und Differenz bleiben verborgen, bis die Inventur abgeschlossen ist.
+const hideDev = (s) => appSettings.inventur.blind && s.status === 'offen'
+const blind = computed(() => appSettings.inventur.blind && current.value?.status === 'offen')
 const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? `+${i.counted - i.expected}` : String(i.counted - i.expected))
 </script>
 
@@ -90,7 +94,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
                 <td><LocationTag :code="s.location_code" /> <span class="faint small">{{ s.location_name }}</span></td>
                 <td><span class="pill" :class="s.status === 'offen' ? 'warn' : 'ok'">{{ s.status === 'offen' ? 'Offen' : 'Abgeschlossen' }}</span></td>
                 <td class="num">{{ s.counted }} / {{ s.positions }}</td>
-                <td class="num" :class="{ dev: s.deviations }">{{ s.deviations }}</td>
+                <td class="num" :class="{ dev: s.deviations && !hideDev(s) }">{{ hideDev(s) ? '–' : s.deviations }}</td>
                 <td class="faint nowrap">{{ dateTime(s.created_at) }}</td>
               </tr>
               <tr v-if="!list.length"><td colspan="5" class="empty">Noch keine Inventuren.</td></tr>
@@ -104,7 +108,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
           <div>
             <h2>Inventur <LocationTag :code="current.location_code" /></h2>
             <div class="faint small">
-              {{ progress }} von {{ current.items.length }} gezählt · {{ deviations }} Abweichung(en)
+              {{ progress }} von {{ current.items.length }} gezählt<template v-if="!blind"> · {{ deviations }} Abweichung(en)</template>
               <template v-if="current.status !== 'offen'"> · abgeschlossen {{ dateTime(current.closed_at) }}<template v-if="current.closed_by_name"> von {{ current.closed_by_name }}</template></template>
             </div>
           </div>
@@ -112,18 +116,18 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Teil</th><th>Farbe</th><th class="num">Soll</th><th class="num">Gezählt</th><th class="num">Diff.</th></tr></thead>
+            <thead><tr><th>Teil</th><th>Farbe</th><th v-if="!blind" class="num">Soll</th><th class="num">Gezählt</th><th v-if="!blind" class="num">Diff.</th></tr></thead>
             <tbody>
               <tr v-for="i in current.items" :key="i.id">
                 <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
-                <td class="num">{{ num(i.expected) }}</td>
+                <td v-if="!blind" class="num">{{ num(i.expected) }}</td>
                 <td class="num">
                   <input v-if="current.status === 'offen'" class="input count" type="number" min="0" inputmode="numeric"
-                    :value="i.counted ?? ''" :placeholder="String(i.expected)" @change="save(i, $event.target.value)" :aria-label="`Gezählt ${i.item_no}`" />
+                    :value="i.counted ?? ''" :placeholder="blind ? '' : String(i.expected)" @change="save(i, $event.target.value)" :aria-label="`Gezählt ${i.item_no}`" />
                   <span v-else>{{ num(i.counted) }}</span>
                 </td>
-                <td class="num" :class="{ dev: i.counted !== null && i.counted !== i.expected }">{{ diffText(i) }}</td>
+                <td v-if="!blind" class="num" :class="{ dev: i.counted !== null && i.counted !== i.expected }">{{ diffText(i) }}</td>
               </tr>
               <tr v-if="!current.items.length"><td colspan="5" class="empty">Dieser Lagerort ist leer.</td></tr>
             </tbody>

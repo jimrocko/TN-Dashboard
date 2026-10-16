@@ -68,7 +68,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 | **Tests** | Selbsttests mit einem Tipp: Datenbank lesen und schreiben, Sitzung, Temp-Ordner, BrickLink, Teileerkennung, alle API-Endpunkte (nur lesend) und Gerätefunktionen wie Speicher, Kamera und Offline-Modus. |
 | **Daten** | Alle Tabellen der App ansehen, blättern, filtern und als JSON kopieren. Nur lesen; Passwörter und gespeicherte Geheimnisse werden nie angezeigt. |
 | **API** | API-Konsole für lesende Aufrufe, Liste der letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen. |
-| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen. |
+| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen. Dazu Einstellungen für jeden Bereich, pro Gerät: Inventar (Lots pro Abruf, Sortierung, Lagerplan), Umlagern (Vorschläge pro Seite, Filter, Lagerplan, BrickLink-Pop-up), Teile-Scanner (Fotogröße, Teile-Seite direkt öffnen, Kamera sofort starten), Auftragszentrale (Filter, Knopf „Weiter zu …“), Inventur (blind zählen) und Analyse (Kennzahl). |
 
 ## Screenshots
 

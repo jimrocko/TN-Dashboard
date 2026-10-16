@@ -7,11 +7,12 @@ import ColorSwatch from '../components/ColorSwatch.vue'
 import { api } from '../api'
 import { useAuth } from '../stores/auth'
 import { num, eur, dateTime } from '../utils/format'
+import { appSettings } from '../utils/appSettings'
 
 const auth = useAuth()
 const a = ref(null)
 const error = ref('')
-const metric = ref('qty')
+const metric = ref(appSettings.analyse.metric)
 onMounted(async () => {
   try { a.value = await api.get('analysis') } catch (e) { error.value = e.message }
 })
