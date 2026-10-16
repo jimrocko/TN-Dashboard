@@ -76,6 +76,9 @@ const cells = computed(() => {
   })
 })
 const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => ({ ...a, items: byArea.value[a.id] ?? [] })))
+// Lagerorte, die zu keinem Bereich im Raumplan passen (z. B. A12, C3, Akte01, Plate-N01, „G484 A003“)
+const others = computed(() => props.locations.filter((l) => !parseCode(l.code) && l.lots)
+  .sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true })))
 </script>
 
 <template>
@@ -146,6 +149,15 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
       </template>
 
     </div>
+
+    <details v-if="others.length" class="others">
+      <summary>Sonstige Lagerorte <span class="faint">({{ others.length }} · {{ num(others.reduce((s, l) => s + l.lots, 0)) }} Lose)</span></summary>
+      <div class="tiles">
+        <RouterLink v-for="l in others" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="tile2">
+          <span class="mono code">{{ l.code }}</span><span class="faint small">{{ l.lots }} Lose · {{ num(l.qty) }}</span>
+        </RouterLink>
+      </div>
+    </details>
   </div>
 </template>
 
@@ -222,6 +234,8 @@ const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => (
 .dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
 .sub { display: flex; flex-direction: column; gap: 6px; }
 .subname { font-size: 0.85rem; color: var(--text-2); }
+.others { margin-top: 12px; --c: var(--text-3); }
+.others summary { cursor: pointer; color: var(--text-2); margin-bottom: 8px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
 .tile2 {
   position: relative; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; min-height: 52px;
