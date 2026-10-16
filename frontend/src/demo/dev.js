@@ -9,6 +9,7 @@ const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 const dev = (db) => (db.dev ??= { access: [] })
 
 export const devAllowed = (db, u) => isStaff(u) || dev(db).access.includes(u.id)
+export const revokeDev = (db, id) => { dev(db).access = dev(db).access.filter((x) => x !== id) }
 const status = (db, u) => ({ allowed: devAllowed(db, u) })
 
 function requireDev(db, u) {

@@ -264,6 +264,19 @@ switch (true) {
         ActivityLog::log((int) $staff['id'], $on ? 'dev_granted' : 'dev_revoked', null, ['username' => $target['username']]);
         json_response(['ok' => true]);
 
+    case count($parts) === 3 && $parts[0] === 'users' && ctype_digit($parts[1]) && $parts[2] === 'delete' && $method === 'POST':
+        // Konto löschen (nur Lehrer, nur Teilnehmer). Deaktivieren statt entfernen: Das Protokoll bleibt erhalten,
+        // der Benutzername wird frei, eine offene Sitzung endet beim nächsten Aufruf.
+        $staff = require_staff();
+        $target = q('SELECT id, username, role FROM {users} WHERE id = ? AND active = 1', [(int) $parts[1]])->fetch();
+        if (!$target) json_error('Benutzer nicht gefunden', 404);
+        if ((int) $target['id'] === (int) $staff['id']) json_error('Das eigene Konto kann nicht gelöscht werden', 400);
+        if ($target['role'] !== 'teilnehmer') json_error('Nur Teilnehmer-Konten können gelöscht werden', 403);
+        q('UPDATE {users} SET active = 0, username = ? WHERE id = ?', [$target['username'] . '~' . $target['id'], (int) $target['id']]);
+        Dev::grant((int) $target['id'], false, (int) $staff['id']);
+        ActivityLog::log((int) $staff['id'], 'user_deleted', null, ['username' => $target['username']]);
+        json_response(['ok' => true]);
+
     case $route === 'users' && $method === 'GET':
         require_staff();
         $rows = db()->query(

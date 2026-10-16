@@ -374,7 +374,7 @@ function analysis(db) {
     orders_by_status: ORDER_STATUSES.map((s) => ({ label: s, count: db.orders.filter((o) => o.status === s).length })),
     low_stock: db.inventory.filter((i) => loc(db, i.location_id)?.kind === 'regal' && i.qty < 20)
       .sort((a, b) => a.qty - b.qty).slice(0, 10).map((i) => lotRow(db, i)),
-    activity_by_participant: db.users.filter((u) => u.role === 'teilnehmer').map((u) => ({
+    activity_by_participant: db.users.filter((u) => u.role === 'teilnehmer' && u.active !== false).map((u) => ({
       label: u.display_name,
       count: db.log.filter((a) => a.user_id === u.id && !['login', 'logout'].includes(a.action)).length,
     })).sort((a, b) => b.count - a.count),

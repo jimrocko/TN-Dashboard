@@ -55,7 +55,7 @@ Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr.
 | **Minifig-Finder, Pickliste** | Die bestehenden Programme der Schule, im Dashboard mit gemeinsamem Login. |
 | **Meine Aktivitäten** | Das eigene Protokoll. |
 | **Einstellungen** | Hell/Dunkel, Dichte, Schriftgröße und Animationen, pro Gerät. |
-| **Lehrer-Ansicht** | Teilnehmer anlegen, Protokoll aller oder einzelner Teilnehmer, CSV-Export, Dev-Rolle vergeben. |
+| **Lehrer-Ansicht** | Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), Protokoll aller oder einzelner Teilnehmer, CSV-Export, Dev-Rolle vergeben. |
 | **Dev-Bereich** | Werkzeuge für Entwickler, nur für Lehrer und Teilnehmer mit Dev-Rolle. Siehe unten. |
 
 ### Dev-Bereich
@@ -107,7 +107,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 | Alle Shop-Bereiche | ✓ | ✓ | ✓ |
 | Eigenes Protokoll | ✓ | ✓ | ✓ |
 | Dev-Bereich | | ✓ | ✓ |
-| Lehrer-Ansicht, Konten, Dev-Rolle vergeben | | | ✓ |
+| Lehrer-Ansicht, Konten anlegen und löschen, Dev-Rolle vergeben | | | ✓ |
 
 ## So läuft es auf dem Schulserver
 
@@ -164,7 +164,7 @@ Die **Demo** ist die komplette App: alle Bereiche, Lehrer-Ansicht, Dev-Bereich u
 
 | Schüler-Tutorial | Lehrer-Tutorial |
 |---|---|
-| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen, Dev-Rolle vergeben, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit allen fünf Reitern (System, Tests, Daten, API, Einstellungen) und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
+| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner mit Teile-Seite, Umlagern, Auftragszentrale, Analyse und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen und löschen, Dev-Rolle vergeben, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit allen fünf Reitern (System, Tests, Daten, API, Einstellungen) und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
 
 - Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
 - Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben stehen Kapitel und Tutorial, darunter ein Fortschrittsbalken als Lego-Stein.

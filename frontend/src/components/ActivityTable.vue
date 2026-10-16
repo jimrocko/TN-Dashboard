@@ -4,7 +4,7 @@ import { dateTime } from '../utils/format'
 defineProps({ rows: Array, showUser: Boolean, compact: Boolean })
 
 const actionLabel = {
-  login: 'Angemeldet', logout: 'Abgemeldet', open: 'Modul geöffnet', search: 'Gesucht', user_created: 'Konto angelegt',
+  login: 'Angemeldet', logout: 'Abgemeldet', open: 'Modul geöffnet', search: 'Gesucht', user_created: 'Konto angelegt', user_deleted: 'Konto gelöscht',
   transfer: 'Umgelagert', order_status: 'Auftragsstatus geändert', stocktake_created: 'Inventur gestartet',
   stocktake_closed: 'Inventur abgeschlossen', demo_seed: 'Beispieldaten geladen', recognize: 'Teil erkannt',
   dev_unlock: 'Dev-Bereich entsperrt', dev_unlock_failed: 'Falscher Dev-Code', dev_pin_changed: 'Dev-Code geändert',

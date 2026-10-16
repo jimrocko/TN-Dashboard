@@ -18,12 +18,15 @@ const panel = (title) => [...document.querySelectorAll('section.panel')].find((s
 const tile = (title) => [...document.querySelectorAll('.tile')].find((t) => t.querySelector('h2')?.textContent.trim() === title) ?? null
 
 export const homeTab = () => q('.bottom .tab')
+// Zeile des gerade angelegten Kontos: ein Teilnehmer mit Papierkorb, der nicht zu den Demo-Konten max und erika gehört
+const newestUserRow = () => [...document.querySelectorAll('tr.clickable')].filter((tr) => visible(tr) && tr.querySelector('.delbtn, .confirm'))
+  .find((tr) => !/\b(max|erika)\b/.test(tr.querySelector('.mono')?.textContent ?? '')) ?? null
 
 // Gemeinsamer Anfang. Der Schritt `wait: 'choose'` fragt mitten im Bild: Lehrer oder Schüler?
 const intro = [
   {
     chapter: 'Hallo!',
-    say: 'Hi! Ich bin Klemmi, offizielle Minifigur dieses Lagers. Ich zeig dir, wie du das TN Dashboard bedienst. Du klickst alles selbst, ich zeige dir nur, wohin. Keine Sorge: Hier ist alles Spielgeld und Spielsteine, du kannst nichts kaputt machen. Außer meine Frisur. Die ist aber eh aus Plastik.',
+    say: 'Hi! Ich bin Klemmi, offizielle Minifigur dieses Lagers. Ich zeig dir, wie du das TN Dashboard bedienst. Du klickst alles selbst, ich zeige dir nur, wohin. Keine Sorge: Hier ist alles nur zum Üben, du kannst nichts kaputt machen.',
     wait: 'next', mood: 'wave',
   },
   { chapter: 'Anmelden', wait: 'choose', say: '' },
@@ -33,7 +36,7 @@ const intro = [
 const studentList = [
   {
     chapter: 'Anmelden',
-    say: 'Schüler, alles klar! In der Schule nimmst du deinen eigenen Zugang, hier leihen wir uns Max aus. Die Daten hab ich schon eingetragen. Tipp auf „Anmelden“. (Psst: Das Passwort von Max ist wirklich schlecht. Mach das bei deinem besser.)',
+    say: 'Schüler, alles klar! In der Schule nimmst du deinen eigenen Zugang, hier leihen wir uns Max aus. Die Daten hab ich schon eingetragen. Tipp auf „Anmelden“.',
     target: () => q('form.box button.btn-primary'), wait: { route: /^\/$/ }, go: '/login',
   },
   {
@@ -48,7 +51,7 @@ const studentList = [
     target: () => q('form.search'), wait: { route: /^\/suche/ }, from: '/', hint: 'Hier eintippen',
   },
   {
-    say: 'Tadaaa! Alles mit 3001 auf einen Blick. Antippen bringt dich direkt zum Teil oder Lagerort. Merk dir: Die Suche ist dein bester Freund. Nach mir natürlich.',
+    say: 'Tadaaa! Alles mit 3001 auf einen Blick. Antippen bringt dich direkt zum Teil oder Lagerort. Merk dir: Die Suche ist dein bester Freund.',
     target: () => q('main section.panel'), wait: 'next', go: '/suche?q=3001',
   },
   // ---------- Minifig-Finder ----------
@@ -58,7 +61,7 @@ const studentList = [
     target: () => tile('Minifig-Finder'), wait: { route: /^\/modul\/minifig/ }, from: '/',
   },
   {
-    say: 'Der Minifig-Finder ist ein eigenes Programm vom Shop, das hier eingebunden wird. Damit findest du jede Figur und ihre Varianten. Sogar meinen Cousin Klaus, und der versteckt sich gern.',
+    say: 'Der Minifig-Finder ist ein eigenes Programm vom Shop, das hier eingebunden wird. Damit findest du jede Figur und ihre Varianten.',
     target: () => q('main .panel'), wait: 'next', go: '/modul/minifig',
   },
   // ---------- Pickliste ----------
@@ -68,7 +71,7 @@ const studentList = [
     target: () => tile('Pickliste'), wait: { route: /^\/modul\/pickliste/ }, from: '/',
   },
   {
-    say: 'Mit der Pickliste sammelst du die Teile für Bestellungen zusammen und meldest, wenn etwas fehlt. Auch ein eigenes Programm, das hier angedockt wird. Picken heißt übrigens nicht in der Nase. Nur damit das klar ist.',
+    say: 'Mit der Pickliste sammelst du die Teile für Bestellungen zusammen und meldest, wenn etwas fehlt. Auch ein eigenes Programm, das hier angedockt wird.',
     target: () => q('main .panel'), wait: 'next', go: '/modul/pickliste',
   },
   // ---------- Inventar und Lagerplan ----------
@@ -90,7 +93,7 @@ const studentList = [
     target: () => q('.blk:not(.empty)'), wait: 'click', go: '/inventar',
   },
   {
-    say: 'Jedes Feld ist ein Kästchen im Regal. Tipp auf eins und wir schauen rein. Ich hoffe, da liegt kein Kaugummi drin.',
+    say: 'Jedes Feld ist ein Kästchen im Regal. Tipp auf eins und wir schauen rein.',
     target: () => q('.cells'), wait: { route: /^\/lagerort\// }, go: '/inventar',
   },
   {
@@ -105,11 +108,11 @@ const studentList = [
     target: () => byText('.btn', 'Inventur starten') ?? byText('.btn', 'Offene Inventur öffnen'), wait: { route: /^\/inventur/ }, go: '/lagerort/G101',
   },
   {
-    say: '„Soll“ ist, was laut Computer im Kästchen liegen müsste. Trag bei einem Teil ein, wie viele du gezählt hast. Hier darfst du ruhig flunkern, ich verrat’s keinem. Danach Enter drücken oder daneben tippen.',
+    say: '„Soll“ ist, was laut Computer im Kästchen liegen müsste. Trag bei einem Teil ein, wie viele du gezählt hast. In der Übung ist jede Zahl okay. Danach Enter drücken oder daneben tippen.',
     target: () => q('input.count'), hint: 'Zahl eintragen', wait: { api: /^POST stocktakes\/\d+\/count$/ },
   },
   {
-    say: 'Gezählt! Mit „Abschließen“ wird der Bestand korrigiert. Wie Zaubern, nur mit Mathe.',
+    say: 'Gezählt! Mit „Abschließen“ wird der Bestand korrigiert.',
     target: () => byText('.btn', 'Abschließen'), wait: { api: /^POST stocktakes\/\d+\/close$/ },
   },
   {
@@ -146,13 +149,13 @@ const studentList = [
     target: () => panel('Vorschläge')?.querySelector('tbody .btn') ?? null, wait: { api: /^POST transfers$/ }, go: '/umlagern',
   },
   {
-    say: 'Gebucht! Weiter unten gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen. Falls dir mal langweilig ist …',
+    say: 'Gebucht! Weiter unten gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen.',
     target: () => panel('Lagerplan'), wait: 'next', go: '/umlagern',
   },
   // ---------- Aufträge ----------
   {
     chapter: 'Aufträge',
-    say: 'Jetzt die Aufträge, da kommt das Geld rein (Spielgeld, leider). Startseite, dann „Auftragszentrale“.',
+    say: 'Jetzt die Aufträge, da kommen die Bestellungen rein. Startseite, dann „Auftragszentrale“.',
     target: () => tile('Auftragszentrale'), wait: { route: /^\/auftraege/ }, from: '/',
   },
   {
@@ -180,7 +183,7 @@ const studentList = [
     target: () => tile('Lager- & Auftragsanalyse'), wait: { route: /^\/analyse/ }, from: '/',
   },
   {
-    say: 'Hier siehst du, welche Kategorien wir haben, welche Fächer voll sind, wo der Bestand knapp wird und wo noch Mischkisten warten. Ideal, um schlau auszusehen.',
+    say: 'Hier siehst du, welche Kategorien wir haben, welche Fächer voll sind, wo der Bestand knapp wird und wo noch Mischkisten warten.',
     target: () => q('main section.panel'), wait: 'next', go: '/analyse',
   },
   // ---------- Protokoll ----------
@@ -194,7 +197,7 @@ const studentList = [
     target: () => byText('.menu .item', 'Meine Aktivitäten'), wait: { route: /^\/profil/ },
   },
   {
-    say: 'Hier steht alles, was du heute gemacht hast: Inventur, Umlagerung, Auftrag. Dein Lehrer sieht diese Liste auch. Also: immer schön ordentlich arbeiten. Ich schau auch zu. 👀',
+    say: 'Hier steht alles, was du heute gemacht hast: Inventur, Umlagerung, Auftrag. Dein Lehrer sieht diese Liste auch. Also: immer schön ordentlich arbeiten.',
     target: () => q('main section.panel'), wait: 'next', go: '/profil',
   },
   {
@@ -236,7 +239,7 @@ const teacherList = [
     target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'click', go: '/lehrer',
   },
   {
-    say: 'Rechts steht jetzt alles, was Max gemacht hat: wann, was, in welchem Bereich, mit Details wie Teil, Menge und Lagerort. Jede Umlagerung, jede Inventur, jeder Auftragsschritt. Ausreden wie „Ich war das nicht“ haben hier schlechte Karten.',
+    say: 'Rechts steht jetzt alles, was Max gemacht hat: wann, was, in welchem Bereich, mit Details wie Teil, Menge und Lagerort. Jede Umlagerung, jede Inventur, jeder Auftragsschritt.',
     target: () => panel('Protokoll'), wait: 'next', go: '/lehrer',
   },
   {
@@ -250,8 +253,13 @@ const teacherList = [
     target: () => panel('Teilnehmer anlegen'), wait: { api: /^POST users$/ }, hint: 'Hier ausfüllen', go: '/lehrer',
   },
   {
-    say: 'Angelegt! Das neue Konto steht jetzt in der Liste und kann sich sofort anmelden. Sag dem Schüler sein Startpasswort, am besten nicht quer durchs Klassenzimmer.',
+    say: 'Angelegt! Das neue Konto steht jetzt in der Liste und kann sich sofort anmelden. Sag dem Schüler sein Startpasswort.',
     target: () => panel('Teilnehmer'), wait: 'next', mood: 'cheer', go: '/lehrer',
+  },
+  {
+    chapter: 'Schüler löschen',
+    say: 'Verlässt jemand den Kurs, löschst du sein Konto mit dem Papierkorb ganz rechts. Probier es mit dem Konto, das du gerade angelegt hast: Papierkorb und dann „Ja“. Gelöschte Konten können sich nicht mehr anmelden, ihr Protokoll bleibt aber erhalten.',
+    target: () => newestUserRow(), wait: { api: /^POST users\/\d+\/delete$/ }, go: '/lehrer',
   },
   {
     chapter: 'Dev-Rolle',
@@ -269,7 +277,7 @@ const teacherList = [
     target: () => tile('Lager- & Auftragsanalyse'), wait: { route: /^\/analyse/ }, from: '/',
   },
   {
-    say: '„Aktivität pro Teilnehmer“ sehen nur Lehrer: wer wie viel gearbeitet hat, auf einen Blick. Wer auffällig wenig hat, bekommt vielleicht mal einen Extra-Auftrag.',
+    say: '„Aktivität pro Teilnehmer“ sehen nur Lehrer: wer wie viel gearbeitet hat, auf einen Blick.',
     target: () => panel('Aktivität pro Teilnehmer'), wait: 'next', go: '/analyse',
   },
   // Dev-Bereich
@@ -334,7 +342,7 @@ const teacherList = [
   },
   {
     chapter: 'Geschafft!',
-    say: 'Fertig! Du kennst jetzt die Lehrer-Ansicht mit Protokoll und CSV, kannst Schüler anlegen und die Dev-Rolle vergeben und kennst alle fünf Reiter im Dev-Bereich. Das Lager ist in guten Händen. 🎉',
+    say: 'Fertig! Du kennst jetzt die Lehrer-Ansicht mit Protokoll und CSV, kannst Schüler anlegen, löschen und die Dev-Rolle vergeben und kennst alle fünf Reiter im Dev-Bereich. Das Lager ist in guten Händen. 🎉',
     wait: 'end', mood: 'cheer',
   },
 ]

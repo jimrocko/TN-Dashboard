@@ -71,7 +71,8 @@ function activityRows(db, userId, limit) {
 }
 
 function current(db) {
-  const u = db.users.find((x) => x.id === db.session)
+  // Gelöschte Konten (active === false) gelten als abgemeldet, wie auth.php mit active = 1
+  const u = db.users.find((x) => x.id === db.session && x.active !== false)
   if (u) u.last_seen = now()
   return u ?? null
 }
@@ -112,7 +113,7 @@ function dispatch(db, method, route, params, body) {
   const parts = route.split('/')
   switch (`${method} ${route}`) {
     case 'POST auth/login': {
-      const u = db.users.find((x) => x.username === String(body.username ?? '').trim())
+      const u = db.users.find((x) => x.username === String(body.username ?? '').trim() && x.active !== false)
       if (!u || u.password !== body.password) throw new DemoError('Benutzername oder Passwort falsch', 401)
       db.session = u.id
       log(db, u.id, 'login')
@@ -155,6 +156,7 @@ function dispatch(db, method, route, params, body) {
       const order = { admin: 0, lehrer: 1, teilnehmer: 2 }
       return {
         users: db.users
+          .filter((u) => u.active !== false)
           .map((u) => ({ ...pub(u, db), dev_access: devRoutes.devAllowed(db, u), activity_count: db.log.filter((r) => r.user_id === u.id).length }))
           .sort((a, b) => order[a.role] - order[b.role] || a.display_name.localeCompare(b.display_name)),
       }
@@ -172,6 +174,21 @@ function dispatch(db, method, route, params, body) {
       log(db, me.id, 'user_created', null, { username, role: 'teilnehmer' })
       return { ok: true }
     }
+  }
+  if (method === 'POST' && parts[0] === 'users' && /^\d+$/.test(parts[1] ?? '') && parts[2] === 'delete') {
+    // Konto löschen wie api/index.php: nur Lehrer, nur Teilnehmer; deaktivieren, Protokoll bleibt, Name wird frei
+    const me = requireUser(db)
+    if (!isStaff(me)) throw new DemoError('Nur für Lehrer', 403)
+    const target = db.users.find((u) => u.id === Number(parts[1]) && u.active !== false)
+    if (!target) throw new DemoError('Benutzer nicht gefunden', 404)
+    if (target.id === me.id) throw new DemoError('Das eigene Konto kann nicht gelöscht werden', 400)
+    if (target.role !== 'teilnehmer') throw new DemoError('Nur Teilnehmer-Konten können gelöscht werden', 403)
+    const username = target.username
+    target.active = false
+    target.username = `${username}~${target.id}`
+    devRoutes.revokeDev(db, target.id)
+    log(db, me.id, 'user_deleted', null, { username })
+    return { ok: true }
   }
   const devResult = devRoutes.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (devResult !== undefined) return devResult
