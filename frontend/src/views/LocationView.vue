@@ -49,10 +49,15 @@ async function book(s) {
   busy.value = true
   msg.value = ''
   try {
-    const r = (await api.post('transfers', { lot_id: s.lot.id, to_location_id: s.to_location_id, qty: s.lot.qty })).transfer
+    // Erwarteter Stand mit: hat inzwischen jemand anders dieses Lot umgelagert, lehnt der Server ab (409)
+    const r = (await api.post('transfers', { lot_id: s.lot.id, to_location_id: s.to_location_id, qty: s.lot.qty,
+      expect_location_id: s.lot.location_id, expect_qty: s.lot.qty })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
     await Promise.all([load(), blExport.value?.refresh({ popup: true })])
-  } catch (e) { error.value = e.message } finally { busy.value = false }
+  } catch (e) {
+    error.value = e.message
+    if (e.status === 409) await load()
+  } finally { busy.value = false }
 }
 async function startStocktake() {
   busy.value = true

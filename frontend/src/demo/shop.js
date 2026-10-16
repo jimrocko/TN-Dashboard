@@ -274,9 +274,12 @@ function suggestions(db) {
   return out
 }
 
-function transfer(db, lotId, toId, qty, userId) {
+const GONE = 'Dieses Lot wurde gerade von jemand anderem umgelagert. Die Liste wird neu geladen.'
+function transfer(db, lotId, toId, qty, userId, expectLoc = null, expectQty = null) {
   const lot = db.inventory.find((i) => i.id === lotId)
-  if (!lot) throw new DemoError('Lot nicht gefunden', 404)
+  if (!lot) throw new DemoError(GONE, 409)
+  // Stand wie auf dem Bildschirm? Sonst hat inzwischen jemand anders gebucht (wie Shop::transfer)
+  if ((expectLoc !== null && lot.location_id !== expectLoc) || (expectQty !== null && lot.qty !== expectQty)) throw new DemoError(GONE, 409)
   const to = loc(db, toId)
   if (!to) throw new DemoError('Ziel-Lagerort nicht gefunden', 404)
   if (lot.location_id === toId) throw new DemoError('Quelle und Ziel sind gleich', 400)
@@ -466,16 +469,20 @@ export function route(db, method, parts, params, body, requireUser, log) {
   }
   if (method === 'POST' && a === 'transfers' && !b) {
     const me = requireUser()
-    const r = transfer(db, Number(body.lot_id), Number(body.to_location_id), Number(body.qty), me.id)
+    const num = (v) => (v === undefined || v === null ? null : Number(v))
+    const r = transfer(db, Number(body.lot_id), Number(body.to_location_id), Number(body.qty), me.id, num(body.expect_location_id), num(body.expect_qty))
     log(me.id, 'transfer', 'umlagern', { teil: `${r.item_no} ${r.color}`, menge: r.qty, von: r.from, nach: r.to })
     return { transfer: r }
   }
   if (method === 'GET' && a === 'bricklink' && b === 'pending') {
-    const me = requireUser()
+    // wie in PHP: offene Umlagerungen aller Nutzer und die laufende Übertragung (gemeinsam, ohne Namen)
+    requireUser()
+    const e = (db.blExports ?? []).find((x) => x.open)
     return {
-      transfers: db.transfers.filter((t) => t.user_id === me.id && !t.bl_done_at && t.bl_changes)
+      transfers: db.transfers.filter((t) => !t.bl_done_at && t.bl_changes)
         .map((t) => ({ id: t.id, item_no: t.item_no, color_name: t.color_name, name: t.name, qty: t.qty, created_at: t.created_at,
           from_code: t.from_code, to_code: t.to_code, changes: t.bl_changes })),
+      export: e ? { id: e.id, transfer_ids: e.transfer_ids, created_at: e.created_at } : null,
     }
   }
   if (method === 'GET' && a === 'bricklink' && b === 'stock') {
@@ -490,13 +497,31 @@ export function route(db, method, parts, params, body, requireUser, log) {
     for (const t of open) for (const c of t.bl_changes) if (c.type === 'update' && c.delete && !have.has(c.lot_id)) deleted.add(c.lot_id)
     return { lots: lots.map(({ id, ...l }) => l), deleted: [...deleted], transfer_ids: open.map((t) => t.id) }
   }
-  if (method === 'POST' && a === 'bricklink' && b === 'done') {
+  if (method === 'POST' && a === 'bricklink' && b === 'start') {
+    // Übertragung starten; immer nur eine offen (wie BrickLinkSync::start)
     const me = requireUser()
-    const ids = new Set((body.ids ?? []).map(Number))
+    db.blExports ??= []
+    const ids = (body.ids ?? []).map(Number).filter((i) => i > 0)
+    if (!ids.length) throw new DemoError('Keine offenen Umlagerungen', 400)
+    if (db.blExports.some((x) => x.open)) throw new DemoError('Gerade läuft schon eine Übertragung. Bitte den kopierten Bestand nicht einfügen.', 409)
+    const e = { id: db.blExports.length + 1, open: true, transfer_ids: ids, created_by: me.id, created_at: now() }
+    db.blExports.push(e)
+    log(me.id, 'bricklink_export_start', 'umlagern', { umlagerungen: ids.length })
+    return { export: { id: e.id, transfer_ids: e.transfer_ids, created_at: e.created_at } }
+  }
+  if (method === 'POST' && a === 'bricklink' && b === 'finish') {
+    // Offene Übertragung abschließen (eingefügt oder verworfen); darf jeder
+    const me = requireUser()
+    const e = (db.blExports ?? []).find((x) => x.open && x.id === Number(body.id))
+    if (!e) throw new DemoError('Diese Übertragung wurde schon abgeschlossen', 409)
     const t = now()
     let n = 0
-    for (const x of db.transfers) if (!x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
-    if (n) log(me.id, 'bricklink_export', 'umlagern', { umlagerungen: n })
+    if (body.done) {
+      const ids = new Set(e.transfer_ids)
+      for (const x of db.transfers) if (!x.bl_done_at && ids.has(x.id)) { x.bl_done_at = t; n++ }
+    }
+    Object.assign(e, { open: false, closed_at: t, state: body.done ? 'eingefuegt' : 'verworfen' })
+    log(me.id, body.done ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', { umlagerungen: n })
     return { done: n }
   }
   if (method === 'POST' && a === 'bricklink' && b === 'import') {

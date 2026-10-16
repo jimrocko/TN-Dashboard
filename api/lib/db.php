@@ -21,6 +21,7 @@ function db(): PDO
     if (($c['driver'] ?? 'mysql') === 'sqlite') {
         $pdo = new PDO('sqlite:' . $c['path']);
         $pdo->exec('PRAGMA foreign_keys = ON');
+        $pdo->exec('PRAGMA busy_timeout = 5000'); // gleichzeitige Buchungen warten kurz statt abzubrechen
     } else {
         // 'mysql' und 'mariadb' (wie in Laravel-.env üblich) laufen beide über pdo_mysql.
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $c['host'], (int) ($c['port'] ?: 3306), $c['name']);

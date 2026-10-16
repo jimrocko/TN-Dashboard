@@ -36,15 +36,20 @@ async function load() {
   } catch (e) { error.value = e.message }
 }
 
-async function book(lotId, toId, amount, label) {
+async function book(l, toId, amount) {
   busy.value = true
   msg.value = error.value = ''
   try {
-    const r = (await api.post('transfers', { lot_id: lotId, to_location_id: Number(toId), qty: Number(amount) })).transfer
+    // Erwarteter Stand mit: hat inzwischen jemand anders dieses Lot umgelagert, lehnt der Server ab (409)
+    const r = (await api.post('transfers', { lot_id: l.id, to_location_id: Number(toId), qty: Number(amount),
+      expect_location_id: l.location_id, expect_qty: l.qty })).transfer
     msg.value = `${num(r.qty)} × ${r.item_no} ${r.color} von ${r.from} nach ${r.to} umgelagert.`
     lot.value = null
     await Promise.all([load(), blExport.value?.refresh({ popup: true })])
-  } catch (e) { error.value = e.message } finally { busy.value = false }
+  } catch (e) {
+    error.value = e.message
+    if (e.status === 409) { lot.value = null; await load() }
+  } finally { busy.value = false }
 }
 
 let timer
@@ -122,7 +127,7 @@ onMounted(async () => {
                 <template v-else-if="s.reason === 'farben'">schon da: {{ s.target_colors?.join(', ') }}</template>
                 <template v-else>schon da: {{ s.target_parts?.join(', ') }}</template>
               </td>
-              <td class="num"><button class="btn btn-sm" :disabled="busy" @click="book(s.lot.id, s.to_location_id, s.lot.qty)">Übernehmen</button></td>
+              <td class="num"><button class="btn btn-sm" :disabled="busy" @click="book(s.lot, s.to_location_id, s.lot.qty)">Übernehmen</button></td>
             </tr>
             <tr v-if="!filtered.length"><td colspan="9" class="empty">Keine Vorschläge. Alles liegt dort, wo es hingehört.</td></tr>
           </tbody>
@@ -160,7 +165,7 @@ onMounted(async () => {
               <span class="small num">{{ num(l.qty) }}</span>
             </button>
           </div>
-          <form v-if="lot" class="form" @submit.prevent="book(lot.id, to, qty)">
+          <form v-if="lot" class="form" @submit.prevent="book(lot, to, qty)">
             <div class="chosen">
               <RouterLink class="mono" :to="`/teil/${lot.item_no}`">{{ lot.item_no }}</RouterLink> <ColorSwatch :name="lot.color_name" />
               <span class="faint small">· {{ num(lot.qty) }} Stück in</span> <LocationTag :code="lot.location_code" :kind="lot.location_kind" />

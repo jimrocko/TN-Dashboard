@@ -117,3 +117,13 @@ CREATE TABLE IF NOT EXISTS {p}dev_access (
   granted_by INTEGER NULL,
   granted_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS {p}bl_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  open_flag INTEGER NULL UNIQUE,
+  transfer_ids TEXT NOT NULL,
+  created_by INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  closed_at TEXT NULL,
+  state VARCHAR(16) NOT NULL DEFAULT 'offen'
+);

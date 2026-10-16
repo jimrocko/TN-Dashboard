@@ -156,24 +156,34 @@ switch (true) {
     case $route === 'transfers' && $method === 'POST':
         $me = require_user();
         $in = request_json();
-        $r = Shop::transfer((int) ($in['lot_id'] ?? 0), (int) ($in['to_location_id'] ?? 0), (int) ($in['qty'] ?? 0), (int) $me['id']);
+        $r = Shop::transfer((int) ($in['lot_id'] ?? 0), (int) ($in['to_location_id'] ?? 0), (int) ($in['qty'] ?? 0), (int) $me['id'],
+            isset($in['expect_location_id']) ? (int) $in['expect_location_id'] : null, isset($in['expect_qty']) ? (int) $in['expect_qty'] : null);
         ActivityLog::log((int) $me['id'], 'transfer', 'umlagern', ['teil' => "{$r['item_no']} {$r['color']}", 'menge' => $r['qty'], 'von' => $r['from'], 'nach' => $r['to']]);
         json_response(['transfer' => $r], 201);
 
     case $route === 'bricklink/pending' && $method === 'GET':
-        // Eigene Umlagerungen, die noch nicht per Mass Update/Upload bei BrickLink eingetragen sind
-        $me = require_user();
-        json_response(['transfers' => BrickLinkSync::pending((int) $me['id'])]);
+        // Offene Umlagerungen aller Nutzer und die laufende Übertragung (gemeinsam für alle, nicht persönlich)
+        require_user();
+        json_response(['transfers' => BrickLinkSync::pending(), 'export' => BrickLinkSync::openExport()]);
 
     case $route === 'bricklink/stock' && $method === 'GET':
         // Ganzer Bestand für die BrickLink-XML (alle Lots mit Menge nach dem Abziehen)
         require_user();
         json_response(BrickLinkSync::stock());
 
-    case $route === 'bricklink/done' && $method === 'POST':
+    case $route === 'bricklink/start' && $method === 'POST':
+        // Übertragung starten (Bestand wurde kopiert). Es darf immer nur eine offen sein.
         $me = require_user();
-        $n = BrickLinkSync::done((array) (request_json()['ids'] ?? []));
-        if ($n) ActivityLog::log((int) $me['id'], 'bricklink_export', 'umlagern', ['umlagerungen' => $n]);
+        $e = BrickLinkSync::start((array) (request_json()['ids'] ?? []), (int) $me['id']);
+        ActivityLog::log((int) $me['id'], 'bricklink_export_start', 'umlagern', ['umlagerungen' => count($e['transfer_ids'])]);
+        json_response(['export' => $e], 201);
+
+    case $route === 'bricklink/finish' && $method === 'POST':
+        // Offene Übertragung abschließen: eingefügt (done = true) oder verworfen. Darf jeder.
+        $me = require_user();
+        $in = request_json();
+        $n = BrickLinkSync::finish((int) ($in['id'] ?? 0), !empty($in['done']));
+        ActivityLog::log((int) $me['id'], !empty($in['done']) ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', ['umlagerungen' => $n]);
         json_response(['done' => $n]);
 
     case $route === 'bricklink/import' && $method === 'POST':

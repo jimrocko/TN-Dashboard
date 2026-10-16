@@ -274,14 +274,19 @@ final class Shop
     }
 
     /** Menge eines Lots an einen anderen Lagerort buchen. Gleiches Teil am Ziel wird zusammengeführt. */
-    public static function transfer(int $lotId, int $toId, int $qty, int $userId): array
+    public static function transfer(int $lotId, int $toId, int $qty, int $userId, ?int $expectLoc = null, ?int $expectQty = null): array
     {
         BrickLinkSync::ensureSchema(); // vor der Transaktion: ALTER TABLE beendet sie in MySQL
         $pdo = db();
         $pdo->beginTransaction();
         try {
-            $lot = q('SELECT * FROM {inventory} WHERE id = ?', [$lotId])->fetch();
-            if (!$lot) json_error('Lot nicht gefunden', 404);
+            // Lot sperren, damit zwei gleichzeitige Buchungen nacheinander laufen (SQLite sperrt beim Schreiben ohnehin alles)
+            $lot = q('SELECT * FROM {inventory} WHERE id = ?' . (Dev::isSqlite() ? '' : ' FOR UPDATE'), [$lotId])->fetch();
+            if (!$lot) json_error('Dieses Lot wurde gerade von jemand anderem umgelagert. Die Liste wird neu geladen.', 409);
+            // Stand wie auf dem Bildschirm? Sonst hat inzwischen jemand anders gebucht.
+            if (($expectLoc !== null && (int) $lot['location_id'] !== $expectLoc) || ($expectQty !== null && (int) $lot['qty'] !== $expectQty)) {
+                json_error('Dieses Lot wurde gerade von jemand anderem umgelagert. Die Liste wird neu geladen.', 409);
+            }
             $to = q('SELECT * FROM {locations} WHERE id = ?', [$toId])->fetch();
             if (!$to) json_error('Ziel-Lagerort nicht gefunden', 404);
             if ((int) $lot['location_id'] === $toId) json_error('Quelle und Ziel sind gleich');
