@@ -82,8 +82,12 @@ final class Shop
     {
         $locs = q('SELECT l.id, l.code, l.name, l.kind, COUNT(i.id) AS lots, COALESCE(SUM(i.qty), 0) AS qty
             FROM {locations} l LEFT JOIN {inventory} i ON i.location_id = l.id GROUP BY l.id, l.code, l.name, l.kind ORDER BY l.code')->fetchAll();
+        // Zahlen je Kategorie für die Kategorien-Ansicht im Inventar
+        $cats = q('SELECT category, COUNT(*) AS lots, SUM(qty) AS qty, ROUND(SUM(qty * price), 2) AS value
+            FROM {inventory} GROUP BY category ORDER BY category')->fetchAll();
         return [
-            'categories' => q('SELECT DISTINCT category FROM {inventory} ORDER BY category')->fetchAll(PDO::FETCH_COLUMN),
+            'categories' => array_column($cats, 'category'),
+            'category_stats' => typed($cats, ['lots', 'qty'], ['value']),
             'locations'  => typed($locs, ['id', 'lots', 'qty']),
         ];
     }

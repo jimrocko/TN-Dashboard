@@ -81,7 +81,7 @@ const studentList = [
     target: () => tile('Inventar'), wait: { route: /^\/inventar/ }, from: '/',
   },
   {
-    say: 'Das ist das Inventar: Jede Zeile ist ein Lot, also ein Teil in einer Farbe an einem Lagerort. Ganz schön viele Steine … Tipp oben auf „Lagerplan“, dann zeig ich dir unser Lagerzimmer.',
+    say: 'Das ist das Inventar, sortiert nach Kategorien wie Brick, Plate oder Tile. Tippst du eine an, klappt sie auf und zeigt ihre Lots, also je ein Teil in einer Farbe an einem Lagerort. Jetzt tipp oben auf „Lagerplan“, dann zeig ich dir unser Lagerzimmer.',
     target: () => byText('.btn', 'Lagerplan'), wait: 'click', go: '/inventar',
   },
   {

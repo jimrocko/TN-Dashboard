@@ -116,8 +116,18 @@ function inventory(db, f) {
 }
 
 function meta(db) {
+  // Zahlen je Kategorie für die Kategorien-Ansicht im Inventar (wie Shop::meta)
+  const cats = new Map()
+  for (const i of db.inventory) {
+    const c = cats.get(i.category) ?? { category: i.category, lots: 0, qty: 0, value: 0 }
+    c.lots++; c.qty += i.qty; c.value += i.qty * i.price
+    cats.set(i.category, c)
+  }
+  const stats = [...cats.values()].sort((a, b) => (a.category < b.category ? -1 : a.category > b.category ? 1 : 0))
+    .map((c) => ({ ...c, value: Math.round(c.value * 100) / 100 }))
   return {
-    categories: [...new Set(db.inventory.map((i) => i.category))].sort(),
+    categories: stats.map((c) => c.category),
+    category_stats: stats,
     locations: (() => {
       const t = totalsByLocation(db)
       return db.locations.map((l) => ({ ...l, lots: t.get(l.id)?.lots ?? 0, qty: t.get(l.id)?.qty ?? 0 }))

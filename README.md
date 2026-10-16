@@ -34,71 +34,113 @@ Im Lego-Shop der Schule arbeiten die Teilnehmer mit BrickLink, BrickStore und vi
 Auf dem Home-Bildschirm (Safari → Teilen → „Zum Home-Bildschirm“) erscheint das App-Icon: der Lego-Stein des TN Dashboards, unten rechts winkt Klemmi aus der Ecke. Das gilt für die App auf dem Schulserver genauso wie für Demo und Tutorial.
 <br clear="left">
 
-Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren.
+Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren. Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale.
 
-## Die Bereiche
+## Startseite und Suche
 
-Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale, Kategorien und Balken in der Analyse filtern das Inventar.
+Große Kacheln mit Live-Zahlen (Bestand, offene Vorschläge, offene Inventuren) und darüber eine Suche über alles: Teil-Nummern, Namen, Farben, Kategorien, Lagerorte und Aufträge. Rechts im Suchfeld öffnet das **Scan-Symbol** den Teile-Scanner.
 
-| Bereich | Was man dort macht |
-|---|---|
-| **Startseite** | Große Kacheln mit Live-Zahlen (Bestand, Vorschläge, offene Inventuren) und eine Suche über alles. Rechts im Suchfeld öffnet das Scan-Symbol den Teile-Scanner. |
-| **Suche** | Eine Suche über Teil-Nummern, Namen, Farben, Kategorien, Lagerorte und Aufträge. |
-| **Teile-Scanner** | Über das Scan-Symbol in der Suche: Teil mit der Kamera fotografieren. Es wird automatisch erkannt (über den kostenlosen Dienst [Brickognize](https://brickognize.com)), danach öffnet sich direkt die Teile-Seite. |
-| **Teile-Seite** | Alles zu einer Teil-Nr.: Bestand nach Farbe und Lagerort, Wert, in offenen Aufträgen reservierte Menge, Aufträge mit dem Teil, letzte Umlagerungen, Link zu BrickLink. Jede Teil-Nr. in der App führt hierher. |
-| **Lagerort-Seite** | Was in einem Kästchen liegt: Inhalt mit Menge und Wert, Inventur-Stand, was woanders hingehört, welche offenen Aufträge hier Teile holen, letzte Umlagerungen. Mit Pfeilen zum Nachbarfach blättern. |
-| **Inventar** | Alle Lots nach Nummer, Farbe, Kategorie und Lagerort filtern und sortieren, mit Menge und Wert. Über den Knopf **Lagerplan** lässt sich derselbe Raumplan wie in Umlagern aufklappen (ohne Mischkisten-Markierung), um Kästchen direkt anzutippen. |
-| **Umlagern** | Zwei Arten von Vorschlägen, jeweils mit einem Tipp übernehmen: **Falsch einsortiert** (gleiches Teil in gleicher Farbe liegt in mehreren Kästchen → alles in das Kästchen mit der größten Menge) **Farben zusammenlegen** (gleiches Teil in anderen Farben → in ein Kästchen, das nur dieses Teil enthält) und **Gleiche Teile-Art** (z. B. Bricks zu Bricks, Plates zu Plates → in ein Kästchen, das nur diese Art enthält); höchstens 3 Lots pro Kästchen. Immer nur innerhalb eines Bereichs, gebraucht bleibt gebraucht. Dazu freies Umbuchen. Der **Lagerplan** zeigt das Lagerzimmer von oben, kompakt und ohne Farben, mit klar abgegrenzten Bereichen und den Regalen an den Wänden (Kästchen wie G245, H012, N005; G = gebraucht, H, N = neu, FG/FN/FT/Plate = Figuren und Plates). Ein Tipp auf einen Bereich zeigt die Hunderter-Blöcke, dann die einzelnen Kästchen; ein Tipp auf ein Kästchen öffnet seinen Inhalt. G-Kästchen mit mehr als 3 verschiedenen Lots sind **rot** markiert: Das sind Mischkisten, die noch aufgeteilt werden müssen. Direkt nach dem Umlagern öffnet sich das Fenster **Zu BrickLink übertragen**: Er kopiert den ganzen Bestand als BrickLink-XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) in die Zwischenablage und öffnet BrickLink; dort unten beim Upload einfügen und bestätigen, danach in der App „Ja, ist eingefügt“. Es läuft immer nur eine Übertragung, die alle sehen und jeder abschließen kann. Buchen zwei gleichzeitig dasselbe Lot, geht nur die erste Buchung durch. |
-| **Inventur & Bestandsprüfung** | Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren. |
-| **Auftragszentrale** | Ohne eigene Kachel, erreichbar über die Suche, die Analyse („Aufträge nach Status“), Teile- und Lagerort-Seite. Bestellungen nach Status, Positionen sortiert nach Lagerort (Laufweg beim Picken), Status weiterschalten. |
-| **Lager- & Auftragsanalyse** | Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge nach Status, Aktivität pro Teilnehmer. |
-| **Minifig-Finder, Pickliste** | Die bestehenden Programme der Schule, im Dashboard mit gemeinsamem Login. |
-| **Meine Aktivitäten** | Das eigene Protokoll. |
-| **Einstellungen** | Hell/Dunkel, Dichte, Schriftgröße und Animationen, pro Gerät. |
-| **Lehrer-Ansicht** | Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), Protokoll aller oder einzelner Teilnehmer, CSV-Export, Dev-Rolle vergeben. **Lager aus BrickLink übernehmen:** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen. |
-| **Dev-Bereich** | Werkzeuge für Entwickler, nur für Lehrer und Teilnehmer mit Dev-Rolle. Siehe unten. |
+<p align="center"><img src="docs/images/suche.png" alt="Suchergebnisse für 3001" width="720"></p>
 
-### Dev-Bereich
+<table>
+  <tr>
+    <td width="68%" valign="top">
+
+**Auf jedem Gerät:** Auf PC und iPad stehen vier Kacheln in einer Reihe, auf dem Handy zwei. Nichts ist gequetscht, alles passt auf einen Blick.
+
+**Minifig-Finder und Pickliste** sind die bestehenden Programme der Schule. Sie bekommen im Dashboard eine eigene Kachel und den gemeinsamen Login.
+
+**Meine Aktivitäten** (oben rechts auf den eigenen Namen tippen) zeigt das eigene Protokoll. Unter **Einstellungen** stellt jeder für sein Gerät Hell/Dunkel, Dichte, Schriftgröße und Animationen ein.
+
+</td>
+    <td width="32%" align="center"><img src="docs/images/handy.png" alt="Startseite auf dem Handy" width="220"></td>
+  </tr>
+</table>
+
+## Teile-Scanner und Teile-Seite
+
+Teil auf eine helle Fläche legen, mit der Kamera fotografieren (oder ein Foto wählen) und es wird automatisch erkannt, über den kostenlosen Dienst [Brickognize](https://brickognize.com). Danach öffnet sich direkt die **Teile-Seite**.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/scanner.png" alt="Teile-Scanner"><br><sub><b>Teile-Scanner</b>: über das Scan-Symbol in der Suche</sub></td>
+    <td width="50%"><img src="docs/images/teil.png" alt="Teile-Seite"><br><sub><b>Teile-Seite</b>: Bestand nach Farbe und Lagerort</sub></td>
+  </tr>
+</table>
+
+Die Teile-Seite zeigt alles zu einer Teil-Nr.: Bestand nach Farbe und Lagerort, Wert, die in offenen Aufträgen reservierte Menge, Aufträge mit dem Teil, letzte Umlagerungen und einen Link zu BrickLink. Jede Teil-Nr. in der App führt hierher.
+
+## Inventar
+
+Das Inventar ist nach **Kategorien** gegliedert (Brick, Plate, Tile, Technic …). Jede Kategorie zeigt gleich, wie viele Lots, Teile und welchen Wert sie hat; ein Tipp klappt sie auf und zeigt ihre Lots. Wer lieber alles in einer langen Liste sieht, schaltet oben auf **Liste**. Sobald man sucht oder nach Kategorie oder Lagerort filtert, erscheint die passende Liste.
+
+<p align="center"><img src="docs/images/inventar.png" alt="Inventar nach Kategorien, Kategorie Cone aufgeklappt" width="720"></p>
+
+Über den Knopf **Lagerplan** klappt das Lagerzimmer von oben auf: links G (gebraucht), rechts H und N (neu), unten links die Figuren und Plates (FG, FN, FT, Plate). Ein Tipp auf einen Bereich zeigt die Hunderter-Blöcke, dann die einzelnen Kästchen; ein Tipp auf ein Kästchen öffnet seinen Inhalt.
+
+<p align="center"><img src="docs/images/lagerplan.png" alt="Lagerplan mit Bereich G und Kästchen G100 bis G199" width="560"></p>
+
+## Lagerort-Seite
+
+Was in einem Kästchen liegt: Inhalt mit Menge und Wert, Inventur-Stand, was woanders hingehört, welche offenen Aufträge hier Teile holen und die letzten Umlagerungen. Mit den Pfeilen oben blättert man zum Nachbarfach.
+
+<p align="center"><img src="docs/images/lagerort.png" alt="Lagerort-Seite G101" width="720"></p>
+
+## Umlagern
+
+Die App findet von selbst, was nicht dort liegt, wo es hingehört, und schlägt vor, wohin es soll. Jeder Vorschlag lässt sich mit einem Tipp übernehmen:
+
+- **Falsch einsortiert:** Gleiches Teil in gleicher Farbe liegt in mehreren Kästchen → alles in das Kästchen mit der größten Menge.
+- **Farben zusammenlegen:** Gleiches Teil in anderen Farben → in ein Kästchen, das nur dieses Teil enthält.
+- **Gleiche Teile-Art:** Bricks zu Bricks, Plates zu Plates → in ein Kästchen, das nur diese Art enthält.
+
+Höchstens 3 Lots pro Kästchen, immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht). Dazu gibt es freies Umbuchen und den Lagerplan, in dem G-Kästchen mit mehr als 3 verschiedenen Lots **rot** markiert sind: Das sind Mischkisten, die noch aufgeteilt werden müssen.
+
+<p align="center"><img src="docs/images/umlagern.png" alt="Umlagern mit Vorschlägen" width="720"></p>
+
+Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf kopiert den ganzen Bestand als BrickLink-XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) und öffnet BrickLink; dort unten beim Upload einfügen und bestätigen, danach in der App „Ja, ist eingefügt“. Es läuft immer nur eine Übertragung, die alle sehen und jeder abschließen kann. Buchen zwei gleichzeitig dasselbe Lot, geht nur die erste Buchung durch.
+
+<p align="center"><img src="docs/images/bricklink.png" alt="Fenster Zu BrickLink übertragen" width="720"></p>
+
+## Inventur und Aufträge
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/inventur.png" alt="Inventur"><br><b>Inventur & Bestandsprüfung</b><br>Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren.</td>
+    <td width="50%" valign="top"><img src="docs/images/auftraege.png" alt="Auftragszentrale"><br><b>Auftragszentrale</b><br>Bestellungen nach Status, Positionen sortiert nach Lagerort (Laufweg beim Picken), Status weiterschalten. Ohne eigene Kachel: erreichbar über die Suche, die Analyse („Aufträge nach Status“), die Teile- und die Lagerort-Seite.</td>
+  </tr>
+</table>
+
+## Analyse
+
+Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge nach Status und, nur für Lehrer, die Aktivität pro Teilnehmer. Ein Tipp auf einen Balken öffnet die passende Liste.
+
+<p align="center"><img src="docs/images/analyse.png" alt="Lager- und Auftragsanalyse" width="720"></p>
+
+## Lehrer-Ansicht
+
+Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), das Protokoll aller oder einzelner Teilnehmer ansehen, als CSV exportieren und die Dev-Rolle vergeben. **Lager aus BrickLink übernehmen** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen.
+
+<p align="center"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht mit Teilnehmern und Protokoll" width="720"></p>
+
+## Dev-Bereich
 
 Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben **Lehrer** und **Teilnehmer, denen ein Lehrer die Dev-Rolle gibt** (Lehrer-Ansicht, Spalte „Dev“). Alle anderen sehen den Knopf gar nicht, und jede Dev-Route prüft die Rolle am Server. Einen zusätzlichen Code gibt es nicht: Man ist ohnehin mit dem eigenen Passwort angemeldet.
 
 | Reiter | Inhalt |
 |---|---|
-| **System** | App-Version und Modus, Datenbank (Treiber, Version, Größe), PHP mit Erweiterungen und Upload-Grenzen, Dienste (BrickLink, Teileerkennung, HTTPS), welche Einstellung aus welcher `.env`-Variable kommt (nur Namen, nie Werte), Infos zum eigenen Gerät (Bildschirm, Touch, Kamera, Speicher, Verbindung). |
+| **System** | App-Version und Modus, Datenbank (Treiber, Version, Größe), PHP mit Erweiterungen und Upload-Grenzen, Dienste (BrickLink, Teileerkennung, HTTPS), welche Einstellung aus welcher `.env`-Variable kommt (nur Namen, nie Werte), Infos zum eigenen Gerät. |
 | **Tests** | Selbsttests mit einem Tipp: Datenbank lesen und schreiben, Sitzung, Temp-Ordner, BrickLink, Teileerkennung, alle API-Endpunkte (nur lesend) und Gerätefunktionen wie Speicher, Kamera und Offline-Modus. |
 | **Daten** | Alle Tabellen der App ansehen, blättern, filtern und als JSON kopieren. Nur lesen; Passwörter und gespeicherte Geheimnisse werden nie angezeigt. |
 | **API** | API-Konsole für lesende Aufrufe, Liste der letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen. |
 | **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen. Dazu Einstellungen für jeden Bereich, pro Gerät: Inventar (Lots pro Abruf, Sortierung, Lagerplan), Umlagern (Vorschläge pro Seite, Filter, Lagerplan, BrickLink-Pop-up), Inventur (blind zählen) und Analyse (Kennzahl). |
 
-## Screenshots
-
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/teil.png" alt="Teile-Seite"><br><sub><b>Teile-Seite</b>: öffnet sich nach dem Scannen</sub></td>
-    <td width="50%"><img src="docs/images/scanner.png" alt="Teile-Scanner"><br><sub><b>Teile-Scanner</b>: Foto machen, Teil wird erkannt</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/images/lagerort.png" alt="Lagerort-Seite"><br><sub><b>Lagerort-Seite</b>: was liegt wo</sub></td>
-    <td width="50%"><img src="docs/images/dashboard.png" alt="Startseite"><br><sub><b>Startseite</b>: alle Bereiche auf einen Blick</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/images/inventar.png" alt="Inventar"><br><sub><b>Inventar</b>: filtern nach Kategorie, Lagerort und Text</sub></td>
-    <td width="50%"><img src="docs/images/auftraege.png" alt="Auftragszentrale"><br><sub><b>Auftragszentrale</b>: Positionen nach Lagerort sortiert</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/images/analyse.png" alt="Analyse"><br><sub><b>Analyse</b>: Kennzahlen zu Lager und Aufträgen</sub></td>
-    <td width="50%"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht"><br><sub><b>Lehrer-Ansicht</b>: wer hat was gemacht</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/images/tutorial.png" alt="Tutorial mit Klemmi"><br><sub><b>Tutorial</b>: Klemmi zeigt, wohin du tippst</sub></td>
-    <td width="50%"><img src="docs/images/dev-bereich.png" alt="Dev-Bereich Tests"><br><sub><b>Dev-Bereich</b>: Selbsttests</sub></td>
+    <td width="50%"><img src="docs/images/dev-bereich.png" alt="Dev-Bereich Tests"><br><sub><b>Tests</b>: Selbsttests mit einem Tipp</sub></td>
+    <td width="50%"><img src="docs/images/dev-einstellungen.png" alt="Dev-Bereich Einstellungen je Bereich"><br><sub><b>Einstellungen</b>: für jeden Bereich, pro Gerät</sub></td>
   </tr>
 </table>
-
-<p align="center">
-  <img src="docs/images/handy.png" alt="Dashboard auf dem Handy" width="260"><br>
-  <sub><b>Auf dem Handy</b>: Das Layout passt sich jeder Bildschirmgröße an</sub>
-</p>
 
 ## Rollen
 
