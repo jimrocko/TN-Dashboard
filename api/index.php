@@ -293,6 +293,18 @@ switch (true) {
         ActivityLog::log((int) $staff['id'], 'ollie_import', null, ['lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
         json_response($r);
 
+    case $route === 'ollie/refresh' && $method === 'POST':
+        // Wie Ollies Knopf „BrickLink-Inventar“: sein Dashboard lädt neu von BrickLink, danach übernehmen wir den Stand
+        $staff = require_staff();
+        try {
+            $records = OllieSync::triggerRefresh();
+            $r = OllieSync::import();
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        ActivityLog::log((int) $staff['id'], 'ollie_refresh', null, ['ollie_lose' => $records, 'lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
+        json_response($r + ['ollie_records' => $records]);
+
     // ---- Dev-Bereich ----
     case $route === 'dev/status' && $method === 'GET':
         json_response(Dev::status(require_user()));

@@ -26,6 +26,7 @@ return [
         'bricklink.token'           => ['BRICKLINK_TOKEN', 'BRICKLINK_TOKEN_VALUE', 'BL_TOKEN'],
         'bricklink.token_secret'    => ['BRICKLINK_TOKEN_SECRET', 'BL_TOKEN_SECRET'],
         'ollie.db_path'             => ['OLLIE_DB_PATH'],
+        'ollie.url'                 => ['OLLIE_URL'],
     ],
 
     'db' => [
@@ -62,8 +63,10 @@ return [
 
     // Ollies Dashboard (bi-legoshop-dashboard) auf demselben Rechner: Pfad zu seiner Datenbank data/legoshop.db.
     // Dann lässt sich der Bestand ohne BrickLink-Abruf von dort übernehmen (Dev-Bereich → Einstellungen). Leer = aus.
+    // 'url' = Adresse seines Dashboards für „Bei BrickLink neu laden“ (ruft denselben Import auf wie sein Knopf).
     'ollie' => [
         'db_path' => '',
+        'url'     => 'http://127.0.0.1:8000',
     ],
 
     // Sitzungsdauer in Sekunden (8 h = ein Kurstag)

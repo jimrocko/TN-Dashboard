@@ -63,22 +63,30 @@ const appModules = homeModules.filter((m) => appOptions[m.id] || m.status === 'e
 // Ollies Dashboard auf demselben Rechner: Bestand aus seiner Datenbank übernehmen (nur lesend, kein BrickLink-Abruf).
 const ollie = ref(null)
 const ollieBusy = ref(false)
-const ollieConfirm = ref(false)
+const ollieConfirm = ref(null) // 'refresh' oder 'import', solange die Rückfrage offen ist
 const ollieNewer = () => !!ollie.value?.ollie_synced_at && (!ollie.value.imported_at || ollie.value.ollie_synced_at > ollie.value.imported_at)
 async function loadOllie() {
   try { ollie.value = await api.get('ollie/status') } catch (e) { ollie.value = { configured: false, error: e.message } }
 }
-async function importOllie() {
-  ollieBusy.value = true
-  ollieConfirm.value = false
+// 'refresh' = wie Ollies Knopf „BrickLink-Inventar“ (sein Dashboard lädt neu von BrickLink), dann übernehmen;
+// 'import' = nur seinen letzten Stand übernehmen
+async function importOllie(kind) {
+  ollieBusy.value = kind
+  ollieConfirm.value = null
   err.value = ''
   try {
-    const r = await api.post('ollie/import')
-    say(`Bestand aus Ollies Dashboard übernommen: ${num(r.lots)} Lots (${num(r.new)} neu, ${num(r.removed)} entfernt).`)
+    const r = await api.post(`ollie/${kind}`)
+    say(`${kind === 'refresh' ? 'Bei BrickLink neu geladen und übernommen' : 'Bestand aus Ollies Dashboard übernommen'}: ${num(r.lots)} Lots (${num(r.new)} neu, ${num(r.removed)} entfernt).`)
     await loadOllie()
-  } catch (e) { err.value = e.message } finally { ollieBusy.value = false }
+  } catch (e) { err.value = e.message } finally { ollieBusy.value = null }
 }
 onMounted(loadOllie)
+const ollieActions = [
+  { kind: 'refresh', k: 'Bei BrickLink neu laden', btn: 'Neu laden', busy: 'Lädt bei BrickLink …',
+    h: 'Wie Ollies Knopf „BrickLink-Inventar“: Sein Dashboard holt den Bestand frisch von BrickLink (ein Abruf, zählt bei ihm als geladen), danach übernehmen wir ihn. Dauert bis zu einer Minute.' },
+  { kind: 'import', k: 'Letzten Stand übernehmen', btn: 'Übernehmen', busy: 'Übernehme …',
+    h: 'Ohne neuen BrickLink-Abruf: nimmt den Stand, den Ollies Dashboard zuletzt geholt hat (automatisch alle 4 Stunden).' },
+]
 
 const confirmDemo = ref(false)
 async function resetDemoData() {
@@ -133,7 +141,7 @@ async function resetDemoData() {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Ollies Dashboard</h2><span class="faint small">gleicher Rechner · nur lesen</span></div>
+      <div class="panel-head"><h2>Ollies Dashboard</h2><span class="faint small">gleicher Rechner · seine Daten werden nie verändert</span></div>
       <div class="rows">
         <div class="row">
           <div>
@@ -146,19 +154,19 @@ async function resetDemoData() {
           </div>
           <span v-if="ollie && !ollie.demo" class="pill" :class="ollie.ok ? 'ok' : ''">{{ ollie.ok ? 'Verbunden' : ollie.configured ? 'Fehler' : 'Aus' }}</span>
         </div>
-        <div class="row">
+        <div v-for="o in ollieActions" :key="o.kind" class="row">
           <div>
-            <div class="k">Bestand übernehmen</div>
-            <div class="h">Ersetzt unser Lager durch Ollies Stand (per Lot-ID, Lagerort aus den Remarks), ohne BrickLink-Abruf. Noch nicht übertragene Umlagerungen und Inventuren werden verworfen.
-              <template v-if="ollie?.imported_at"> Zuletzt übernommen: {{ dateTime(ollie.imported_at) }}.</template>
-              <b v-if="ollie?.ok && ollieNewer()"> Ollies Stand ist neuer.</b></div>
+            <div class="k">{{ o.k }}</div>
+            <div class="h">{{ o.h }} Unser Lager wird dabei durch Ollies Stand ersetzt (per Lot-ID, Lagerort aus den Remarks); noch nicht übertragene Umlagerungen und Inventuren werden verworfen.
+              <template v-if="o.kind === 'import' && ollie?.imported_at"> Zuletzt übernommen: {{ dateTime(ollie.imported_at) }}.</template>
+              <b v-if="o.kind === 'import' && ollie?.ok && ollieNewer()"> Ollies Stand ist neuer.</b></div>
           </div>
           <div class="inline">
             <span v-if="!auth.isStaff" class="faint small">nur Lehrer</span>
-            <button v-else-if="!ollieConfirm" class="btn btn-sm" :disabled="ollieBusy || (!ollie?.ok && !IS_DEMO)" @click="ollieConfirm = true">{{ ollieBusy ? 'Übernehme …' : 'Übernehmen' }}</button>
+            <button v-else-if="ollieConfirm !== o.kind" class="btn btn-sm" :class="{ 'btn-primary': o.kind === 'refresh' }" :disabled="!!ollieBusy || (!ollie?.ok && !IS_DEMO)" @click="ollieConfirm = o.kind">{{ ollieBusy === o.kind ? o.busy : o.btn }}</button>
             <template v-else>
-              <button class="btn btn-sm danger" @click="importOllie">Ja, übernehmen</button>
-              <button class="btn btn-sm btn-ghost" @click="ollieConfirm = false">Abbrechen</button>
+              <button class="btn btn-sm danger" @click="importOllie(o.kind)">Ja, {{ o.btn.toLowerCase() }}</button>
+              <button class="btn btn-sm btn-ghost" @click="ollieConfirm = null">Abbrechen</button>
             </template>
           </div>
         </div>

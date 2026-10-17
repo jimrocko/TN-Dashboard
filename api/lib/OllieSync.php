@@ -7,6 +7,9 @@
  * und brauchen dafür keinen einzigen BrickLink-Abruf. Übernommen wird wie beim BrickLink-Import (per Lot-ID,
  * Lagerort aus den Remarks, siehe BrickLinkSync::importItems).
  * Pfad: .env OLLIE_DB_PATH (oder 'ollie' => ['db_path' => …] in api/config.php). Leer = aus.
+ * Neu laden (Wunsch des Inhabers): Unser Knopf ruft denselben Import auf wie Ollies Knopf „BrickLink-Inventar“
+ * (GET /import/bricklink-inventory in seinem Dashboard, OLLIE_URL, Standard http://127.0.0.1:8000). Ollies Dashboard
+ * lädt dann selbst von BrickLink (ein Abruf, zählt bei ihm als geladen) und wir übernehmen danach seinen Stand.
  */
 final class OllieSync
 {
@@ -16,6 +19,39 @@ final class OllieSync
         // Eigene config.php ohne 'ollie' (ältere Vorlage): direkt in der .env nachsehen
         if ($p === '' && ($file = config()['_env']['file'] ?? null)) $p = trim((string) (env_parse($file)['OLLIE_DB_PATH'] ?? ''));
         return $p === '' ? null : $p;
+    }
+
+    /** Adresse von Ollies Dashboard (gleicher Rechner). */
+    public static function url(): string
+    {
+        $u = trim((string) (config()['ollie']['url'] ?? ''));
+        if ($u === '' && ($file = config()['_env']['file'] ?? null)) $u = trim((string) (env_parse($file)['OLLIE_URL'] ?? ''));
+        return rtrim($u !== '' ? $u : 'http://127.0.0.1:8000', '/');
+    }
+
+    /**
+     * Wie Ollies Knopf „BrickLink-Inventar“: sein Dashboard lädt den Bestand neu von BrickLink und speichert ihn.
+     * Gibt die Anzahl Lots zurück, die Ollie eingelesen hat.
+     */
+    public static function triggerRefresh(): int
+    {
+        if (!function_exists('curl_init')) throw new RuntimeException('Die PHP-Erweiterung cURL fehlt auf dem Server.');
+        @set_time_limit(360);
+        $ch = curl_init(self::url() . '/import/bricklink-inventory');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 300,
+            CURLOPT_HTTPHEADER => ['Accept: application/json']]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        if ($body === false) throw new RuntimeException('Ollies Dashboard antwortet nicht (' . self::url() . '). Läuft es? ' . $err);
+        $data = json_decode((string) $body, true);
+        if ($code >= 400 || !is_array($data)) {
+            $msg = is_array($data) ? (string) ($data['detail'] ?? $data['error'] ?? '') : '';
+            throw new RuntimeException('Ollies Dashboard konnte den Bestand nicht laden (HTTP ' . $code . ')' . ($msg !== '' ? ': ' . $msg : '.'));
+        }
+        if (isset($data['ok']) && $data['ok'] === false) throw new RuntimeException('BrickLink-Fehler in Ollies Dashboard: ' . json_encode($data, JSON_UNESCAPED_UNICODE));
+        return (int) ($data['records'] ?? 0);
     }
 
     /** Ollies Datenbank nur lesend öffnen. */
@@ -34,7 +70,7 @@ final class OllieSync
     /** Stand für den Dev-Bereich: eingerichtet? erreichbar? wie viele Lots, wann zuletzt von BrickLink geholt? */
     public static function status(): array
     {
-        $r = ['configured' => self::path() !== null, 'ok' => false, 'lots' => null, 'parts' => null,
+        $r = ['configured' => self::path() !== null, 'url' => self::url(), 'ok' => false, 'lots' => null, 'parts' => null,
               'ollie_synced_at' => null, 'imported_at' => Dev::setting('ollie_last_import'), 'error' => null];
         if (!$r['configured']) return $r;
         try {

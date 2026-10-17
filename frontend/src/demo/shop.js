@@ -550,7 +550,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
     requireUser()
     return { configured: false, ok: false, lots: null, parts: null, ollie_synced_at: null, imported_at: null, error: null, demo: true }
   }
-  if (method === 'POST' && a === 'ollie' && b === 'import') {
+  if (method === 'POST' && a === 'ollie' && (b === 'import' || b === 'refresh')) {
     requireUser()
     throw new DemoError('In der Demo gibt es Ollies Dashboard nicht. Auf dem Schulserver kommt der Bestand mit diesem Knopf aus seiner Datenbank.', 503)
   }

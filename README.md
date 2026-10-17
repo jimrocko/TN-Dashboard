@@ -167,7 +167,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 - **Datenbank:** die vorhandene MySQL/MariaDB der Schule. Alle Tabellen beginnen mit `tn_` und bleiben so getrennt vom Lehrer-Dashboard.
 - **Zugangsdaten:** kommen aus der vorhandenen `.env` des Servers. Sie wird nur gelesen und nie verändert; eine `.htaccess` sperrt sie für den Zugriff über das Web.
 - **BrickLink:** API-Antworten werden in der Datenbank zwischengespeichert, um das Tageslimit zu schonen. Die App schreibt nie selbst zu BrickLink: Nach dem Umlagern geht der ganze Bestand als XML über die Zwischenablage in den Upload im BrickLink-Shop.
-- **Ollies Dashboard:** Das Shop-Dashboard der Schule läuft auf demselben Rechner und holt den BrickLink-Bestand alle 4 Stunden selbst. Das TN Dashboard liest dessen Datenbank nur (`OLLIE_DB_PATH` in der `.env`, zeigt auf `data/legoshop.db`) und übernimmt den Bestand per Knopf im Dev-Bereich, ohne eigenen BrickLink-Abruf. Dafür braucht PHP die Erweiterung `pdo_sqlite`.
+- **Ollies Dashboard:** Das Shop-Dashboard der Schule läuft auf demselben Rechner und holt den BrickLink-Bestand alle 4 Stunden selbst. Das TN Dashboard liest dessen Datenbank nur (`OLLIE_DB_PATH` in der `.env`, zeigt auf `data/legoshop.db`). Im Dev-Bereich gibt es zwei Knöpfe: **Bei BrickLink neu laden** löst in Ollies Dashboard denselben Import aus wie sein Knopf „BrickLink-Inventar“ (zählt dort als geladen, `OLLIE_URL`, Standard `http://127.0.0.1:8000`) und übernimmt danach den frischen Stand; **Letzten Stand übernehmen** nimmt ohne neuen Abruf, was sein Dashboard zuletzt geholt hat. Dafür braucht PHP die Erweiterung `pdo_sqlite`.
 - **Teileerkennung:** Der Server schickt das Foto an Brickognize und verknüpft die Treffer mit dem eigenen Lager. Dafür braucht der Server Internetzugang zu `api.brickognize.com`, und die Kamera im Browser braucht HTTPS. Abschalten: `brickognize.url` in `api/config.php` auf `null`.
 
 ```
@@ -193,7 +193,7 @@ CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte,
 
 Liegt die `.env` woanders oder heißen die Variablen anders: `api/config.example.php` nach `api/config.php` kopieren und `'env_file'` bzw. `'env_map'` anpassen. Ohne `.env` lassen sich die Werte auch direkt in `api/config.php` eintragen.
 
-Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`, `OLLIE_DB_PATH`.
+Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`, `OLLIE_DB_PATH`, `OLLIE_URL`.
 
 Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für die Kamera.
 
