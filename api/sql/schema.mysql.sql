@@ -278,3 +278,14 @@ CREATE TABLE IF NOT EXISTS {p}price_guide (
   fetched_at DATETIME NOT NULL,
   PRIMARY KEY (item_type, item_no, color_id, new_or_used, currency)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Minifig-Finder: eigene BrickStore-Dateien als zusätzlicher oder alleiniger Teilebestand
+CREATE TABLE IF NOT EXISTS {p}minifig_bsx (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  items_json MEDIUMTEXT NOT NULL,
+  lots INT NOT NULL DEFAULT 0,
+  parts INT NOT NULL DEFAULT 0,
+  uploaded_by INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

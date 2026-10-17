@@ -54,38 +54,75 @@ const mfOf = (db) => (db.minifig ??= seedMinifig())
 
 // ---------------------------------------------------------------- Bestand
 
+// Quelle der Teile wie Minifig::stockSource(): nur Lager, Lager + eigene BSX-Dateien oder nur BSX-Dateien
+export const SOURCES = ['bestand', 'beides', 'bsx']
+const sourceOf = (db) => (SOURCES.includes(mfOf(db).source) ? mfOf(db).source : 'bestand')
+
+function bsxRows(db) {
+  const out = []
+  for (const f of mfOf(db).bsx ?? []) {
+    f.items.forEach((r, n) => out.push({ inventory_id: 800000000 + f.id * 100000 + n, item_no: r.item_no, item_name: r.item_name, color_id: r.color_id,
+      color_name: r.color_name, quantity: r.quantity, new_or_used: r.condition, remarks: (f.name + (r.remarks ? ` · ${r.remarks}` : '')).trim(),
+      description: null, stock_room_id: '' }))
+  }
+  return out
+}
+
+/** Alle Teile-Lots der gewählten Quelle, sortiert nach Teil, Farbe, Lot-Nr. (wie Minifig::partRows). */
+function partRows(db) {
+  const src = sourceOf(db)
+  let rows = []
+  if (src !== 'bsx') {
+    rows = db.inventory.filter((i) => i.item_type === 'PART' && i.qty > 0)
+      .map((i) => ({ inventory_id: i.bl_inventory_id ?? i.id, item_no: i.item_no, item_name: i.name, color_id: i.color_id, color_name: i.color_name,
+        quantity: i.qty, new_or_used: i.new_or_used ?? '', remarks: locCode(db, i.location_id), description: i.description ?? null, stock_room_id: '' }))
+  }
+  if (src !== 'bestand') rows = rows.concat(bsxRows(db))
+  return rows.sort((a, b) => strCmp(a.item_no.toLowerCase(), b.item_no.toLowerCase()) || a.color_id - b.color_id || a.inventory_id - b.inventory_id)
+}
+
 function variants(db, scope = 'core') {
   const m = new Map()
-  for (const i of db.inventory) {
-    if (i.item_type !== 'PART' || i.qty <= 0) continue
+  for (const i of partRows(db)) {
     const k = key(i.item_no, i.color_id)
-    const r = m.get(k) ?? { item_no: i.item_no, item_name: i.name, color_id: i.color_id, quantity: 0 }
-    if (i.name > r.item_name) r.item_name = i.name
-    r.quantity += i.qty
+    const r = m.get(k) ?? { item_no: i.item_no, item_name: i.item_name, color_id: i.color_id, quantity: 0 }
+    if (i.item_name > r.item_name) r.item_name = i.item_name
+    r.quantity += i.quantity
     m.set(k, r)
   }
-  const rows = [...m.values()].sort((a, b) => strCmp(a.item_no.toLowerCase(), b.item_no.toLowerCase()) || a.color_id - b.color_id)
+  const rows = [...m.values()]
   return scope === 'all' ? rows : rows.filter((r) => isCore(r.item_name))
 }
 
 function stock(db) {
   const out = new Map()
-  for (const i of db.inventory) if (i.item_type === 'PART' && i.qty > 0) out.set(key(i.item_no, i.color_id), (out.get(key(i.item_no, i.color_id)) ?? 0) + i.qty)
+  for (const i of partRows(db)) out.set(key(i.item_no, i.color_id), (out.get(key(i.item_no, i.color_id)) ?? 0) + i.quantity)
   return out
 }
 
 function lotsOf(db) {
   const out = new Map()
-  const rows = db.inventory.filter((i) => i.item_type === 'PART' && i.qty > 0)
-    .map((i) => ({ inventory_id: i.bl_inventory_id ?? i.id, item_no: i.item_no, item_name: i.name, color_id: i.color_id, color_name: i.color_name,
-      quantity: i.qty, new_or_used: i.new_or_used ?? '', remarks: locCode(db, i.location_id), description: i.description ?? null, stock_room_id: '' }))
-    .sort((a, b) => strCmp(a.item_no.toLowerCase(), b.item_no.toLowerCase()) || a.color_id - b.color_id || a.inventory_id - b.inventory_id)
-  for (const r of rows) {
+  for (const r of partRows(db)) {
     const k = key(r.item_no, r.color_id)
     if (!out.has(k)) out.set(k, [])
     out.get(k).push(r)
   }
   return out
+}
+
+const bsxFiles = (db) => (mfOf(db).bsx ?? []).map(({ id, name, lots, parts, created_at, uploaded_by }) => ({ id, name, lots, parts, created_at, uploaded_by }))
+
+function addBsx(db, content, name, user) {
+  const [rows] = parseBsx(content)
+  const items = rows.filter((r) => r.item_type.toUpperCase() === 'P').map((r) => ({ item_no: r.item_no, item_name: r.item_name, color_id: Math.max(0, r.color_id),
+    color_name: r.color_name, quantity: r.quantity, condition: r.condition, remarks: r.remarks ?? '' }))
+  if (!items.length) throw new DemoError('In der Datei sind keine Teile (nur Teile zählen für Minifiguren)', 422)
+  const mf = mfOf(db)
+  mf.bsx ??= []
+  const id = (mf.bsx.at(-1)?.id ?? 0) + 1
+  const f = { id, name: (name || 'datei.bsx').split(/[\\/]/).pop(), items, lots: items.length, parts: items.reduce((s, r) => s + r.quantity, 0), created_at: now(), uploaded_by: user.display_name }
+  mf.bsx.push(f)
+  return { id, name: f.name, lots: f.lots, parts: f.parts }
 }
 
 function prices(db) {
@@ -547,7 +584,7 @@ export function status(db) {
     remaining_subsets: Math.max(0, r.candidate_minifigs - r.cached_subsets),
     inventory_parts: db.inventory.reduce((s, i) => s + i.qty, 0), inventory_lots: db.inventory.length,
     inventory_value: Math.round(db.inventory.reduce((s, i) => s + i.qty * i.price, 0) * 100) / 100,
-    inventory_import_at: null, bricklink_configured: true, demo_api: true,
+    inventory_import_at: null, bricklink_configured: true, demo_api: true, source: sourceOf(db), bsx_files: bsxFiles(db),
     ...refreshStatus(db), ...budget(db), ...priceStatus(db),
   }
 }
@@ -751,6 +788,30 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     const r = r2 === 'scan' ? scan(db, batch) : r2 === 'catalog-refresh' ? refreshCatalog(db, batch) : fetchSubsets(db, batch)
     log(me.id, `minifig_${r2.replace('-', '_')}`, 'minifig', { abrufe: r.api_calls })
     return r
+  }
+  if (method === 'POST' && r2 === 'source') {
+    if (!SOURCES.includes(body.source)) throw new DemoError('Unbekannte Quelle', 400)
+    mfOf(db).source = body.source
+    log(me.id, 'minifig_source', 'minifig', { quelle: body.source })
+    return { source: body.source }
+  }
+  if (method === 'GET' && r2 === 'bsx') return { files: bsxFiles(db) }
+  if (method === 'POST' && r2 === 'bsx') {
+    const f = body?.get?.('file')
+    if (!f) throw new DemoError('Keine Datei übertragen', 400)
+    let r
+    try { r = addBsx(db, await f.text(), f.name, me) } catch (e) { throw e instanceof DemoError ? e : new DemoError(e.message, 422) }
+    log(me.id, 'minifig_bsx_add', 'minifig', { datei: r.name, lots: r.lots })
+    return r
+  }
+  if (method === 'POST' && /^bsx\/\d+\/delete$/.test(r2)) {
+    const mf = mfOf(db)
+    const id = Number(parts[2])
+    const f = (mf.bsx ?? []).find((x) => x.id === id)
+    if (!f) throw new DemoError('Datei nicht gefunden', 404)
+    mf.bsx = mf.bsx.filter((x) => x.id !== id)
+    log(me.id, 'minifig_bsx_delete', 'minifig', { datei: f.name })
+    return { ok: true }
   }
   if (method === 'POST' && r2 === 'decision') {
     const r = decide(db, body.minifig_no, body.action, body.reason)

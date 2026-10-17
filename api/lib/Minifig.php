@@ -66,35 +66,122 @@ final class Minifig
     // ---------------------------------------------------------------- Daten aus dem eigenen Bestand
 
     /** Teile-Varianten im Bestand (nur Figurenteile, wenn $scope = core). */
+    // ---------------------------------------------------------------- Teilebestand und Quelle
+
+    /** Woher die Teile kommen: nur Lager, Lager + eigene BSX-Dateien oder nur BSX-Dateien (gemeinsame Einstellung). */
+    public const SOURCES = ['bestand', 'beides', 'bsx'];
+
+    public static function stockSource(): string
+    {
+        $s = (string) (Dev::setting('minifig_source') ?? 'bestand');
+        return in_array($s, self::SOURCES, true) ? $s : 'bestand';
+    }
+
+    public static function setStockSource(string $s): string
+    {
+        if (!in_array($s, self::SOURCES, true)) throw new InvalidArgumentException('Unbekannte Quelle');
+        Dev::setSetting('minifig_source', $s);
+        return $s;
+    }
+
+    /** Teile-Lots aus den hochgeladenen BSX-Dateien (gleiche Form wie lots()). Lot-Nr. ab 800000000, Lagerort = Datei + Bemerkung. */
+    private static function bsxRows(): array
+    {
+        $out = [];
+        foreach (q('SELECT id, name, items_json FROM {minifig_bsx} ORDER BY id')->fetchAll() as $f) {
+            foreach (json_decode((string) $f['items_json'], true) ?: [] as $n => $r) {
+                $out[] = [
+                    'inventory_id' => 800000000 + (int) $f['id'] * 100000 + $n, 'item_no' => (string) $r['item_no'], 'item_name' => (string) $r['item_name'],
+                    'color_id' => (int) $r['color_id'], 'color_name' => (string) $r['color_name'], 'quantity' => (int) $r['quantity'],
+                    'new_or_used' => (string) $r['condition'], 'remarks' => trim($f['name'] . ($r['remarks'] !== '' ? ' · ' . $r['remarks'] : '')),
+                    'description' => null, 'stock_room_id' => '',
+                ];
+            }
+        }
+        return $out;
+    }
+
+    /** Alle Teile-Lots der gewählten Quelle, sortiert nach Teil, Farbe, Lot-Nr. */
+    private static function partRows(): array
+    {
+        $src = self::stockSource();
+        $rows = [];
+        if ($src !== 'bsx') {
+            foreach (q("SELECT COALESCE(i.bl_inventory_id, i.id) AS inventory_id, i.item_no, i.name AS item_name, i.color_id, i.color_name, i.qty AS quantity,
+                    i.new_or_used, l.code AS remarks, i.description FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id
+                WHERE i.item_type = 'PART' AND i.qty > 0")->fetchAll() as $r) {
+                $r = typed([$r], ['inventory_id', 'color_id', 'quantity'])[0];
+                $r['stock_room_id'] = '';
+                $rows[] = $r;
+            }
+        }
+        if ($src !== 'bestand') $rows = array_merge($rows, self::bsxRows());
+        usort($rows, fn ($a, $b) => [strtolower($a['item_no']), $a['color_id'], $a['inventory_id']] <=> [strtolower($b['item_no']), $b['color_id'], $b['inventory_id']]);
+        return $rows;
+    }
+
     public static function variants(string $scope = 'core'): array
     {
-        $rows = q("SELECT item_no, MAX(name) AS item_name, color_id, SUM(qty) AS quantity FROM {inventory}
-            WHERE item_type = 'PART' AND qty > 0 GROUP BY item_no, color_id ORDER BY LOWER(item_no), color_id")->fetchAll();
-        $rows = typed($rows, ['color_id', 'quantity']);
+        $m = [];
+        foreach (self::partRows() as $r) {
+            $k = self::key($r['item_no'], $r['color_id']);
+            $m[$k] ??= ['item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => $r['color_id'], 'quantity' => 0];
+            if (strcmp((string) $r['item_name'], (string) $m[$k]['item_name']) > 0) $m[$k]['item_name'] = $r['item_name'];
+            $m[$k]['quantity'] += $r['quantity'];
+        }
+        $rows = array_values($m);
         return $scope === 'all' ? $rows : array_values(array_filter($rows, fn ($r) => self::isCore((string) $r['item_name'])));
     }
 
     public static function stock(): array
     {
         $out = [];
-        foreach (q("SELECT item_no, color_id, SUM(qty) AS n FROM {inventory} WHERE item_type = 'PART' AND qty > 0 GROUP BY item_no, color_id")->fetchAll() as $r) {
-            $out[self::key((string) $r['item_no'], (int) $r['color_id'])] = (int) $r['n'];
+        foreach (self::partRows() as $r) {
+            $k = self::key($r['item_no'], $r['color_id']);
+            $out[$k] = ($out[$k] ?? 0) + $r['quantity'];
         }
         return $out;
     }
 
-    /** Lots je Teil+Farbe in fester Reihenfolge (zum Zusammensuchen). Lagerort = Code des Kästchens. */
+    /** Lots je Teil+Farbe in fester Reihenfolge (zum Zusammensuchen). Lagerort = Code des Kästchens bzw. BSX-Datei. */
     public static function lots(): array
     {
         $out = [];
-        foreach (q("SELECT COALESCE(i.bl_inventory_id, i.id) AS inventory_id, i.item_no, i.name AS item_name, i.color_id, i.color_name, i.qty AS quantity,
-                i.new_or_used, l.code AS remarks, i.description FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id
-            WHERE i.item_type = 'PART' AND i.qty > 0 ORDER BY LOWER(i.item_no), i.color_id, COALESCE(i.bl_inventory_id, i.id)")->fetchAll() as $r) {
-            $r = typed([$r], ['inventory_id', 'color_id', 'quantity'])[0];
-            $r['stock_room_id'] = '';
-            $out[self::key((string) $r['item_no'], $r['color_id'])][] = $r;
-        }
+        foreach (self::partRows() as $r) $out[self::key($r['item_no'], $r['color_id'])][] = $r;
         return $out;
+    }
+
+    /** Hochgeladene BSX-Dateien (ohne Inhalt). */
+    public static function bsxFiles(): array
+    {
+        return typed(q('SELECT f.id, f.name, f.lots, f.parts, f.created_at, u.display_name AS uploaded_by FROM {minifig_bsx} f
+            LEFT JOIN {users} u ON u.id = f.uploaded_by ORDER BY f.id')->fetchAll(), ['id', 'lots', 'parts']);
+    }
+
+    /** BSX-Datei als Teilebestand speichern (nur Teile, Status X und Menge 0 fallen weg wie beim Einlesen). */
+    public static function addBsx(string $content, string $name, int $userId): array
+    {
+        [$rows] = Bsx::parse($content);
+        $items = [];
+        foreach ($rows as $r) {
+            if (strtoupper($r['item_type']) !== 'P') continue;
+            $items[] = ['item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => max(0, $r['color_id']), 'color_name' => $r['color_name'],
+                'quantity' => $r['quantity'], 'condition' => $r['condition'], 'remarks' => $r['remarks']];
+        }
+        if (!$items) throw new RuntimeException('In der Datei sind keine Teile (nur Teile zählen für Minifiguren)');
+        $name = trim(basename($name)) ?: 'datei.bsx';
+        $parts = array_sum(array_column($items, 'quantity'));
+        q('INSERT INTO {minifig_bsx} (name, items_json, lots, parts, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [$name, json_encode($items, JSON_UNESCAPED_UNICODE), count($items), $parts, $userId, now()]);
+        return ['id' => (int) db()->lastInsertId(), 'name' => $name, 'lots' => count($items), 'parts' => $parts];
+    }
+
+    public static function deleteBsx(int $id): ?string
+    {
+        $name = q('SELECT name FROM {minifig_bsx} WHERE id = ?', [$id])->fetchColumn();
+        if ($name === false) return null;
+        q('DELETE FROM {minifig_bsx} WHERE id = ?', [$id]);
+        return (string) $name;
     }
 
     /** Preise ohne API: Preisimport (BrickStore) vor aktuellem Shoppreis vor Verkaufspreisen. */
@@ -723,6 +810,7 @@ final class Minifig
             'remaining_subsets' => max(0, $r['candidate_minifigs'] - $r['cached_subsets']),
             'inventory_parts' => (int) $inv['parts'], 'inventory_lots' => (int) $inv['lots'], 'inventory_value' => round((float) $inv['value'], 2),
             'inventory_import_at' => $sync, 'bricklink_configured' => BrickLinkClient::fromConfig()->isConfigured(),
+            'source' => self::stockSource(), 'bsx_files' => self::bsxFiles(),
         ];
         return $r + self::refreshStatus() + self::budget() + self::priceStatus();
     }

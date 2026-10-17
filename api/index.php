@@ -601,6 +601,31 @@ switch (true) {
         require_user();
         json_response(Minifig::status());
 
+    case $route === 'minifig/source' && $method === 'POST':
+        // Woher die Teile kommen: bestand | beides | bsx (gilt für alle, wie der Bestand selbst)
+        $me = require_user();
+        $src = Minifig::setStockSource((string) (request_json()['source'] ?? ''));
+        ActivityLog::log((int) $me['id'], 'minifig_source', 'minifig', ['quelle' => $src]);
+        json_response(['source' => $src]);
+
+    case $route === 'minifig/bsx' && $method === 'GET':
+        require_user();
+        json_response(['files' => Minifig::bsxFiles()]);
+
+    case $route === 'minifig/bsx' && $method === 'POST':
+        $me = require_user();
+        [$content, $name] = upload_body();
+        try { $r = Minifig::addBsx($content, $name, (int) $me['id']); } catch (RuntimeException $e) { json_error($e->getMessage(), 422); }
+        ActivityLog::log((int) $me['id'], 'minifig_bsx_add', 'minifig', ['datei' => $r['name'], 'lots' => $r['lots']]);
+        json_response($r);
+
+    case preg_match('#^minifig/bsx/(\d+)/delete$#', $route, $m) === 1 && $method === 'POST':
+        $me = require_user();
+        $name = Minifig::deleteBsx((int) $m[1]);
+        if ($name === null) json_error('Datei nicht gefunden', 404);
+        ActivityLog::log((int) $me['id'], 'minifig_bsx_delete', 'minifig', ['datei' => $name]);
+        json_response(['ok' => true]);
+
     case $route === 'minifig/results' && $method === 'GET':
         require_user();
         $r = Minifig::analyze(max(1, min(10000, (int) ($_GET['limit'] ?? 500))));

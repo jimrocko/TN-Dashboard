@@ -1,7 +1,7 @@
 <script setup>
 import PartImage from '../components/PartImage.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Download, Upload, RefreshCw, Search } from 'lucide-vue-next'
+import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import MinifigParts from '../components/MinifigParts.vue'
 import TnDialog from '../components/TnDialog.vue'
@@ -57,6 +57,42 @@ const refreshInv = () => run('Bestand wird eingelesen', async () => {
   await loadAll()
   return `Bestand aktualisiert: ${num(r.lots)} Lots, ${num(r.parts)} Teile.`
 })
+// ---- Woher kommen die Teile? ----
+const SOURCES = [
+  { value: 'bestand', icon: Warehouse, title: 'Nur Lager', text: 'Sucht in unserem Bestand.' },
+  { value: 'beides', icon: FileStack, title: 'Lager + BSX-Dateien', text: 'Bestand plus eigene BrickStore-Dateien.' },
+  { value: 'bsx', icon: Files, title: 'Nur BSX-Dateien', text: 'Nur die hochgeladenen Dateien, ohne Lager.' },
+]
+const source = computed(() => st.value?.source ?? 'bestand')
+const files = computed(() => st.value?.bsx_files ?? [])
+const setSource = (v) => run('Quelle wird umgestellt', async () => {
+  await api.post('minifig/source', { source: v })
+  await loadAll()
+  return `Quelle: ${SOURCES.find((x) => x.value === v).title}.`
+})
+const addFiles = (e) => {
+  const list = [...e.target.files]
+  e.target.value = ''
+  if (!list.length) return
+  run('Datei wird eingelesen', async () => {
+    const done = []
+    for (const f of list) {
+      const form = new FormData()
+      form.append('file', f, f.name)
+      const r = await api.upload('minifig/bsx', form, {})
+      done.push(`${r.name} (${num(r.lots)} Lots, ${num(r.parts)} Teile)`)
+    }
+    if (source.value === 'bestand') await api.post('minifig/source', { source: 'beides' })
+    await loadAll()
+    return `Hinzugefügt: ${done.join(', ')}.`
+  })
+}
+const removeFile = (f) => run('Datei wird entfernt', async () => {
+  await api.post(`minifig/bsx/${f.id}/delete`)
+  await loadAll()
+  return `${f.name} entfernt.`
+})
+
 const recalc = () => run('Wird neu berechnet', async () => { await loadAll(); return 'Ergebnis neu berechnet.' })
 
 // Alle 5 Minuten lokal neu rechnen (wie im Original), ohne API
@@ -161,24 +197,63 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 
 <template>
   <div class="page stack mf">
-    <PageHead title="Minifig-Finder" sub="Minifiguren aus losen Teilen im Bestand erkennen. „Einzeln baubar“ prüft jede Figur für sich; der gemeinsame Bauplan vergibt kein Teil doppelt.">
+    <PageHead title="Minifig-Finder" sub="Findet Minifiguren, die sich aus vorhandenen Teilen zusammenbauen lassen.">
       <button class="btn" :disabled="busy" @click="recalc"><RefreshCw :size="16" /> Neu berechnen</button>
     </PageHead>
     <p v-if="err" class="error">{{ err }}</p>
     <p v-if="msg" class="muted">{{ msg }}</p>
 
     <template v-if="st">
+      <section class="panel how">
+        <div class="panel-body">
+          <ol class="howto">
+            <li><strong>Teile wählen:</strong> Lager, eigene BSX-Dateien oder beides.</li>
+            <li><strong>Der Finder vergleicht</strong> die Teile mit den Stücklisten bekannter Minifiguren.</li>
+            <li><strong>Ergebnis:</strong> grün = sofort baubar, gelb = es fehlt nur 1 Teil. Ein Tipp auf „Teile“ zeigt, aus welchem Kästchen oder welcher Datei sie kommen.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Woher kommen die Teile?</h2><span class="faint small">gilt für alle Listen und Exporte</span></div>
+        <div class="panel-body stack-s">
+          <div class="sources" role="radiogroup" aria-label="Quelle der Teile">
+            <button v-for="o in SOURCES" :key="o.value" type="button" class="src" :class="{ on: source === o.value }" role="radio" :aria-checked="source === o.value"
+              :disabled="busy" @click="source !== o.value && setSource(o.value)">
+              <component :is="o.icon" :size="20" /><span><strong>{{ o.title }}</strong><span class="small muted">{{ o.text }}</span></span>
+            </button>
+          </div>
+          <div class="toolbar">
+            <label class="btn" :class="{ 'btn-primary': source !== 'bestand' }"><Upload :size="16" /> BSX-Datei hinzufügen
+              <input type="file" accept=".bsx,.xml,application/xml,text/xml" multiple hidden @change="addFiles" /></label>
+            <span class="small faint">BrickStore-Dateien (.bsx). Gezählt werden nur Teile; Bemerkung = Lagerort.</span>
+          </div>
+          <p v-if="source === 'bsx' && !files.length" class="small warnc">Noch keine BSX-Datei hochgeladen, deshalb gibt es keine Teile.</p>
+          <ul v-if="files.length" class="files">
+            <li v-for="f in files" :key="f.id">
+              <span><strong>{{ f.name }}</strong> <span class="small muted">{{ num(f.lots) }} Lots · {{ num(f.parts) }} Teile · {{ dateTime(f.created_at) }}<template v-if="f.uploaded_by"> · {{ f.uploaded_by }}</template></span></span>
+              <button class="btn btn-ghost btn-sm" :disabled="busy" :title="`${f.name} entfernen`" @click="removeFile(f)"><Trash2 :size="15" /></button>
+            </li>
+          </ul>
+          <p v-if="files.length && source === 'bestand'" class="small muted">Die Dateien werden gerade nicht benutzt. Oben „Lager + BSX-Dateien“ oder „Nur BSX-Dateien“ wählen.</p>
+        </div>
+      </section>
+
+      <div v-if="res" class="kpis">
+        <div class="kpi good"><div class="label">Sofort baubar</div><div class="value">{{ num(res.individual_buildable_count) }}</div><div class="hint">jede Figur für sich gezählt</div></div>
+        <div class="kpi good"><div class="label">Alle zusammen baubar</div><div class="value">{{ num(res.joint_buildable_count) }}</div><div class="hint">kein Teil doppelt verplant</div></div>
+        <div class="kpi warn"><div class="label">Es fehlt nur 1 Teil</div><div class="value">{{ num(res.almost_count) }}</div><div class="hint">lohnt sich zum Nachkaufen</div></div>
+        <div class="kpi warn"><div class="label">Blockiert</div><div class="value">{{ num(res.joint_conflict_count) }}</div><div class="hint">Teile schon für andere Figur verplant</div></div>
+      </div>
+
+      <details class="panel tech">
+        <summary class="panel-head"><h2>Technik: Katalog, BrickLink, Preise</h2><span class="faint small">für Fortgeschrittene</span></summary>
+        <div class="tech-body stack">
       <div class="kpis">
         <div class="kpi"><div class="label">Kernvarianten</div><div class="value">{{ num(st.eligible_core_variants) }}</div><div class="hint">Figurenteile im Bestand</div></div>
         <div class="kpi"><div class="label">Varianten geprüft</div><div class="value">{{ num(st.scanned_variants) }}</div><div class="hint">noch {{ num(st.remaining_core_variants) }} offen</div></div>
         <div class="kpi"><div class="label">Kandidaten</div><div class="value">{{ num(st.candidate_minifigs) }}</div><div class="hint">bekannte Figuren</div></div>
         <div class="kpi"><div class="label">Stücklisten geladen</div><div class="value">{{ num(st.cached_subsets) }}</div><div class="hint">noch {{ num(st.remaining_subsets) }} offen<template v-if="st.subset_retry_waiting"> · {{ st.subset_retry_waiting }} warten</template></div></div>
-      </div>
-      <div v-if="res" class="kpis">
-        <div class="kpi good"><div class="label">Einzeln baubar</div><div class="value">{{ num(res.individual_buildable_count) }}</div></div>
-        <div class="kpi good"><div class="label">Gemeinsam baubar</div><div class="value">{{ num(res.joint_buildable_count) }}</div><div class="hint">ohne doppelte Teile</div></div>
-        <div class="kpi warn"><div class="label">Durch Reservierung blockiert</div><div class="value">{{ num(res.joint_conflict_count) }}</div></div>
-        <div class="kpi warn"><div class="label">1 Teil fehlt</div><div class="value">{{ num(res.almost_count) }}</div><div class="hint">für Nachkauf</div></div>
       </div>
       <section class="panel panel-body progressbox">
         <div><div class="pl"><span>Variantenprüfung</span><strong>{{ variantPct }} %</strong></div><div class="progress"><i :style="{ width: `${variantPct}%` }" /></div></div>
@@ -276,6 +351,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           </div>
         </section>
       </div>
+        </div>
+      </details>
     </template>
 
     <template v-if="res">
@@ -480,6 +557,19 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 </template>
 
 <style scoped>
+.howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; }
+.sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.src { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+.src > span { display: flex; flex-direction: column; gap: 2px; }
+.src.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.src:disabled { cursor: default; }
+.files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.files li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.warnc { color: var(--warn); margin: 0; }
+.tech > summary { cursor: pointer; list-style: none; }
+.tech > summary::-webkit-details-marker { display: none; }
+.tech-body { padding: var(--pad); }
+
 .progressbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
 .pl { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 0.88rem; }
 .batch { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); }

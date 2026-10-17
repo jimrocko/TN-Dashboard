@@ -118,6 +118,8 @@ Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf ko
 
 **Minifig-Finder:** Findet Minifiguren, die sich aus losen Teilen im Lager bauen lassen: einzeln baubar, gemeinsam baubar (kein Teil wird doppelt verplant), „nur 1 Teil fehlt“ mit Fehlteilkosten, häufigste Fehlteile und eine Teileliste mit Kästchen zum Zusammensuchen. Figuren lassen sich ausschließen („Nicht bauen“). Listen als CSV oder BrickStore-Datei. Abrufe bei BrickLink nur mit Dev-Rolle und mit Tageslimit.
 
+**Woher kommen die Teile?** Oben im Minifig-Finder wählt man: **Nur Lager** (unser Bestand), **Lager + BSX-Dateien** (Bestand plus eigene BrickStore-Dateien, z. B. eine gekaufte Teilekiste) oder **Nur BSX-Dateien** (ohne Lager). Dateien lassen sich mit „BSX-Datei hinzufügen“ hochladen und mit dem Papierkorb wieder entfernen. Bei Teilen aus einer Datei steht als Lagerort der Dateiname und die Bemerkung. Kennzahlen zu Katalog, BrickLink-Abrufen und Preisen stehen eingeklappt unter „Technik“.
+
 ## Inventur und Aufträge
 
 <table>

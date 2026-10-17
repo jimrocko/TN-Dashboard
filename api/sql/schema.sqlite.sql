@@ -275,3 +275,14 @@ CREATE TABLE IF NOT EXISTS {p}price_guide (
   fetched_at TEXT NOT NULL,
   PRIMARY KEY (item_type, item_no, color_id, new_or_used, currency)
 );
+
+-- Minifig-Finder: eigene BrickStore-Dateien als zusätzlicher oder alleiniger Teilebestand
+CREATE TABLE IF NOT EXISTS {p}minifig_bsx (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  items_json TEXT NOT NULL,
+  lots INTEGER NOT NULL DEFAULT 0,
+  parts INTEGER NOT NULL DEFAULT 0,
+  uploaded_by INTEGER NULL,
+  created_at TEXT NOT NULL
+);

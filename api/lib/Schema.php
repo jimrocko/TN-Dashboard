@@ -8,7 +8,7 @@
 final class Schema
 {
     /** Erhöhen, wenn sich das Schema ändert (neue Spalten unten in COLUMNS eintragen). */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     /** Spalten, die nach Version 1 dazugekommen sind: Tabelle => [Spalte => [MySQL-Typ, SQLite-Typ]] */
     private const COLUMNS = [
