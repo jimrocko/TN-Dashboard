@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue'
 import { Download, UserPlus, Code2, Trash2, RefreshCw } from 'lucide-vue-next'
 import PageHead from '../../components/PageHead.vue'
 import ActivityTable from '../../components/ActivityTable.vue'
+import ShopDataPanel from './ShopDataPanel.vue'
+import PickSettingsPanel from './PickSettingsPanel.vue'
 import { api, apiUrl, IS_DEMO } from '../../api'
 import { dateTime } from '../../utils/format'
 
@@ -166,6 +168,11 @@ onMounted(async () => { await loadUsers(); await select(null) })
         </div>
         <ActivityTable :rows="activity" :show-user="!selected" />
       </section>
+    </div>
+
+    <div class="grid-2">
+      <ShopDataPanel />
+      <PickSettingsPanel />
     </div>
   </div>
 </template>

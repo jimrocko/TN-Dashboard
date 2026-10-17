@@ -259,14 +259,15 @@ final class BrickLinkSync
                     (string) $categoryOf($it, $oldCat[$lotId] ?? null), $locId, (int) $it['quantity'],
                     (float) ($it['unit_price'] ?? 0), ($it['new_or_used'] ?? 'U') === 'N' ? 'N' : 'U', $t,
                 ];
+                $cond = $vals[9];
                 if (isset($known[$lotId])) {
                     q('UPDATE {inventory} SET item_type = ?, item_no = ?, color_id = ?, color_name = ?, name = ?, category = ?,
-                       location_id = ?, qty = ?, price = ?, bl_condition = ?, updated_at = ? WHERE id = ?', array_merge($vals, [$known[$lotId]]));
+                       location_id = ?, qty = ?, price = ?, bl_condition = ?, updated_at = ?, new_or_used = ?, bl_inventory_id = ? WHERE id = ?', array_merge($vals, [$cond, $lotId, $known[$lotId]]));
                     $keep[$known[$lotId]] = true;
                     $stats['updated']++;
                 } else {
                     q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price,
-                       bl_condition, updated_at, bl_lot_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array_merge($vals, [$lotId]));
+                       bl_condition, updated_at, bl_lot_id, new_or_used, bl_inventory_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', array_merge($vals, [$lotId, $cond, $lotId]));
                     $keep[(int) $pdo->lastInsertId()] = true;
                     $stats['new']++;
                 }

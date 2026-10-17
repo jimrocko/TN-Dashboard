@@ -8,10 +8,11 @@ import { Smile, ClipboardList, Boxes, RefreshCw, ScanSearch, Truck, ClipboardChe
 const n = (v) => (v === undefined || v === null ? '–' : Number(v).toLocaleString('de-DE'))
 
 export const modules = [
-  { id: 'minifig', title: 'Minifig-Finder', icon: Smile, path: '/modul/minifig', status: 'extern', xpColor: '#e6b81e',
-    text: 'Minifiguren und ihre Varianten schnell finden und anzeigen.', tile: () => 'Wird integriert (eigener Server)' },
-  { id: 'pickliste', title: 'Pickliste', icon: ClipboardList, path: '/modul/pickliste', status: 'extern', xpColor: '#d04a3a',
-    text: 'Bestellungen kommissionieren, Fehlmengen melden und Fortschritt verfolgen.', tile: () => 'Wird integriert' },
+  { id: 'minifig', title: 'Minifig-Finder', icon: Smile, path: '/minifig', status: 'aktiv', xpColor: '#e6b81e',
+    text: 'Minifiguren erkennen, die sich aus losen Teilen im Lager bauen lassen.',
+    tile: (d) => (d?.minifig ? `Baubar: ${n(d.minifig.buildable)} · 1 Teil fehlt: ${n(d.minifig.almost)}` : 'Figuren aus losen Teilen finden') },
+  { id: 'pickliste', title: 'Pickliste', icon: ClipboardList, path: '/pickliste', status: 'aktiv', xpColor: '#d04a3a',
+    text: 'Bestellungen kommissionieren, Fehlmengen melden und Fortschritt verfolgen.', tile: (d) => `Offene Bestellungen: ${n(d?.pickliste?.open)}` },
   { id: 'inventar', title: 'Inventar', icon: Boxes, path: '/inventar', status: 'aktiv', xpColor: '#e2932c',
     text: 'Bestände, Lagerorte und Bestandsverlauf verwalten.', tile: (d) => `Gesamtbestand: ${n(d?.inventar?.total_parts)} Teile` },
   { id: 'umlagern', title: 'Umlagern', icon: RefreshCw, path: '/umlagern', status: 'aktiv', xpColor: '#1d9fa8',

@@ -117,7 +117,7 @@ final class Shop
             $where[] = '(o.order_no LIKE ? OR o.buyer LIKE ?)';
             array_push($p, "%$term%", "%$term%");
         }
-        $sql = 'SELECT o.id, o.order_no, o.buyer, o.status, o.ordered_at, o.total,
+        $sql = 'SELECT o.id, o.platform, o.order_no, o.buyer, o.status, o.ordered_at, o.total,
                 (SELECT COUNT(*) FROM {order_items} x WHERE x.order_id = o.id) AS positions,
                 (SELECT COALESCE(SUM(qty), 0) FROM {order_items} x WHERE x.order_id = o.id) AS parts
             FROM {orders} o' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY o.ordered_at DESC LIMIT 200';
@@ -126,13 +126,13 @@ final class Shop
 
     public static function order(int $id): ?array
     {
-        $o = q('SELECT id, order_no, buyer, status, ordered_at, total FROM {orders} WHERE id = ?', [$id])->fetch();
+        $o = q('SELECT id, platform, order_no, buyer, status, ordered_at, total FROM {orders} WHERE id = ?', [$id])->fetch();
         if (!$o) return null;
         $o = typed([$o], ['id'], ['total'])[0];
-        $o['items'] = typed(q('SELECT x.id, x.inventory_id, x.item_no, x.color_name, x.name, x.qty, x.price,
-                l.code AS location_code, i.qty AS stock
+        $o['items'] = typed(q('SELECT x.id, x.inventory_id, x.item_type, x.item_no, x.color_id, x.color_name, x.name, x.qty, x.price,
+                COALESCE(l.code, x.remarks) AS location_code, i.qty AS stock
             FROM {order_items} x LEFT JOIN {inventory} i ON i.id = x.inventory_id LEFT JOIN {locations} l ON l.id = i.location_id
-            WHERE x.order_id = ? ORDER BY l.code, x.item_no', [$id])->fetchAll(), ['id', 'inventory_id', 'qty', 'stock'], ['price']);
+            WHERE x.order_id = ? ORDER BY l.code, x.item_no', [$id])->fetchAll(), ['id', 'inventory_id', 'color_id', 'qty', 'stock'], ['price']);
         // Laufweg: Kästchen in natürlicher Reihenfolge (N4 vor N150)
         usort($o['items'], fn ($a, $b) => strnatcasecmp((string) $a['location_code'], (string) $b['location_code']) ?: strcmp($a['item_no'], $b['item_no']));
         return $o;
@@ -307,9 +307,9 @@ final class Shop
                 q('UPDATE {inventory} SET location_id = ?, updated_at = ? WHERE id = ?', [$toId, $t, $lotId]);
             } else {
                 // Neues Lot bekommt seine BrickLink-Lot-ID erst beim nächsten Import (BrickLink vergibt sie beim Mass Upload)
-                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
-                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['bl_condition'], $t]);
+                q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, new_or_used, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
+                   $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['bl_condition'], $lot['new_or_used'] ?? $lot['bl_condition'], $t]);
             }
             if ($existing || $qty < (int) $lot['qty']) {
                 if ($qty === (int) $lot['qty']) {
@@ -354,8 +354,9 @@ final class Shop
     {
         $s = array_values(array_filter(self::stocktakes(), fn ($x) => $x['id'] === $id))[0] ?? null;
         if (!$s) return null;
-        $s['items'] = typed(q('SELECT id, inventory_id, item_no, color_name, name, expected, counted FROM {stocktake_items}
-            WHERE stocktake_id = ? ORDER BY item_no, color_name', [$id])->fetchAll(), ['id', 'inventory_id', 'expected', 'counted']);
+        $s['items'] = typed(q('SELECT s.id, s.inventory_id, i.item_type, s.item_no, i.color_id, s.color_name, s.name, s.expected, s.counted
+            FROM {stocktake_items} s LEFT JOIN {inventory} i ON i.id = s.inventory_id
+            WHERE s.stocktake_id = ? ORDER BY s.item_no, s.color_name', [$id])->fetchAll(), ['id', 'inventory_id', 'color_id', 'expected', 'counted']);
         return $s;
     }
 
@@ -427,9 +428,9 @@ final class Shop
         $lots = typed(q(self::LOT_SELECT . ' WHERE i.location_id = ? ORDER BY i.item_no, i.color_name', [$id])->fetchAll(), LOT_INTS, ['price']);
         $st = q("SELECT id, status, created_at, closed_at FROM {stocktakes} WHERE location_id = ? ORDER BY CASE WHEN status = 'offen' THEN 0 ELSE 1 END, created_at DESC LIMIT 1", [$id])->fetch();
         $in = implode(',', array_fill(0, count(ORDER_ACTIVE), '?'));
-        $picks = typed(q("SELECT o.id, o.order_no, o.status, x.item_no, x.color_name, x.name, x.qty
+        $picks = typed(q("SELECT o.id, o.order_no, o.status, x.item_type, x.item_no, x.color_id, x.color_name, x.name, x.qty
             FROM {order_items} x JOIN {orders} o ON o.id = x.order_id JOIN {inventory} i ON i.id = x.inventory_id
-            WHERE i.location_id = ? AND o.status IN ($in) ORDER BY o.ordered_at", [$id, ...ORDER_ACTIVE])->fetchAll(), ['id', 'qty']);
+            WHERE i.location_id = ? AND o.status IN ($in) ORDER BY o.ordered_at", [$id, ...ORDER_ACTIVE])->fetchAll(), ['id', 'color_id', 'qty']);
         $transfers = typed(q('SELECT t.id, t.item_no, t.color_name, t.qty, t.created_at, lf.code AS from_code, lt.code AS to_code, u.display_name
             FROM {transfers} t LEFT JOIN {locations} lf ON lf.id = t.from_location_id
             LEFT JOIN {locations} lt ON lt.id = t.to_location_id LEFT JOIN {users} u ON u.id = t.user_id

@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { ArrowLeftRight } from 'lucide-vue-next'
+import PartImage from './PartImage.vue'
 import ColorSwatch from './ColorSwatch.vue'
 import LocationTag from './LocationTag.vue'
 import { num, eur, date } from '../utils/format'
@@ -14,11 +15,12 @@ const router = useRouter()
   <div class="table-wrap">
     <table class="table">
       <thead>
-        <tr><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th v-if="showCategory">Kategorie</th><th>Lagerort</th>
+        <tr><th></th><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th v-if="showCategory">Kategorie</th><th>Lagerort</th>
           <th class="num">Menge</th><th class="num">Stückpreis</th><th class="num">Wert</th><th>Geändert</th><th></th></tr>
       </thead>
       <tbody>
         <tr v-for="i in items" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
+          <td class="imgcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="36" /></td>
           <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
           <td>{{ i.name }}</td>
           <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>

@@ -11,7 +11,7 @@ final class ActivityLog
     /**
      * Zahlen je Nutzer für Abzeichen und Bestenliste (Wunsch des Inhabers, Sitzung 6), aus dem Protokoll berechnet.
      * Gleiche Regeln in frontend/src/demo/backend.js (userStats). $since = 'YYYY-MM-DD' oder null (alles).
-     * picks = Aufträge auf „Verpackt“ gesetzt, orders = alle Status-Schritte, early = Aktionen vor 8 Uhr.
+     * picks = Aufträge auf „Verpackt“ gesetzt oder in der Pickliste abgeschlossen, orders = alle Status-Schritte, early = Aktionen vor 8 Uhr.
      */
     public static function stats(?string $since = null): array
     {
@@ -29,6 +29,7 @@ final class ActivityLog
             $s['total']++;
             if (isset($map[$r['action']])) $s[$map[$r['action']]]++;
             if ($r['action'] === 'order_status' && (json_decode((string) $r['details'], true)['status'] ?? '') === 'Verpackt') $s['picks']++;
+            if ($r['action'] === 'pick_order_completed') $s['picks']++;
             if (substr((string) $r['created_at'], 11, 2) < '08') $s['early']++;
             $s['days'][substr((string) $r['created_at'], 0, 10)] = true;
             unset($s);

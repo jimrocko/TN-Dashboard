@@ -115,7 +115,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
             <thead><tr><th></th><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th class="num">Menge</th><th class="num">Wert</th><th>Geändert</th><th></th></tr></thead>
             <tbody>
               <tr v-for="l in lots" :key="l.id" class="clickable" @click="router.push(`/teil/${l.item_no}`)">
-                <td class="tcell"><PartImage :no="l.item_no" :color="l.color_id" :size="36" /></td>
+                <td class="tcell"><PartImage :no="l.item_no" :color="l.color_id" :type="l.item_type" :size="36" /></td>
                 <td class="mono"><RouterLink :to="`/teil/${l.item_no}`" @click.stop>{{ l.item_no }}</RouterLink></td>
                 <td>{{ l.name }}</td>
                 <td class="nowrap"><ColorSwatch :name="l.color_name" /></td>
@@ -140,7 +140,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
             <tbody>
               <tr v-for="s in [...outgoing, ...incoming]" :key="s.lot.id">
                 <td><span class="pill" :class="{ falsch: 'warn', farben: 'accent', art: 'ok' }[s.reason]">{{ { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }[s.reason] }}</span></td>
-                <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
+                <td><div class="partcell"><PartImage :no="s.lot.item_no" :color="s.lot.color_id" :type="s.lot.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
                 <td class="nowrap"><LocationTag :code="s.lot.location_code" :kind="s.lot.location_kind" /> <ArrowRight :size="13" class="faint" /> <LocationTag :code="s.to_location_code" /></td>
                 <td class="num">{{ num(s.lot.qty) }}</td>
@@ -159,7 +159,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
               <tbody>
                 <tr v-for="(p, i) in loc.picks" :key="i">
                   <td class="mono"><RouterLink :to="{ path: '/auftraege', query: { status: '', id: p.id } }">{{ p.order_no }}</RouterLink></td>
-                  <td><RouterLink class="mono" :to="`/teil/${p.item_no}`">{{ p.item_no }}</RouterLink> <span class="faint small"><ColorSwatch :name="p.color_name" /></span></td>
+                  <td><div class="partcell"><PartImage :no="p.item_no" :color="p.color_id" :type="p.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${p.item_no}`">{{ p.item_no }}</RouterLink> <span class="faint small"><ColorSwatch :name="p.color_name" /></span></div></div></td>
                   <td class="num">{{ num(p.qty) }} Stk.</td>
                   <td><span class="pill" :class="orderStatusClass(p.status)">{{ p.status }}</span></td>
                 </tr>
@@ -175,7 +175,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
               <tbody>
                 <tr v-for="t in loc.transfers" :key="t.id">
                   <td class="faint nowrap">{{ dateTime(t.created_at) }}</td>
-                  <td><RouterLink class="mono" :to="`/teil/${t.item_no}`">{{ t.item_no }}</RouterLink></td>
+                  <td><div class="partcell"><PartImage :no="t.item_no" :size="32" /><div><RouterLink class="mono" :to="`/teil/${t.item_no}`">{{ t.item_no }}</RouterLink></div></div></td>
                   <td class="nowrap"><LocationTag :code="t.from_code" /> <ArrowRight :size="12" class="faint" /> <LocationTag :code="t.to_code" /></td>
                   <td class="num">{{ num(t.qty) }}</td>
                   <td class="muted small">{{ t.display_name }}</td>

@@ -129,8 +129,8 @@ const subline = computed(() => {
       <p v-if="error" class="error panel-body">{{ error }}</p>
 
       <LotTable v-if="showList" :items="items">
-        <tr v-if="!items.length && !loading"><td colspan="10" class="empty">Keine Lots gefunden.</td></tr>
-        <tr v-if="capped"><td colspan="10" class="empty">Es werden die ersten {{ num(LIMIT) }} Lots gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
+        <tr v-if="!items.length && !loading"><td colspan="11" class="empty">Keine Lots gefunden.</td></tr>
+        <tr v-if="capped"><td colspan="11" class="empty">Es werden die ersten {{ num(LIMIT) }} Lots gezeigt. Mit Suche, Kategorie oder Lagerort lässt sich gezielt filtern.</td></tr>
       </LotTable>
 
       <div v-else class="cats">
@@ -143,7 +143,7 @@ const subline = computed(() => {
           <template v-if="c.category in open">
             <div v-if="open[c.category] === null" class="panel-body faint small">Lädt …</div>
             <LotTable v-else :items="open[c.category]" :show-category="false">
-              <tr v-if="open[c.category].length >= LIMIT"><td colspan="9" class="empty">
+              <tr v-if="open[c.category].length >= LIMIT"><td colspan="10" class="empty">
                 Erste {{ num(LIMIT) }} Lots. <button class="btn btn-sm" type="button" @click="f.category = c.category">Nur {{ c.category }} als Liste</button>
               </td></tr>
             </LotTable>

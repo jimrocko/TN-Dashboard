@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import SegControl from '../components/SegControl.vue'
 import { earnedCount } from '../utils/achievements'
@@ -79,7 +80,7 @@ const leaders = computed(() => [
             <thead><tr><th>Teil</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th></tr></thead>
             <tbody>
               <tr v-for="i in a.low_stock" :key="i.id">
-                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
+                <td><div class="partcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td><LocationTag :code="i.location_code" /></td>
                 <td class="num low">{{ num(i.qty) }}</td>

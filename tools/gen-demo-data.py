@@ -76,9 +76,10 @@ TEILE = [  # (Nummer, Name, Kategorie, Preis von, bis)
     ('3705', 'Technic, Axle 4', 'Technic, Axle', .03, .12), ('3706', 'Technic, Axle 6', 'Technic, Axle', .04, .15),
     ('43093', 'Technic, Axle 1L with Pin with Friction Ridges', 'Technic, Pin', .02, .08), ('4589', 'Cone 1 x 1', 'Cone', .02, .10),
 ]
+# Namen wie im BrickLink-Katalog: der Minifig-Finder erkennt Figurenteile am Namensanfang (Torso, Hips and Legs, Minifigure, Head …)
 FIGURENTEILE = [
-    ('3626c', 'Minifigure, Head', 'Minifigure, Body Part', .08, .40), ('973', 'Minifigure, Torso', 'Minifigure, Body Part', .15, .80),
-    ('970c00', 'Minifigure, Hips and Legs', 'Minifigure, Body Part', .10, .60), ('3624', 'Minifigure, Headgear Cap - Police Hat', 'Minifigure, Headgear', .10, .50),
+    ('3626c', 'Minifigure, Head (Plain)', 'Minifigure, Head', .08, .40), ('973', 'Torso Plain', 'Minifigure, Torso', .15, .80),
+    ('970c00', 'Hips and Legs Plain', 'Minifigure, Legs', .10, .60), ('3624', 'Minifigure, Headgear Cap - Police Hat', 'Minifigure, Headgear', .10, .50),
     ('3901', 'Minifigure, Hair Male', 'Minifigure, Headgear', .10, .60), ('3833', 'Minifigure, Headgear Construction Helmet', 'Minifigure, Headgear', .10, .50),
     ('4485', 'Minifigure, Headgear Cap with Long Flat Bill', 'Minifigure, Headgear', .10, .50),
 ]
@@ -204,10 +205,121 @@ for n, st in enumerate(status):
                       'days_ago': {'Neu': 0, 'Bezahlt': 1, 'Verpackt': 2, 'Versandt': 4, 'Abgeschlossen': 9}[st] + rnd.randint(0, 3),
                       'items': pos})
 
+# ---- Ergänzungen für Pickliste und Minifig-Finder ----
+# Eigener Zufallsgenerator, damit Lager und Aufträge oben unverändert bleiben.
+rnd2 = random.Random(SEED + 1)
+
+# Zustand wie bei BrickLink (N = neu, U = gebraucht), je Bereich
+ZUSTAND = {'G': 'U', 'H': 'N', 'N': 'N', 'FG': 'U', 'FN': 'N', 'FT': 'U', 'Plate': 'N'}
+for i in inventar:
+    i['new_or_used'] = ZUSTAND[i['location'].rstrip('0123456789')]
+
+# Aufträge: Plattform, erfundener Kundenname, Versand (Adressen sind ausgedacht)
+VORNAMEN = ['Jana', 'Tim', 'Mia', 'Paul', 'Lea', 'Finn', 'Emma', 'Noah', 'Lina', 'Ben', 'Ida', 'Ole']
+NACHNAMEN = ['Beispiel', 'Muster', 'Probe', 'Testmann', 'Exempel', 'Vorlage']
+VERSAND = [('Großbrief', 1.80), ('Großbrief', 1.80), ('Päckchen', 4.19), ('Paket', 6.19)]
+for n, o in enumerate(auftraege):
+    o['platform'] = 'BrickOwl' if n % 4 == 3 else 'BrickLink'
+    o['customer'] = f'{rnd2.choice(VORNAMEN)} {rnd2.choice(NACHNAMEN)}'
+    art, kosten = rnd2.choice(VERSAND)
+    o['shipping'] = {'method': art, 'cost': kosten,
+                     'address': [o['customer'], f'Beispielweg {rnd2.randint(1, 99)}', f'{rnd2.randint(10, 99)}000 Musterstadt', 'Deutschland']}
+
+# Minifig-Finder: erfundene Figuren (TN-…) mit Stücklisten im BrickLink-Format.
+# Gleiche Nummern wie die ganzen Figuren in FG/FN, damit es dafür Shoppreise gibt.
+# Jede Figur: Kopf, eigener Torso, Beine, meist Kopfbedeckung/Haare (manchmal 2 Farben zur Wahl).
+# Ein Teil der Torsos und Spezialköpfe fehlt im Lager (Figur „1 Teil fehlt“ bzw. weiter weg),
+# Spezialköpfe teilen sich mehrere Figuren (Konflikte im gemeinsamen Bauplan).
+YELLOW, BLACK, BROWN, RED, BLUE, DBG, WHITE, TAN = 3, 11, 88, 5, 7, 85, 1, 2
+KOPFBEDECKUNG = [('3624', 'Minifigure, Headgear Cap - Police Hat', [BLACK, BLUE]),
+                 ('3901', 'Minifigure, Hair Male', [BROWN, BLACK, TAN]),
+                 ('3833', 'Minifigure, Headgear Construction Helmet', [YELLOW, WHITE, RED]),
+                 ('4485', 'Minifigure, Headgear Cap with Long Flat Bill', [RED, BLUE, WHITE])]
+BEINFARBEN = [BLACK, BLUE, DBG, TAN, RED, WHITE]
+FARBNAME = dict(FARBEN)
+figuren, figurteile = [], []  # figurteile: neue Lose in FT
+
+def eintrag(no, name, color, qty=1):
+    return {'item': {'no': no, 'name': name, 'type': 'PART', 'category_id': 0}, 'color_id': color,
+            'quantity': qty, 'extra_quantity': 0, 'is_alternate': False}
+
+spezialkoepfe = []
+for k in range(1, 13):
+    spezialkoepfe.append((f'3626cTN{k:02d}', f'Minifigure, Head Beispielgesicht {k} (erfunden)'))
+for f_idx, fig in enumerate(FIGUREN):
+    for k in range(1, 5):
+        no = f'TN-{fig[:3].upper()}{k:02d}'
+        torso = (f'973TN{f_idx + 1:02d}{k}', f'Torso {fig} Muster {k} (erfunden)')
+        torso_farbe = rnd2.choice([WHITE, BLUE, RED, DBG, BLACK, TAN])
+        kopf = rnd2.choice(spezialkoepfe) if rnd2.random() < 0.5 else ('3626c', 'Minifigure, Head (Plain)')
+        # Zustand im Lager: baubar / 1 Teil fehlt / mehr fehlt (Beine in einer Farbe, die es im Lager nicht gibt)
+        r = rnd2.random()
+        zustand = 'baubar' if r < 0.45 else ('fast' if r < 0.75 else 'weit')
+        beine = 158 if zustand == 'weit' else rnd2.choice(BEINFARBEN)
+        gruppen = [[eintrag(kopf[0], kopf[1], YELLOW)], [eintrag(torso[0], torso[1], torso_farbe)],
+                   [eintrag('970c00', 'Hips and Legs Plain', beine)]]
+        if rnd2.random() < 0.85:
+            hg = rnd2.choice(KOPFBEDECKUNG)
+            farben = rnd2.sample(hg[2], 2 if rnd2.random() < 0.3 and len(hg[2]) > 1 else 1)
+            gruppen.append([eintrag(hg[0], hg[1], c) for c in farben])
+        figuren.append({'minifig_no': no, 'name': f'{fig}, Beispielfigur {k} (erfunden)', 'category_id': 999,
+                        'subset': [{'match_no': i + 1, 'entries': g} for i, g in enumerate(gruppen)],
+                        '_torso': (torso, torso_farbe), '_kopf': kopf, '_zustand': zustand})
+
+ft_kaestchen = [c for c in (code('FT', n) for n in range(BEREICHE['FT'][0], BEREICHE['FT'][1] + 1))]
+def neues_los(no, name, farbe, menge, kat):
+    figurteile.append({'item_type': 'PART', 'item_no': no, 'color_id': farbe, 'color_name': FARBNAME.get(farbe, ''),
+                       'name': name, 'category': kat, 'location': rnd2.choice(ft_kaestchen), 'qty': menge,
+                       'price': round(rnd2.uniform(.4, 2.5), 3), 'updated_days_ago': rnd2.randint(0, 60), 'new_or_used': 'U'})
+
+# Spezialköpfe: knapp (1–2 Stück), ein paar gar nicht vorhanden
+for no, name in spezialkoepfe:
+    if rnd2.random() < 0.8:
+        neues_los(no, name, YELLOW, rnd2.randint(1, 2), 'Minifigure, Head')
+koepfe_im_lager = {l['item_no'] for l in figurteile}
+for f in figuren:
+    (tno, tname), tfarbe = f['_torso']
+    if f['_zustand'] == 'baubar' or (f['_zustand'] == 'fast' and f['_kopf'][0] not in koepfe_im_lager and f['_kopf'][0] != '3626c'):
+        neues_los(tno, tname, tfarbe, rnd2.randint(1, 3), 'Minifigure, Torso')
+# Standardteile der Figuren (Kopf gelb, Beine, Kopfbedeckungen) sicher im Lager
+vorhanden = {(i['item_no'], i['color_id']) for i in inventar if i['location'].startswith('FT')}
+for g in [e for f in figuren for grp in f['subset'] for e in grp['entries']]:
+    key = (g['item']['no'], g['color_id'])
+    if key[0].startswith(('973TN', '3626cTN')) or key in vorhanden or key == ('970c00', 158):
+        continue
+    vorhanden.add(key)
+    neues_los(key[0], g['item']['name'], key[1], rnd2.randint(4, 30), 'Minifigure, Headgear' if key[0] not in ('970c00', '3626c') else 'Minifigure, Legs')
+inventar += figurteile
+
+# Was der Minifig-Finder schon kennt: geprüfte Teile-Varianten (Supersets) und geladene Stücklisten
+kern = sorted({(i['item_no'], i['color_id']) for i in inventar if i['item_type'] == 'PART'
+               and i['name'].lower().startswith(('torso ', 'hips ', 'hips and ', 'legs ', 'minifigure, head', 'minifigure head',
+                                                  'minifigure, hair', 'minifigure hair', 'minifigure, headgear', 'minifigure headgear',
+                                                  'minifigure, neckwear', 'minifigure neckwear'))})
+geprueft = sorted(k for k in kern if rnd2.random() < 0.85)
+bekannt = sorted({f['minifig_no'] for f in figuren for grp in f['subset'] for e in grp['entries']
+                  if (e['item']['no'], e['color_id']) in set(geprueft)})
+geladen = sorted(no for no in bekannt if rnd2.random() < 0.85)
+for f in figuren:
+    for k in ('_torso', '_kopf', '_zustand'):
+        f.pop(k)
+
+# Preise wie aus einem BrickStore-Preisimport (6-Monats-Durchschnitt, erfunden)
+preise = []
+for f in figuren:
+    if rnd2.random() < 0.85:
+        preise.append({'item_type': 'M', 'item_no': f['minifig_no'], 'color_id': 0, 'avg_price': round(rnd2.uniform(2.5, 18), 2)})
+for no, farbe in sorted({(e['item']['no'], e['color_id']) for f in figuren for grp in f['subset'] for e in grp['entries']}):
+    if no.startswith(('973TN', '3626cTN')) and rnd2.random() < 0.8:
+        preise.append({'item_type': 'P', 'item_no': no, 'color_id': farbe, 'avg_price': round(rnd2.uniform(.3, 3.5), 2)})
+
 daten = {
     '_hinweis': 'Erfundene Beispieldaten für Demo und Tests (tools/gen-demo-data.py). Keine echten Bestellungen oder Kunden.',
     'locations': lagerorte, 'inventory': inventar, 'orders': auftraege,
     'stocktakes': [{'location': 'G245'}, {'location': 'H012'}, {'location': 'N010'}],
+    'minifigs': figuren,
+    'minifig_state': {'scanned': geprueft, 'subsets_loaded': geladen},
+    'price_guide': preise,
 }
 ziel = Path(__file__).resolve().parent.parent / 'api' / 'sql' / 'demo-data.json'
 # Ein Datensatz pro Zeile: lesbare Git-Diffs, aber kleine Datei
@@ -225,4 +337,5 @@ with ziel.open('w', encoding='utf-8') as f:
 
 gesamt = sum(i['qty'] for i in inventar)
 print(f'{len(lagerorte)} Lagerorte, {len(inventar)} Lose, {gesamt:_} Teile, {len(auftraege)} Aufträge -> {ziel}'.replace('_', '.'))
+print(f'Minifig-Finder: {len(figuren)} Figuren, {len(geprueft)}/{len(kern)} Varianten geprüft, {len(geladen)}/{len(bekannt)} Stücklisten, {len(preise)} Preise')
 print('Mischkisten in G (mehr als 3 Lose):', sum(1 for l in lagerorte if l['code'].startswith('G') and sum(1 for i in inventar if i['location'] == l['code']) > 3))

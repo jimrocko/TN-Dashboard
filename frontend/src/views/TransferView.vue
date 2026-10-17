@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight } from 'lucide-vue-next'
@@ -117,7 +118,7 @@ onMounted(async () => {
           <tbody>
             <tr v-for="s in filtered.slice(0, shown)" :key="s.lot.id">
               <td><span class="pill" :class="reasonClass[s.reason]">{{ REASONS[s.reason] }}</span></td>
-              <td><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></td>
+              <td><div class="partcell"><PartImage :no="s.lot.item_no" :color="s.lot.color_id" :type="s.lot.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></div></div></td>
               <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
               <td><LocationTag :code="s.lot.location_code" /></td>
               <td class="faint"><ArrowRight :size="14" /></td>
@@ -160,6 +161,7 @@ onMounted(async () => {
           </label>
           <div v-if="lotResults.length" class="results">
             <button v-for="l in lotResults" :key="l.id" class="res" type="button" @click="pick(l)">
+              <PartImage :no="l.item_no" :color="l.color_id" :type="l.item_type" :size="32" />
               <span class="mono">{{ l.item_no }}</span>
               <span class="muted small grow">{{ l.color_name }} · {{ l.name }}</span>
               <LocationTag :code="l.location_code" :kind="l.location_kind" :link="false" />
@@ -168,6 +170,7 @@ onMounted(async () => {
           </div>
           <form v-if="lot" class="form" @submit.prevent="book(lot, to, qty)">
             <div class="chosen">
+              <PartImage :no="lot.item_no" :color="lot.color_id" :type="lot.item_type" :size="40" />
               <RouterLink class="mono" :to="`/teil/${lot.item_no}`">{{ lot.item_no }}</RouterLink> <ColorSwatch :name="lot.color_name" />
               <span class="faint small">· {{ num(lot.qty) }} Stück in</span> <LocationTag :code="lot.location_code" :kind="lot.location_kind" />
             </div>
@@ -196,7 +199,7 @@ onMounted(async () => {
             <tbody>
               <tr v-for="t in history" :key="t.id">
                 <td class="faint nowrap">{{ dateTime(t.created_at) }}</td>
-                <td><RouterLink class="mono" :to="`/teil/${t.item_no}`">{{ t.item_no }}</RouterLink> <span class="muted small">{{ t.color_name }}</span></td>
+                <td><div class="partcell"><PartImage :no="t.item_no" :size="32" /><div><RouterLink class="mono" :to="`/teil/${t.item_no}`">{{ t.item_no }}</RouterLink> <span class="muted small">{{ t.color_name }}</span></div></div></td>
                 <td class="nowrap"><LocationTag :code="t.from_code" /> <ArrowRight :size="12" class="faint" /> <LocationTag :code="t.to_code" /></td>
                 <td class="num">{{ num(t.qty) }}</td>
                 <td class="muted">{{ t.display_name }}</td>

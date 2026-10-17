@@ -88,8 +88,10 @@ final class Dev
 
     // ---- Daten ----
 
-    public const TABLES = ['users', 'activity_log', 'locations', 'inventory', 'orders', 'order_items', 'transfers',
-        'stocktakes', 'stocktake_items', 'bl_cache', 'settings', 'dev_access'];
+    public const TABLES = ['users', 'activity_log', 'locations', 'inventory', 'inventory_history', 'orders', 'order_items', 'transfers',
+        'stocktakes', 'stocktake_items', 'pick_progress', 'pick_events', 'pick_claims', 'pick_reports', 'pick_location_order', 'pick_order_state',
+        'minifig_catalog', 'minifig_superset_cache', 'minifig_subset_state', 'minifig_decisions', 'price_guide', 'api_calls',
+        'bl_cache', 'settings', 'dev_access'];
     /** Spalten, die nie angezeigt werden. */
     private const HIDDEN = ['password_hash', 'setting_value'];
 
@@ -160,6 +162,8 @@ final class Dev
                 'name' => $sqlite ? basename((string) $c['db']['path']) : ($c['db']['name'] ?? null)],
             'services' => [
                 'bricklink_configured' => (new BrickLinkClient($c['bricklink']))->isConfigured(),
+                'brickowl_configured'  => BrickOwlClient::fromConfig()->isConfigured(),
+                'api_usage_24h'        => ApiLog::usage24h(),
                 'bricklink_cache_ttl'  => (int) ($c['bricklink']['cache_ttl'] ?? 0),
                 'brickognize_url'      => array_key_exists('url', $c['brickognize'] ?? []) ? $c['brickognize']['url'] : Brickognize::DEFAULT_URL,
             ],
@@ -174,7 +178,7 @@ final class Dev
 
     // ---- Selbsttests (nur lesend bzw. mit sofortigem Aufräumen) ----
 
-    public const TESTS = ['db_read', 'db_write', 'session', 'bricklink', 'brickognize', 'tmp_write'];
+    public const TESTS = ['db_read', 'db_write', 'session', 'bricklink', 'brickowl', 'brickognize', 'tmp_write'];
 
     public static function test(string $name): array
     {
@@ -186,6 +190,7 @@ final class Dev
                 'db_write'    => self::tDbWrite(),
                 'session'     => self::tSession(),
                 'bricklink'   => self::tBrickLink(),
+                'brickowl'    => self::tBrickOwl(),
                 'brickognize' => self::tBrickognize(),
                 'tmp_write'   => self::tTmp(),
             };
@@ -227,6 +232,13 @@ final class Dev
         $r = Cache::remember('item:PART:3001', (int) (config()['bricklink']['cache_ttl'] ?? 86400),
             fn () => $bl->get('/items/PART/3001'));
         return 'Teil 3001 abgerufen' . (!empty($r['cached']) ? ' (aus dem Cache)' : '');
+    }
+
+    /** Nur prüfen, ob ein Schlüssel da ist – kein Abruf (spart das Tageslimit). */
+    private static function tBrickOwl(): string
+    {
+        if (!BrickOwlClient::fromConfig()->isConfigured()) throw new RuntimeException('Kein BrickOwl-Schlüssel in .env/config.php');
+        return 'Schlüssel vorhanden (wird erst beim Abholen der Aufträge benutzt)';
     }
 
     private static function tBrickognize(): string

@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
@@ -44,9 +45,10 @@ watch(() => route.query.q, async (q) => {
       <div class="panel-head"><h2>Teile</h2></div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th><th class="num">Wert</th></tr></thead>
+          <thead><tr><th></th><th>Teil-Nr.</th><th>Bezeichnung</th><th>Farbe</th><th>Lagerort</th><th class="num">Menge</th><th class="num">Wert</th></tr></thead>
           <tbody>
             <tr v-for="i in r.parts" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
+              <td class="imgcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="36" /></td>
               <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
               <td>{{ i.name }}</td>
               <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>

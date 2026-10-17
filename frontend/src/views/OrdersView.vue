@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
@@ -61,7 +62,7 @@ async function setStatus(s) {
             <thead><tr><th>Auftrag</th><th>Käufer</th><th>Datum</th><th class="num">Pos.</th><th class="num">Teile</th><th class="num">Summe</th><th>Status</th></tr></thead>
             <tbody>
               <tr v-for="o in orders" :key="o.id" class="clickable" :class="{ selected: current?.id === o.id }" @click="select(o.id)">
-                <td class="mono">{{ o.order_no }}</td>
+                <td class="mono">{{ o.order_no }}<div v-if="o.platform && o.platform !== 'TN'" class="faint small">{{ o.platform }}</div></td>
                 <td>{{ o.buyer }}</td>
                 <td class="faint nowrap">{{ dateTime(o.ordered_at) }}</td>
                 <td class="num">{{ o.positions }}</td>
@@ -96,7 +97,7 @@ async function setStatus(s) {
             <tbody>
               <tr v-for="it in current.items" :key="it.id">
                 <td><LocationTag :code="it.location_code" /></td>
-                <td><RouterLink class="mono" :to="`/teil/${it.item_no}`" @click.stop>{{ it.item_no }}</RouterLink> <span class="muted small">{{ it.name }}</span></td>
+                <td><div class="partcell"><PartImage :no="it.item_no" :color="it.color_id" :type="it.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${it.item_no}`" @click.stop>{{ it.item_no }}</RouterLink> <span class="muted small">{{ it.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="it.color_name" /></td>
                 <td class="num">{{ num(it.qty) }}</td>
                 <td class="num" :class="{ short: it.stock !== null && it.stock < it.qty }">{{ num(it.stock) }}</td>

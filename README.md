@@ -48,7 +48,7 @@ Große Kacheln mit Live-Zahlen (Bestand, offene Vorschläge, offene Inventuren) 
 
 **Auf jedem Gerät:** Auf PC und iPad stehen die sechs Kacheln mittig in zwei Reihen zu je drei, auf dem Handy zu zweit. Nichts ist gequetscht, alles passt auf einen Blick.
 
-**Minifig-Finder und Pickliste** sind die bestehenden Programme der Schule. Sie bekommen im Dashboard eine eigene Kachel und den gemeinsamen Login.
+**Minifig-Finder und Pickliste** haben eine eigene Kachel (siehe unten).
 
 **Meine Aktivitäten** (oben rechts auf den eigenen Namen tippen) zeigt das eigene Protokoll. Unter **Einstellungen** stellt jeder für sein Gerät Hell/Dunkel, Dichte, Schriftgröße und Animationen ein; dort startet auch das **Tutorial mit Klemmi** (in einem neuen Tab, mit Übungsdaten).
 
@@ -111,6 +111,13 @@ Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf ko
 
 <p align="center"><img src="docs/images/bricklink.png" alt="Fenster Zu BrickLink übertragen" width="720"></p>
 
+
+## Pickliste und Minifig-Finder
+
+**Pickliste:** Offene Bestellungen von BrickLink und BrickOwl kommissionieren. Positionen sind nach Laufweg sortiert (die Reihenfolge der Lagerbereiche legt der Lehrer fest) und zeigen Kästchen, Menge, Zustand und Restbestand. Antippen = gepickt (mit Namen), „Markieren“ = Positionen für sich vormerken, „!“ = Fehlteil, falscher Lagerort oder falsche Restmenge melden. Gleiche Kästchen nebeneinander sind orange umrandet. Ist alles gepickt, wird die Bestellung abgeschlossen; bei Großbriefen gibt es eine Briefvorschau. Mehrere Picker gleichzeitig: Die Seite aktualisiert sich jede Sekunde. Dazu eine **Pick-Statistik** (Zeitraum, Picker, Plattform, Dauer je Bestellung).
+
+**Minifig-Finder:** Findet Minifiguren, die sich aus losen Teilen im Lager bauen lassen: einzeln baubar, gemeinsam baubar (kein Teil wird doppelt verplant), „nur 1 Teil fehlt“ mit Fehlteilkosten, häufigste Fehlteile und eine Teileliste mit Kästchen zum Zusammensuchen. Figuren lassen sich ausschließen („Nicht bauen“). Listen als CSV oder BrickStore-Datei. Abrufe bei BrickLink nur mit Dev-Rolle und mit Tageslimit.
+
 ## Inventur und Aufträge
 
 <table>
@@ -170,6 +177,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 - **Zugangsdaten:** kommen aus der vorhandenen `.env` des Servers. Sie wird nur gelesen und nie verändert; eine `.htaccess` sperrt sie für den Zugriff über das Web.
 - **BrickLink:** API-Antworten werden in der Datenbank zwischengespeichert, um das Tageslimit zu schonen. Die App schreibt nie selbst zu BrickLink: Nach dem Umlagern geht der ganze Bestand als XML über die Zwischenablage in den Upload im BrickLink-Shop.
 - **Ollies Dashboard:** Das Shop-Dashboard der Schule läuft auf demselben Rechner und holt den BrickLink-Bestand alle 4 Stunden selbst. Das TN Dashboard liest dessen Datenbank nur (`OLLIE_DB_PATH` in der `.env`, zeigt auf `data/legoshop.db`). Im Dev-Bereich gibt es zwei Knöpfe: **Bei BrickLink neu laden** löst in Ollies Dashboard denselben Import aus wie sein Knopf „BrickLink-Inventar“ (zählt dort als geladen, `OLLIE_URL`, Standard `http://127.0.0.1:8000`) und übernimmt danach den frischen Stand; **Letzten Stand übernehmen** nimmt ohne neuen Abruf, was sein Dashboard zuletzt geholt hat. Beide haben immer denselben Bestand: Lädt Ollies Dashboard neu (Knopf oder alle 4 Stunden), übernimmt das TN Dashboard das automatisch; „Lager aus BrickLink übernehmen“ in der Lehrer-Ansicht lädt über Ollies Dashboard; und nach „Ja, ist eingefügt“ lädt Ollies Dashboard sofort neu. Solange Umlagerungen noch nicht bei BrickLink eingefügt sind, wartet die automatische Übernahme, damit nichts verloren geht. Dafür braucht PHP die Erweiterung `pdo_sqlite`.
+- **BrickLink und BrickOwl:** Bestand und Aufträge werden nur auf Knopfdruck geholt (Lehrer-Ansicht → „Shop-Daten holen“, frühestens alle 10 Minuten) und in der eigenen Datenbank gespeichert. Alle Bereiche rechnen danach nur mit diesen Daten. Auftragspositionen und Kundendaten werden pro Auftrag nur einmal geladen, Stücklisten des Minifig-Finders dauerhaft gespeichert. Jeder Abruf wird gezählt (Dev-Bereich, Minifig-Finder). Lagerort = Bemerkung des Lots bei BrickLink (bei BrickOwl die öffentliche Notiz).
 - **Teileerkennung:** Der Server schickt das Foto an Brickognize und verknüpft die Treffer mit dem eigenen Lager. Dafür braucht der Server Internetzugang zu `api.brickognize.com`, und die Kamera im Browser braucht HTTPS. Abschalten: `brickognize.url` in `api/config.php` auf `null`.
 
 ```
@@ -179,7 +187,7 @@ docs/       Logo und Screenshots
 TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
 TN-Dashboard-Tutorial.html  geführte Tour mit Klemmi durch die Demo (ohne Server)
 tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
-.github/    Build-Prüfung und Demo auf GitHub Pages
+.github/    Build-Prüfung
 CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte, Verlauf)
 ```
 
@@ -195,7 +203,9 @@ CLAUDE.md   Projektwissen für KI-Agents (Regeln, Entscheidungen, offene Punkte,
 
 Liegt die `.env` woanders oder heißen die Variablen anders: `api/config.example.php` nach `api/config.php` kopieren und `'env_file'` bzw. `'env_map'` anpassen. Ohne `.env` lassen sich die Werte auch direkt in `api/config.php` eintragen.
 
-Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`, `OLLIE_DB_PATH`, `OLLIE_URL`.
+Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_PASSWORD`/`DB_PASS`, `BRICKLINK_CONSUMER_KEY`, `BRICKLINK_CONSUMER_SECRET`, `BRICKLINK_TOKEN`, `BRICKLINK_TOKEN_SECRET`, `OLLIE_DB_PATH`, `OLLIE_URL`, `BRICKOWL_API_KEY`.
+
+**Erster Bestand:** In der Lehrer-Ansicht „Bestand holen“ und „Aufträge holen“ tippen. Alternativ auf der Kommandozeile `php api/install.php --sync` oder aus einer BrickStore-Datei `php api/install.php --bsx bestand.bsx` (Bemerkung = Lagerort). Absender für die Briefvorschau: `shop.sender` in `api/config.php`.
 
 Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für die Kamera.
 

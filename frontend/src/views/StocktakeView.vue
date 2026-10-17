@@ -1,4 +1,5 @@
 <script setup>
+import PartImage from '../components/PartImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHead from '../components/PageHead.vue'
@@ -122,7 +123,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
             <thead><tr><th>Teil</th><th>Farbe</th><th v-if="!blind" class="num">Soll</th><th class="num">Gezählt</th><th v-if="!blind" class="num">Diff.</th></tr></thead>
             <tbody>
               <tr v-for="i in current.items" :key="i.id">
-                <td><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></td>
+                <td><div class="partcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${i.item_no}`">{{ i.item_no }}</RouterLink> <span class="muted small">{{ i.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>
                 <td v-if="!blind" class="num">{{ num(i.expected) }}</td>
                 <td class="num">
