@@ -8,7 +8,7 @@ import * as devRoutes from './dev.js'
 
 // Version erhöhen, wenn sich die Beispieldaten ändern: alte Browser-Daten werden dann verworfen.
 // Das Tutorial hat eigene Daten, damit es die normale Demo nicht verändert.
-export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v2' : 'tn-dashboard-demo-v8'
+export const KEY = import.meta.env.MODE === 'tutorial' ? 'tn-dashboard-tutorial-v2' : 'tn-dashboard-demo-v9'
 
 export class DemoError extends Error {
   constructor(message, status) {
@@ -27,16 +27,41 @@ function fresh() {
   const t = now()
   return {
     nextUser: 4,
-    nextLog: 1,
+    nextLog: 1000,
     session: null,
     users: [
       { id: 1, username: 'lehrer', display_name: 'Herr Lehrer', password: 'lehrer123', role: 'lehrer', created_at: t, last_seen: null },
       { id: 2, username: 'max', display_name: 'Max Mustermann', password: 'max12345', role: 'teilnehmer', created_at: t, last_seen: null },
       { id: 3, username: 'erika', display_name: 'Erika Musterfrau', password: 'erika123', role: 'teilnehmer', created_at: t, last_seen: null },
     ],
-    log: [],
+    log: import.meta.env.MODE === 'tutorial' ? [] : sampleHistory(),
     ...shop.seedData(seed),
   }
+}
+
+// Erfundene frühere Arbeit von Max und Erika, damit Bestenliste und Abzeichen in der Demo nicht leer sind
+// (nicht im Tutorial, dort beginnt „Meine Aktivitäten“ leer).
+function sampleHistory() {
+  const rows = []
+  const at = (daysAgo, hour, min) => {
+    const d = new Date(); d.setDate(d.getDate() - daysAgo); d.setHours(hour, min, 0, 0)
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:00`
+  }
+  const add = (user, action, module, details, daysAgo, hour, min) => rows.push({ user_id: user, action, module, details, created_at: at(daysAgo, hour, min) })
+  const plan = [
+    // [Nutzer, Tage zurück, Umlagerungen, gepackte Aufträge, Inventuren, frühe Stunde?]
+    [2, 9, 4, 1, 0], [2, 6, 5, 2, 1], [2, 2, 3, 1, 0],
+    [3, 12, 2, 2, 1], [3, 8, 1, 3, 0], [3, 5, 2, 2, 1, true], [3, 3, 1, 1, 1], [3, 1, 0, 2, 0],
+  ]
+  for (const [u, days, tr, picks, st, early] of plan) {
+    let m = 0
+    const h = early ? 7 : 10
+    for (let i = 0; i < tr; i++) add(u, 'transfer', 'umlagern', { beispiel: true }, days, h, (m += 4))
+    for (let i = 0; i < picks; i++) add(u, 'order_status', 'auftraege', { status: 'Verpackt', beispiel: true }, days, h + 1, (m += 3) % 60)
+    for (let i = 0; i < st; i++) add(u, 'stocktake_closed', 'inventur', { beispiel: true }, days, h + 2, (m += 5) % 60)
+  }
+  return rows.sort((a, b) => a.created_at.localeCompare(b.created_at)).map((r, i) => ({ id: i + 1, ...r }))
 }
 
 let memory = null
@@ -57,6 +82,23 @@ const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 
 function log(db, userId, action, module = null, details = null) {
   db.log.push({ id: db.nextLog++, user_id: userId, action, module, details: details && Object.keys(details).length ? details : null, created_at: now() })
+}
+
+/** Zahlen je Nutzer für Abzeichen und Bestenliste (gleiche Regeln wie ActivityLog::stats in PHP) */
+function userStats(db, since) {
+  const map = { transfer: 'transfers', stocktake_closed: 'stocktakes', recognize: 'scans', bricklink_export: 'exports', search: 'searches', order_status: 'orders' }
+  const out = {}
+  for (const r of db.log) {
+    if (r.action === 'login' || r.action === 'logout' || (since && r.created_at < since)) continue
+    const s = (out[r.user_id] ??= { total: 0, picks: 0, orders: 0, transfers: 0, stocktakes: 0, scans: 0, exports: 0, searches: 0, early: 0, days: new Set() })
+    s.total++
+    if (map[r.action]) s[map[r.action]]++
+    if (r.action === 'order_status' && r.details?.status === 'Verpackt') s.picks++
+    if (r.created_at.slice(11, 13) < '08') s.early++
+    s.days.add(r.created_at.slice(0, 10))
+  }
+  for (const s of Object.values(out)) s.days = s.days.size
+  return out
 }
 
 function activityRows(db, userId, limit) {
@@ -143,6 +185,21 @@ function dispatch(db, method, route, params, body) {
       if (!body.action) throw new DemoError('action fehlt', 400)
       log(db, u.id, String(body.action).slice(0, 64), body.module ?? null, body.details ?? null)
       return { ok: true }
+    }
+    case 'GET achievements': {
+      // wie in PHP (ActivityLog::stats + Route achievements): eigene Zahlen und Bestenliste der Teilnehmer
+      const me = requireUser(db)
+      const d = new Date()
+      const pad = (n) => String(n).padStart(2, '0')
+      const ymd = (x) => `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`
+      const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+      const since = { month: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`, week: ymd(monday) }[params.period] ?? null
+      const total = userStats(db, null)
+      const all = since ? userStats(db, since) : total
+      const board = db.users.filter((u) => u.role === 'teilnehmer' && u.active !== false)
+        .sort((a, b) => a.display_name.localeCompare(b.display_name))
+        .map((u) => ({ id: u.id, name: u.display_name, stats: all[u.id] ?? null, all: total[u.id] ?? null }))
+      return { me: total[me.id] ?? null, board }
     }
     case 'GET activity': {
       const me = requireUser(db)

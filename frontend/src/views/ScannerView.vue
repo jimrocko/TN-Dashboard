@@ -5,7 +5,7 @@ import { Camera, CameraOff, ImageUp, ScanSearch, ExternalLink } from 'lucide-vue
 import PageHead from '../components/PageHead.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
 import LocationTag from '../components/LocationTag.vue'
-import { api, IS_DEMO } from '../api'
+import { api, IS_DEMO, logActivity } from '../api'
 import { rememberRecognition } from '../utils/recognition'
 import { num } from '../utils/format'
 import { cameraAvailable, startCamera, captureFrame, shrinkFile } from '../utils/camera'
@@ -65,6 +65,8 @@ async function recognize(blob) {
 function show(list) {
   items.value = list
   rememberRecognition(list)
+  // In der Demo gibt es keinen Server, der die Erkennung protokolliert (zählt fürs Abzeichen „Teile-Detektiv“)
+  if (IS_DEMO && list.length) logActivity('recognize', 'scanner', { teil: list[0].id })
   if (list[0]?.type === 'part') {
     camStop()
     router.push({ path: `/teil/${list[0].id}`, query: { scan: '1', t: String(Date.now()) } })

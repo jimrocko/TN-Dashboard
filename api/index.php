@@ -331,6 +331,19 @@ switch (true) {
         }
         json_response(['ollie_records' => $records, 'imported' => OllieSync::autoSync((int) $me['id'])]);
 
+    case $route === 'achievements' && $method === 'GET':
+        // Abzeichen (eigene Zahlen) und Bestenliste aller aktiven Teilnehmer. period: all | month | week
+        $me = require_user();
+        $since = ['month' => date('Y-m-01'), 'week' => date('Y-m-d', strtotime('monday this week'))][$_GET['period'] ?? 'all'] ?? null;
+        $total = ActivityLog::stats();
+        $all = $since ? ActivityLog::stats($since) : $total;
+        $mine = $total[(int) $me['id']] ?? null;
+        $board = [];
+        foreach (q("SELECT id, display_name FROM {users} WHERE role = 'teilnehmer' AND active = 1 ORDER BY display_name")->fetchAll() as $u) {
+            $board[] = ['id' => (int) $u['id'], 'name' => $u['display_name'], 'stats' => $all[(int) $u['id']] ?? null, 'all' => $total[(int) $u['id']] ?? null];
+        }
+        json_response(['me' => $mine, 'board' => $board]);
+
     // ---- Dev-Bereich ----
     case $route === 'dev/status' && $method === 'GET':
         json_response(Dev::status(require_user()));

@@ -122,7 +122,9 @@ Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf ko
 
 ## Analyse
 
-Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge nach Status und, nur für Lehrer, die Aktivität pro Teilnehmer. Ein Tipp auf einen Balken öffnet die passende Liste.
+Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge nach Status und, nur für Lehrer, die Aktivität pro Teilnehmer. Ein Tipp auf einen Balken öffnet die passende Liste. Ganz unten, abgetrennt, steht die **Bestenliste**: wer am meisten gepickt, umgelagert und gezählt hat und wer die meisten Abzeichen hat, für diese Woche, diesen Monat oder gesamt.
+
+**Abzeichen:** Unter „Meine Aktivitäten“ sammelt jeder Abzeichen, etwa „Erster Pick“, „Lagermeister“ (100 Lots umgelagert), „Zählkünstler“ oder „Frühaufsteher“. Offene Abzeichen zeigen, wie weit man schon ist.
 
 <p align="center"><img src="docs/images/analyse.png" alt="Lager- und Auftragsanalyse" width="720"></p>
 
