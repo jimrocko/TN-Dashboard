@@ -144,6 +144,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .table tbody tr.clickable { cursor: pointer; }
 .table tbody tr.clickable:hover td, .table tbody tr.selected td { background: var(--hover); }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table th.num { text-align: right; } /* Spaltenkopf über rechtsbündigen Zahlen */
 .mono { font-family: var(--mono); font-size: 0.86em; }
 .empty { padding: 28px var(--pad); text-align: center; color: var(--text-3); }
 

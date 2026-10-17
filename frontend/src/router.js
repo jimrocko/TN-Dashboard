@@ -43,7 +43,7 @@ const router = createRouter({
     { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur & Bestandsprüfung', module: 'inventur' } },
     { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
     { path: '/pickliste', component: PicklisteView, meta: { title: 'Pickliste', module: 'pickliste' } },
-    { path: '/pickliste/statistik', component: PicklisteStatsView, meta: { title: 'Pick-Statistik', module: 'pickliste' } },
+    { path: '/pickliste/statistik', component: PicklisteStatsView, meta: { title: 'Pick-Statistik', module: 'pickliste', dev: true } },
     { path: '/minifig', component: MinifigView, meta: { title: 'Minifig-Finder', module: 'minifig' } },
     { path: '/scanner', component: ScannerView, meta: { title: 'Teile-Scanner', module: 'scanner' } },
     { path: '/teil/:no', component: PartView, meta: { title: 'Teil', module: 'inventar' } },

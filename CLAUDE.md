@@ -104,6 +104,7 @@ start.sh / start.bat  Lokal starten (SQLite in local-data/, Test-Konten)
 - Offen = Auftragsstatus `Bezahlt`/`Verpackt` (`Picking::OPEN`). `Sync.php` bildet BrickLink PROCESSING/READY/PAID → Bezahlt, PACKED → Verpackt ab; BrickOwl nur „Payment Received/Paid“ → Bezahlt (wie Original). Originalstatus in `orders.platform_status`.
 - Anreicherung je Position wie `_enrich_item`: Lagerort aus Auftrag → Lot → Archiv (`tn_inventory_history`, BrickLink-Lot-Nr. `ext_lot_id`) → eindeutige Kandidaten; Rest 0, wenn Lot weg. BrickOwl: Farbnamen-Zuordnung und Preisabgleich.
 - Sortierung: längstes passendes Präfix aus `tn_pick_location_order`, dann `naturalCmp` (Python `_natural`). Revisionen: `pick_order_state.revision` und `settings.pick_revision`, Seite fragt jede Sekunde.
+- **Pick-Statistik nur für Lehrer und Dev-Rolle** (Wunsch des Inhabers, Sitzung 6): Knopf nur bei `auth.canDev || auth.isStaff`, Route `meta.dev`, `picking/stats` über `Dev::require()` (Demo gleich). Briefvorschau: Empfänger ganz unten rechts in der Ecke.
 - Tabellen `tn_pick_progress/events/claims/reports/location_order/order_state`; Einstellungen in der Lehrer-Ansicht (`PickSettingsPanel.vue`).
 ### Minifig-Finder (`/minifig`, `api/lib/Minifig.php`, `demo/minifig.js`)
 - `analyze()` rechnet nur lokal; gleiche Regeln wie Python inkl. `pyRound` (Banker's Rounding auf exaktem Dezimalwert), Kahan-Summe wie SQLite `SUM()`, Python-Wahrheitswerte bei Sortierschlüsseln (`x or 0`). Gemeinsame Hilfen der Demo in `demo/rules.js`.

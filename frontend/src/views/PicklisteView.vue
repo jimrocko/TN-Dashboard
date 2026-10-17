@@ -180,7 +180,7 @@ const letter = ref(false)
   <div class="page stack pick">
     <PageHead title="Pickliste" :sub="detail ? `${detail.order.platform} · Bestellung ${detail.order.order_no}` : 'Offene Bestellungen. Tippe einen Auftrag an und picke Position für Position.'">
       <button v-if="detail" class="btn" @click="back"><ArrowLeft :size="16" /> Bestellungen</button>
-      <RouterLink v-else to="/pickliste/statistik" class="btn"><BarChart3 :size="16" /> Statistik</RouterLink>
+      <RouterLink v-else-if="auth.canDev || auth.isStaff" to="/pickliste/statistik" class="btn"><BarChart3 :size="16" /> Statistik</RouterLink>
     </PageHead>
 
     <!-- Übersicht -->
@@ -359,15 +359,15 @@ const letter = ref(false)
 .bigimg { display: grid; place-items: center; margin-bottom: 12px; }
 .info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .info > div { display: flex; flex-direction: column; }
-/* Briefvorschau wie im Original (picking.html): A4 quer, Absender oben links, Empfänger unten rechts, Malerkrepp an drei Seiten */
+/* Briefvorschau wie im Original (picking.html): A4 quer, Absender oben links, Empfänger ganz unten rechts in der Ecke (Wunsch des Inhabers), Malerkrepp an drei Seiten */
 .paper { position: relative; aspect-ratio: 297 / 210; width: 100%; background: #fff; color: #111; border: 1px solid #d1d5db; box-shadow: 0 8px 24px #0002; overflow: hidden; font-family: Arial, sans-serif; }
 .sender { position: absolute; top: 9%; left: 7%; white-space: pre-line; font-size: clamp(10px, 1.5vw, 15px); line-height: 1.5; }
-.recipient { position: absolute; right: 2%; bottom: 12%; width: 27%; white-space: pre-line; font-size: clamp(10px, 1.5vw, 15px); line-height: 1.5; overflow-wrap: anywhere; }
+.recipient { position: absolute; right: 5%; bottom: 6%; max-width: 40%; white-space: pre-line; font-size: clamp(10px, 1.5vw, 15px); line-height: 1.5; overflow-wrap: anywhere; }
 .tape { position: absolute; pointer-events: none; background: repeating-linear-gradient(2deg, #9a7040 0 7px, #ad8250 7px 14px); opacity: 0.88; }
 .tape-left { left: 0; top: 40%; bottom: 40%; width: 4%; }
 .tape-right { right: 0; top: 40%; bottom: 40%; width: 4%; }
 .tape-bottom { left: 31%; right: 31%; bottom: 0; height: 10%; }
-@media (max-width: 620px) { .recipient { width: 38%; } }
+@media (max-width: 620px) { .recipient { max-width: 48%; } }
 @media (max-width: 700px) {
   .row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 10px; }
   .desc { grid-column: 2 / 4; }

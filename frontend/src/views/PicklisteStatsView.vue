@@ -66,7 +66,7 @@ onMounted(async () => {
     </section>
     <p v-if="error" class="error">{{ error }}</p>
     <template v-if="data">
-      <div class="kpis">
+      <div class="kpis stats-kpis">
         <div class="kpi"><div class="label">Bestellungen bearbeitet</div><div class="value">{{ num(data.summary.orders) }}</div></div>
         <div class="kpi good"><div class="label">Vollständig gepickt</div><div class="value">{{ num(data.summary.completed_orders) }}</div></div>
         <div class="kpi"><div class="label">Positionen gepickt</div><div class="value">{{ num(data.summary.positions) }}</div></div>
@@ -116,4 +116,9 @@ onMounted(async () => {
 .filters { display: flex; flex-direction: column; gap: 10px; }
 .filters label { display: inline-flex; align-items: center; gap: 6px; }
 .nowrap { white-space: nowrap; }
+/* 6 Kennzahlen: auf PC und iPad 3 + 3, auf dem Handy 2 pro Reihe */
+.stats-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 700px) { .stats-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.filters .toolbar { flex-wrap: wrap; }
+.filters .input[type='date'] { width: auto; }
 </style>

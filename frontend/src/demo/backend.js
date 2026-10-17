@@ -264,6 +264,8 @@ function dispatch(db, method, route, params, body) {
     }
     throw new DemoError('In der Demo gibt es keine Verbindung zu BrickLink/BrickOwl. Auf dem Schulserver holt dieser Knopf Bestand bzw. Aufträge.', 503)
   }
+  // Pick-Statistik nur für Lehrer und Dev-Rolle (wie api/index.php)
+  if (parts[0] === 'picking' && parts[1] === 'stats' && !devRoutes.devAllowed(db, requireUser(db))) throw new DemoError('Nur für Lehrer und Dev-Rolle', 403)
   const pickResult = picking.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (pickResult !== undefined) return pickResult
   if (parts[0] === 'minifig') {

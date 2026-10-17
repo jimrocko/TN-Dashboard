@@ -592,7 +592,7 @@ switch (true) {
         json_response($r);
 
     case $route === 'picking/stats' && $method === 'GET':
-        require_user();
+        Dev::require(); // nur Lehrer und Dev-Rolle (Wunsch des Inhabers)
         json_response(Picking::stats($_GET['date_from'] ?? null, $_GET['date_to'] ?? null,
             isset($_GET['picker_id']) && $_GET['picker_id'] !== '' ? (int) $_GET['picker_id'] : null, $_GET['platform'] ?? null));
 
