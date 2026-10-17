@@ -64,7 +64,12 @@ const appModules = homeModules.filter((m) => appOptions[m.id] || m.status === 'e
 const ollie = ref(null)
 const ollieBusy = ref(false)
 const ollieConfirm = ref(null) // 'refresh' oder 'import', solange die Rückfrage offen ist
-const ollieNewer = () => !!ollie.value?.ollie_synced_at && (!ollie.value.imported_at || ollie.value.ollie_synced_at > ollie.value.imported_at)
+const ollieStates = {
+  aktuell: 'Gleicher Stand wie Ollies Dashboard.',
+  neu: 'Ollie hat neu geladen, wird beim nächsten Öffnen der Startseite übernommen.',
+  wartet: 'Ollie hat neu geladen, aber bei uns sind noch Änderungen nicht bei BrickLink eingefügt. Erst danach wird übernommen.',
+  veraltet: 'Unsere letzte Übertragung ist bei Ollie noch nicht angekommen. Sobald er neu lädt, wird übernommen.',
+}
 async function loadOllie() {
   try { ollie.value = await api.get('ollie/status') } catch (e) { ollie.value = { configured: false, error: e.message } }
 }
@@ -149,7 +154,8 @@ async function resetDemoData() {
             <div v-if="!ollie" class="h">Wird geprüft …</div>
             <div v-else-if="ollie.demo" class="h">In der Demo nicht vorhanden. Auf dem Schulserver liest die App hier Ollies Datenbank (data/legoshop.db).</div>
             <div v-else-if="!ollie.configured" class="h">Noch nicht eingerichtet: in der .env <code>OLLIE_DB_PATH=</code> mit dem Pfad zu Ollies <code>data/legoshop.db</code> eintragen.</div>
-            <div v-else-if="ollie.ok" class="h">{{ num(ollie.lots) }} Lots · {{ num(ollie.parts) }} Teile · Ollie hat zuletzt {{ dateTime(ollie.ollie_synced_at) }} von BrickLink geholt.</div>
+            <div v-else-if="ollie.ok" class="h">{{ num(ollie.lots) }} Lots · {{ num(ollie.parts) }} Teile · Ollie hat zuletzt {{ dateTime(ollie.ollie_synced_at) }} von BrickLink geholt.
+              <br>Automatischer Abgleich: {{ ollieStates[ollie.state] ?? '' }}</div>
             <div v-else class="h error">{{ ollie.error }}</div>
           </div>
           <span v-if="ollie && !ollie.demo" class="pill" :class="ollie.ok ? 'ok' : ''">{{ ollie.ok ? 'Verbunden' : ollie.configured ? 'Fehler' : 'Aus' }}</span>
@@ -158,8 +164,7 @@ async function resetDemoData() {
           <div>
             <div class="k">{{ o.k }}</div>
             <div class="h">{{ o.h }} Unser Lager wird dabei durch Ollies Stand ersetzt (per Lot-ID, Lagerort aus den Remarks); noch nicht übertragene Umlagerungen und Inventuren werden verworfen.
-              <template v-if="o.kind === 'import' && ollie?.imported_at"> Zuletzt übernommen: {{ dateTime(ollie.imported_at) }}.</template>
-              <b v-if="o.kind === 'import' && ollie?.ok && ollieNewer()"> Ollies Stand ist neuer.</b></div>
+              <template v-if="o.kind === 'import' && ollie?.imported_at"> Zuletzt übernommen: {{ dateTime(ollie.imported_at) }}.</template></div>
           </div>
           <div class="inline">
             <span v-if="!auth.isStaff" class="faint small">nur Lehrer</span>

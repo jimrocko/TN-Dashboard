@@ -10,6 +10,11 @@
  * Neu laden (Wunsch des Inhabers): Unser Knopf ruft denselben Import auf wie Ollies Knopf „BrickLink-Inventar“
  * (GET /import/bricklink-inventory in seinem Dashboard, OLLIE_URL, Standard http://127.0.0.1:8000). Ollies Dashboard
  * lädt dann selbst von BrickLink (ein Abruf, zählt bei ihm als geladen) und wir übernehmen danach seinen Stand.
+ * Immer gleicher Bestand (Wunsch des Inhabers):
+ * - Hat Ollies Dashboard neu geladen (sein Knopf oder alle 4 h), übernehmen wir das automatisch (autoSync, beim Öffnen
+ *   der Startseite oder des Inventars). Verglichen werden nur Ollies eigene Zeitstempel (import_status.last_run, UTC).
+ * - Ausnahme: Solange Umlagerungen/Inventuren noch nicht bei BrickLink eingefügt sind, warten wir, sonst wären sie weg.
+ *   Nach „Ja, ist eingefügt“ gilt Ollies Stand bis dahin als veraltet (markExported), und Ollie lädt neu (after-export).
  */
 final class OllieSync
 {
@@ -67,6 +72,75 @@ final class OllieSync
         return new PDO('sqlite:' . $path, null, null, $opts);
     }
 
+    /** Ollies letzter Ladezeitpunkt, so wie er ihn speichert (UTC, „YYYY-MM-DD HH:MM:SS“), oder null. */
+    private static function run(PDO $db): ?string
+    {
+        $st = $db->query("SELECT last_run FROM import_status WHERE import_name = 'bricklink_inventory'")->fetchColumn();
+        return $st === false || $st === null || $st === '' ? null : (string) $st;
+    }
+
+    /** Ollies UTC-Zeit in unsere Ortszeit (wie now()). */
+    private static function local(?string $utc): ?string
+    {
+        if ($utc === null) return null;
+        try {
+            return (new DateTime($utc, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s');
+        } catch (Throwable) {
+            return $utc;
+        }
+    }
+
+    /** Gibt es bei uns Änderungen, die noch nicht bei BrickLink eingefügt sind? */
+    private static function hasPending(): bool
+    {
+        return BrickLinkSync::pending() || BrickLinkSync::pendingStocktakes() || BrickLinkSync::openExport();
+    }
+
+    /** aktuell | neu (wird gleich übernommen) | wartet (offene Übertragung) | veraltet (Ollie hat noch nicht neu geladen) */
+    private static function state(?string $run): string
+    {
+        if ($run === null || $run === Dev::setting('ollie_imported_run')) return 'aktuell';
+        $block = Dev::setting('ollie_block_run');
+        if ($block !== null && $run <= $block) return 'veraltet';
+        return self::hasPending() ? 'wartet' : 'neu';
+    }
+
+    /**
+     * Automatisch übernehmen, wenn Ollies Dashboard neu geladen hat. Nie mit Fehler: die Startseite soll immer laden.
+     * Gibt die Statistik zurück, wenn übernommen wurde, sonst null.
+     */
+    public static function autoSync(?int $userId): ?array
+    {
+        if (self::path() === null) return null;
+        $lock = @fopen(sys_get_temp_dir() . '/tn_ollie_sync.lock', 'c');
+        if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return null; // läuft schon (anderes Gerät)
+        try {
+            $run = self::run(self::open());
+            if (self::state($run) !== 'neu') return null;
+            $r = self::import();
+            if ($userId) ActivityLog::log($userId, 'ollie_auto_import', null, ['lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
+            return $r;
+        } catch (Throwable $e) {
+            error_log('Ollie-Abgleich: ' . $e->getMessage());
+            return null;
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /** Nach „Ja, ist eingefügt“: Ollies bisheriger Stand kennt unsere Änderungen noch nicht, also nicht übernehmen. */
+    public static function markExported(): void
+    {
+        if (self::path() === null) return;
+        try {
+            $run = self::run(self::open());
+            if ($run !== null) Dev::setSetting('ollie_block_run', $run);
+        } catch (Throwable) {
+            // Ollie nicht erreichbar: dann gibt es auch nichts Veraltetes zu übernehmen
+        }
+    }
+
     /** Stand für den Dev-Bereich: eingerichtet? erreichbar? wie viele Lots, wann zuletzt von BrickLink geholt? */
     public static function status(): array
     {
@@ -78,8 +152,9 @@ final class OllieSync
             $row = $db->query('SELECT COUNT(*) AS lots, COALESCE(SUM(quantity), 0) AS parts FROM inventory_bricklink')->fetch();
             $r['lots'] = (int) $row['lots'];
             $r['parts'] = (int) $row['parts'];
-            $st = $db->query("SELECT last_run FROM import_status WHERE import_name = 'bricklink_inventory'")->fetchColumn();
-            $r['ollie_synced_at'] = $st === false ? null : (string) $st;
+            $run = self::run($db);
+            $r['ollie_synced_at'] = self::local($run);
+            $r['state'] = self::state($run);
             $r['ok'] = true;
         } catch (Throwable $e) {
             $r['error'] = $e->getMessage();
@@ -91,6 +166,7 @@ final class OllieSync
     public static function import(): array
     {
         $db = self::open();
+        $run = self::run($db);
         $cols = array_column($db->query('PRAGMA table_info(inventory_bricklink)')->fetchAll(), 'name');
         $remarks = in_array('remarks', $cols, true) ? 'remarks' : "'' AS remarks";
         $rows = $db->query("SELECT inventory_id, item_no, item_name, item_type, color_id, color_name, quantity, new_or_used,
@@ -117,6 +193,7 @@ final class OllieSync
             return $byItem[$it['item']['no']] ?? self::categoryFromName((string) $it['item']['name'], (string) $it['item']['type']);
         });
         Dev::setSetting('ollie_last_import', now());
+        if ($run !== null) Dev::setSetting('ollie_imported_run', $run);
         return $stats;
     }
 

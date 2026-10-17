@@ -77,9 +77,16 @@ async function finish(done) {
   busy.value = true
   error.value = ''
   try {
-    await api.post('bricklink/finish', { id: exp.value.id, done })
+    const r = await api.post('bricklink/finish', { id: exp.value.id, done })
     await refresh()
     doneMsg.value = done ? 'Übertragen. BrickLink ist auf dem neuen Stand.' : 'Übertragung verworfen.'
+    // Ollies Dashboard (gleicher Rechner) lädt im Hintergrund neu, damit beide denselben Bestand haben
+    if (done && r.ollie) {
+      doneMsg.value = 'Übertragen. Ollies Dashboard lädt den neuen Stand …'
+      api.post('ollie/after-export')
+        .then(() => { if (doneMsg.value.startsWith('Übertragen.')) doneMsg.value = 'Übertragen. BrickLink und Ollies Dashboard sind auf dem neuen Stand.' })
+        .catch((e) => { if (doneMsg.value.startsWith('Übertragen.')) doneMsg.value = `Übertragen. Ollies Dashboard konnte nicht neu laden: ${e.message}` })
+    }
   } catch (e) {
     await refresh()
     error.value = e.message

@@ -55,6 +55,7 @@ switch (true) {
 
     case $route === 'dashboard' && $method === 'GET':
         $me = require_user();
+        OllieSync::autoSync((int) $me['id']); // hat Ollies Dashboard neu geladen? Dann gleichen Stand übernehmen
         $isStaff = in_array($me['role'], ROLES_STAFF, true);
         json_response(Shop::dashboard() + [
             'bricklink' => ['configured' => (new BrickLinkClient(config()['bricklink']))->isConfigured()],
@@ -76,7 +77,7 @@ switch (true) {
         json_response(['items' => Shop::inventory($_GET)]);
 
     case $route === 'inventory/meta' && $method === 'GET':
-        require_user();
+        OllieSync::autoSync((int) require_user()['id']);
         json_response(Shop::meta());
 
     case $route === 'search' && $method === 'GET':
@@ -186,12 +187,24 @@ switch (true) {
         $me = require_user();
         $in = request_json();
         $n = BrickLinkSync::finish((int) ($in['id'] ?? 0), !empty($in['done']));
+        if (!empty($in['done'])) OllieSync::markExported(); // Ollies alter Stand kennt die Änderungen noch nicht
         ActivityLog::log((int) $me['id'], !empty($in['done']) ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', ['aenderungen' => $n]);
-        json_response(['done' => $n]);
+        json_response(['done' => $n, 'ollie' => OllieSync::path() !== null]);
 
     case $route === 'bricklink/import' && $method === 'POST':
         // Lager komplett aus dem BrickLink-Shop übernehmen (nur Lehrer)
         $staff = require_staff();
+        if (OllieSync::path() !== null) {
+            // Mit Ollies Dashboard: über seinen Import laden, damit beide denselben neuen Stand haben
+            try {
+                $records = OllieSync::triggerRefresh();
+                $r = OllieSync::import();
+            } catch (RuntimeException $e) {
+                json_error($e->getMessage(), 502);
+            }
+            ActivityLog::log((int) $staff['id'], 'ollie_refresh', null, ['ollie_lose' => $records, 'lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
+            json_response($r + ['via_ollie' => true]);
+        }
         $bl = new BrickLinkClient(config()['bricklink']);
         if (!$bl->isConfigured()) {
             json_error('BrickLink ist noch nicht eingerichtet (api/config.php)', 503);
@@ -304,6 +317,19 @@ switch (true) {
         }
         ActivityLog::log((int) $staff['id'], 'ollie_refresh', null, ['ollie_lose' => $records, 'lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
         json_response($r + ['ollie_records' => $records]);
+
+    case $route === 'ollie/after-export' && $method === 'POST':
+        // Nach „Ja, ist eingefügt“ (darf jeder): Ollies Dashboard lädt neu, damit es die Änderungen auch hat.
+        // Läuft weiter, auch wenn die Seite gewechselt wird.
+        $me = require_user();
+        if (OllieSync::path() === null) json_response(['skipped' => true]);
+        ignore_user_abort(true);
+        try {
+            $records = OllieSync::triggerRefresh();
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 502);
+        }
+        json_response(['ollie_records' => $records, 'imported' => OllieSync::autoSync((int) $me['id'])]);
 
     // ---- Dev-Bereich ----
     case $route === 'dev/status' && $method === 'GET':

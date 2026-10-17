@@ -76,6 +76,7 @@ async function importBrickLink() {
     const r = await api.post('bricklink/import')
     importMsg.value = `${r.lots} Lots übernommen (${r.new} neu, ${r.updated} aktualisiert, ${r.removed} entfernt, ${r.new_locations} neue Lagerorte`
       + (r.without_location ? `, ${r.without_location} ohne Lagerort in den Remarks` : '') + ').'
+      + (r.via_ollie ? ' Über Ollies Dashboard geladen: Beide haben jetzt denselben Stand.' : '')
     importAsk.value = false
   } catch (e) { importErr.value = e.message } finally { importBusy.value = false }
 }
@@ -144,7 +145,7 @@ onMounted(async () => { await loadUsers(); await select(null) })
         <section class="panel">
           <div class="panel-head"><h2>BrickLink-Shop</h2></div>
           <div class="panel-body stack-sm">
-            <p class="muted small">Übernimmt das Lager aus dem BrickLink-Shop, mit Lot-IDs und dem Lagerort aus den Remarks. Danach können alle nach dem Umlagern die Änderungen per Knopf zu BrickLink übertragen. Noch nicht übertragene Umlagerungen werden dabei verworfen.</p>
+            <p class="muted small">Übernimmt das Lager aus dem BrickLink-Shop, mit Lot-IDs und dem Lagerort aus den Remarks. Danach können alle nach dem Umlagern die Änderungen per Knopf zu BrickLink übertragen. Noch nicht übertragene Umlagerungen werden dabei verworfen. Ist Ollies Dashboard eingerichtet, lädt es den Bestand, damit beide denselben Stand haben.</p>
             <div v-if="importAsk" class="confirm">
               <span class="small">Lager jetzt ersetzen?</span>
               <button class="btn btn-sm btn-primary" :disabled="importBusy" @click="importBrickLink">Ja, übernehmen</button>
