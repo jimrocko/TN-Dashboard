@@ -38,6 +38,16 @@ function looksLikeLocation(v) {
   return new RegExp(`^(?:${simple}|${plate}|(?:${simple}|${plate})\\s+(?:${simple}|${plate}))$`).test(v)
 }
 
+// BrickOwl-Farbe als BrickLink-Farbe anzeigen, wie brickLinkColor() in Picking.php (nur Anzeige und Bild)
+function brickLinkColor(db, boName) {
+  const name = BO_COLORS[trim(boName).toLowerCase()] ?? trim(boName)
+  if (!name) return { id: null, name: '' }
+  const low = name.toLowerCase()
+  const r = db.inventory.find((x) => String(x.color_name ?? '').toLowerCase() === low && x.color_id !== null && x.color_id !== undefined)
+    ?? (db.inventory_history ?? []).find((x) => String(x.color_name ?? '').toLowerCase() === low && x.color_id !== null && x.color_id !== undefined)
+  return r ? { id: r.color_id, name: r.color_name } : { id: null, name }
+}
+
 function state(db, orderId) {
   const s = pk(db).state[orderId]
   return { revision: s?.revision ?? 0, completed: !!s?.completed }
@@ -133,6 +143,10 @@ function enrich(db, d) {
   if (!cond && inv) cond = trim(inv.new_or_used)
   if (!cond && hist) cond = trim(hist.new_or_used)
   if (!cond && cands.length) { const c = distinct('new_or_used', (v) => v.toUpperCase()); if (c.length === 1) cond = c[0] }
+  if (isBo) {
+    const bl = brickLinkColor(db, d.color_name)
+    d = { ...d, platform_color_name: d.color_name, color_name: bl.name, color_id: bl.id }
+  }
   let img = trim(d.image_url)
   const type = trim(d.item_type).toUpperCase()
   if (!img && ['P', 'PART'].includes(type) && d.item_no && d.color_id !== null && d.color_id !== undefined) {
@@ -169,7 +183,7 @@ function sortItems(db, items) {
   return ranked.map((x) => x[1])
 }
 
-export function detail(db, id, userId) {
+export function detail(db, id) {
   const o = db.orders.find((x) => x.id === id)
   if (!o) return null
   const p = pk(db)
@@ -178,7 +192,8 @@ export function detail(db, id, userId) {
     id: o.id, platform: o.platform, order_no: o.order_no, buyer_name: o.buyer || null, status: o.platform_status || o.status,
     date_ordered: o.ordered_at, grand_total: o.total, currency_code: o.currency || 'EUR', completed: st.completed, revision: st.revision,
   }
-  const reports = p.reports.filter((r) => r.order_id === id && r.user_id === userId && r.status === 'OPEN')
+  // Meldungen sehen alle sofort, mit Namen des Meldenden (wie Picking.php)
+  const reports = p.reports.filter((r) => r.order_id === id && r.status === 'OPEN')
   let items = o.items.slice().sort((a, b) => a.id - b.id).map((x) => {
     const pr = p.progress[x.id]
     const cl = p.claims[x.id]
@@ -189,8 +204,8 @@ export function detail(db, id, userId) {
       picker_name: pr?.user_id ? userName(db, pr.user_id) : null, claim_picker_id: cl?.user_id ?? null, claim_picker_name: cl ? userName(db, cl.user_id) : null,
     })
     delete it.platform
-    it.reports = reports.filter((r) => r.order_item_id === x.id).map(({ id: rid, order_item_id, issue_type, details, missing_quantity, found_location, actual_quantity, created_at }) =>
-      ({ id: rid, order_item_id, issue_type, details, missing_quantity, found_location, actual_quantity, created_at }))
+    it.reports = reports.filter((r) => r.order_item_id === x.id).map(({ id: rid, order_item_id, issue_type, details, missing_quantity, found_location, actual_quantity, created_at, user_id }) =>
+      ({ id: rid, order_item_id, issue_type, details, missing_quantity, found_location, actual_quantity, created_at, user_id, user_name: userName(db, user_id) }))
     it.report_count = it.reports.length
     return it
   })
@@ -274,12 +289,12 @@ export function report(db, itemId, userId, input) {
   }
   p.reports.push(r)
   bump(db, order.id)
-  const count = p.reports.filter((x) => x.order_item_id === itemId && x.user_id === userId && x.status === 'OPEN').length
+  const count = p.reports.filter((x) => x.order_item_id === itemId && x.status === 'OPEN').length
   return { id: r.id, item_id: itemId, issue_type: type, report_count: count, created_at: t, order_id: order.id }
 }
 
-export function resolve(db, reportId, userId) {
-  const r = pk(db).reports.find((x) => x.id === reportId && x.user_id === userId && x.status === 'OPEN')
+export function resolve(db, reportId) {
+  const r = pk(db).reports.find((x) => x.id === reportId && x.status === 'OPEN')
   if (!r) throw new DemoError('Meldung nicht gefunden', 400)
   r.status = 'RESOLVED'
   bump(db, r.order_id)
@@ -411,7 +426,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
   if (b === 'orders' && /^\d+$/.test(c ?? '')) {
     const id = Number(c)
     if (method === 'GET' && !d) {
-      const r = detail(db, id, me.id)
+      const r = detail(db, id)
       if (!r) throw new DemoError('Bestellung nicht gefunden', 404)
       return r
     }
@@ -430,7 +445,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
     if (d === 'claim') { const r = claim(db, itemId, me); log(me.id, r.claimed ? 'pick_claim' : 'pick_unclaim', 'pickliste', details); return r }
     if (d === 'reports') { const r = report(db, itemId, me.id, body); log(me.id, 'pick_report', 'pickliste', { ...details, grund: r.issue_type }); return r }
   }
-  if (method === 'POST' && b === 'reports' && /^\d+$/.test(c ?? '') && d === 'resolve') return resolve(db, Number(c), me.id)
+  if (method === 'POST' && b === 'reports' && /^\d+$/.test(c ?? '') && d === 'resolve') return resolve(db, Number(c))
   if (b === 'location-order' && !c) {
     if (method === 'GET') return { groups: locationOrder(db) }
     if (!isStaff) throw new DemoError('Nur für Lehrer', 403)

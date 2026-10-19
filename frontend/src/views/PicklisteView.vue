@@ -1,7 +1,7 @@
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Check, CircleAlert, Mail, BarChart3, X } from 'lucide-vue-next'
+import { ArrowLeft, Check, CircleAlert, Mail, BarChart3, X, LoaderCircle } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import PartImage from '../components/PartImage.vue'
 import ColorSwatch from '../components/ColorSwatch.vue'
@@ -185,7 +185,8 @@ const letter = ref(false)
 
     <!-- Übersicht -->
     <template v-if="!currentId">
-      <div v-if="!loading && !orders.length" class="panel empty">Keine offenen Bestellungen.</div>
+      <div v-if="loading && !orders.length" class="panel loading" role="status"><LoaderCircle :size="22" class="spin" /> Bestellungen werden geladen …</div>
+      <div v-else-if="!orders.length" class="panel empty">Keine offenen Bestellungen.</div>
       <div class="orders">
         <button v-for="o in orders" :key="o.id" class="panel order" :class="{ completed: o.completed }" @click="open(o.id)">
           <div class="order-top">
@@ -242,7 +243,7 @@ const letter = ref(false)
           <span v-if="g.owner" class="claim-name">{{ g.name }}</span>
           <div v-for="[x, i] in g.rows" :key="x.id" class="row" :class="rowClass(x, i)" role="button" tabindex="0"
             :aria-pressed="x.picked" @click="tap(x)" @keydown.enter.prevent="tap(x)">
-            <button class="imgbtn" title="Bild vergrößern" @click.stop="imageFor = x"><PartImage :no="x.item_no" :color="x.color_id" :src="x.image_url" :size="60" /></button>
+            <button class="imgbtn" title="Bild vergrößern" @click.stop="imageFor = x"><PartImage :no="x.item_no" :color="x.color_id" :type="x.item_type" :src="x.image_url" :size="60" /></button>
             <div class="desc">
               <div class="name">{{ x.item_name || x.item_no }}</div>
               <div class="meta small">
@@ -253,7 +254,7 @@ const letter = ref(false)
                 <span v-else-if="x.claim_picker_name" class="faint"> · vorgemerkt: {{ x.claim_picker_name }}</span>
               </div>
               <div v-if="x.reports.length" class="reports">
-                <button v-for="r in x.reports" :key="r.id" class="chip" title="Meldung schließen" @click.stop="resolve(r)">{{ reportLabel(r) }} <X :size="12" /></button>
+                <button v-for="r in x.reports" :key="r.id" class="chip" title="Meldung schließen" @click.stop="resolve(r)">{{ reportLabel(r) }}<span v-if="r.user_name" class="by"> · {{ r.user_name }}</span> <X :size="12" /></button>
               </div>
             </div>
             <div class="loc">{{ x.location || '–' }}</div>
@@ -265,6 +266,7 @@ const letter = ref(false)
         </div>
       </div>
     </template>
+    <div v-else class="panel loading" role="status"><LoaderCircle :size="22" class="spin" /> Bestellung wird geöffnet …</div>
 
     <TnDialog v-if="notice" title="Hinweis" @close="notice = ''">
       <p>{{ notice }}</p>
@@ -287,8 +289,9 @@ const letter = ref(false)
     </TnDialog>
 
     <TnDialog v-if="imageFor" :title="imageFor.item_name || imageFor.item_no" @close="imageFor = null">
-      <div class="bigimg"><PartImage :no="imageFor.item_no" :color="imageFor.color_id" :src="imageFor.image_url" :size="240" /></div>
+      <div class="bigimg"><PartImage :no="imageFor.item_no" :color="imageFor.color_id" :type="imageFor.item_type" :src="imageFor.image_url" :size="240" /></div>
       <div class="info">
+        <div><span class="faint small">Teil-Nr.</span><span class="mono">{{ imageFor.item_no }}</span></div>
         <div><span class="faint small">Zustand</span>{{ imageFor.condition || '–' }}</div>
         <div><span class="faint small">Farbe</span>{{ imageFor.color_name || '–' }}</div>
         <div><span class="faint small">Fach</span>{{ imageFor.location || '–' }}</div>
@@ -315,7 +318,7 @@ const letter = ref(false)
 <style scoped>
 .orders { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .order { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px 16px; cursor: pointer; color: var(--text); font: inherit; }
-.order:hover { background: var(--hover); }
+@media (hover: hover) { .order:hover, .row:hover { background: var(--hover); } }
 .order.completed { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
 .order.completed strong { text-decoration: line-through; }
 .order-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
@@ -327,6 +330,10 @@ const letter = ref(false)
 .filters { display: flex; gap: 10px; align-items: center; padding: 10px var(--pad); flex-wrap: wrap; }
 .accent-note { color: var(--accent-text); }
 
+.loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--text-2); }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.by { opacity: 0.8; }
 .rows { display: flex; flex-direction: column; gap: 8px; }
 .claimgroup { position: relative; display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 5px solid var(--claim); border-radius: 4px; }
 .claim-name { font-size: 0.78rem; font-weight: 600; color: var(--claim); margin-bottom: -4px; }
@@ -334,7 +341,6 @@ const letter = ref(false)
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 14px; align-items: center; padding: 10px 12px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; user-select: none;
 }
-.row:hover { background: var(--hover); }
 .row.same { border-color: #f59e0b; border-width: 2px; }
 .row.same:not(.same-end) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .row.same:not(.same-start) { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -8px; border-top-style: dashed; }

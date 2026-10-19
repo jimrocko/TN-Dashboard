@@ -70,6 +70,22 @@ final class Picking
         return (bool) preg_match("/^(?:$simple|$plate|(?:$simple|$plate)\\s+(?:$simple|$plate))$/", $v);
     }
 
+    /**
+     * BrickOwl-Farbe als BrickLink-Farbe anzeigen (Wunsch des Inhabers): Name über BO_COLORS, Farb-ID aus dem eigenen Bestand
+     * (der kommt von BrickLink). Nur für die Anzeige und das Bild, die Zuordnung zum Bestand bleibt wie im Original.
+     */
+    private static function brickLinkColor(string $boName): array
+    {
+        static $cache = [];
+        $key = mb_strtolower(trim($boName));
+        if (array_key_exists($key, $cache)) return $cache[$key];
+        $name = self::BO_COLORS[$key] ?? trim($boName);
+        if ($name === '') return $cache[$key] = ['id' => null, 'name' => ''];
+        $r = q('SELECT color_id, color_name FROM {inventory} WHERE LOWER(color_name) = LOWER(?) AND color_id IS NOT NULL LIMIT 1', [$name])->fetch()
+            ?: q('SELECT color_id, color_name FROM {inventory_history} WHERE LOWER(color_name) = LOWER(?) AND color_id IS NOT NULL LIMIT 1', [$name])->fetch();
+        return $cache[$key] = $r ? ['id' => (int) $r['color_id'], 'name' => (string) $r['color_name']] : ['id' => null, 'name' => $name];
+    }
+
     private static function revision(): int
     {
         return (int) Dev::setting('pick_revision');
@@ -234,6 +250,12 @@ final class Picking
             $conds = $distinct('new_or_used', 'strtoupper');
             if (count($conds) === 1) $cond = $conds[0];
         }
+        if ($isBo) {
+            $bl = self::brickLinkColor((string) $d['color_name']);
+            $d['platform_color_name'] = $d['color_name'];
+            $d['color_name'] = $bl['name'];
+            $d['color_id'] = $bl['id'];
+        }
         $img = trim((string) $d['image_url']);
         $type = strtoupper(trim((string) $d['item_type']));
         if ($img === '' && in_array($type, ['P', 'PART'], true) && $d['item_no'] !== '' && $d['color_id'] !== null) {
@@ -286,7 +308,7 @@ final class Picking
         foreach ($items as &$it) unset($it['_rank']);
     }
 
-    public static function detail(int $id, int $userId): ?array
+    public static function detail(int $id): ?array
     {
         $o = q('SELECT id, platform, order_no, buyer, status, platform_status, ordered_at, total, currency, shipping FROM {orders} WHERE id = ?', [$id])->fetch();
         if (!$o) return null;
@@ -304,10 +326,12 @@ final class Picking
             LEFT JOIN {pick_progress} pp ON pp.order_item_id = x.id LEFT JOIN {users} pu ON pu.id = pp.user_id
             LEFT JOIN {pick_claims} c ON c.order_item_id = x.id LEFT JOIN {users} cu ON cu.id = c.user_id
             WHERE x.order_id = ? ORDER BY x.id', [$id])->fetchAll();
+        // Meldungen sehen alle sofort (Wunsch des Inhabers, Original: nur die eigenen), mit Namen des Meldenden
         $reports = [];
-        foreach (q("SELECT id, order_item_id, issue_type, details, missing_quantity, found_location, actual_quantity, created_at
-            FROM {pick_reports} WHERE order_id = ? AND user_id = ? AND status = 'OPEN' ORDER BY created_at, id", [$id, $userId])->fetchAll() as $r) {
-            $reports[(int) $r['order_item_id']][] = typed([$r], ['id', 'order_item_id', 'missing_quantity', 'actual_quantity'])[0];
+        foreach (q("SELECT r.id, r.order_item_id, r.issue_type, r.details, r.missing_quantity, r.found_location, r.actual_quantity, r.created_at,
+                r.user_id, u.display_name AS user_name
+            FROM {pick_reports} r LEFT JOIN {users} u ON u.id = r.user_id WHERE r.order_id = ? AND r.status = 'OPEN' ORDER BY r.created_at, r.id", [$id])->fetchAll() as $r) {
+            $reports[(int) $r['order_item_id']][] = typed([$r], ['id', 'order_item_id', 'missing_quantity', 'actual_quantity', 'user_id'])[0];
         }
         $items = [];
         foreach ($rows as $r) {
@@ -426,16 +450,16 @@ final class Picking
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$o['id'], $itemId, $userId, $type, $details, $missing, $found ? mb_substr($found, 0, 64) : null, $actual, 'OPEN', $t]);
             $rid = (int) db()->lastInsertId();
             self::bump((int) $o['id']);
-            $count = (int) q("SELECT COUNT(*) FROM {pick_reports} WHERE order_item_id = ? AND user_id = ? AND status = 'OPEN'", [$itemId, $userId])->fetchColumn();
+            $count = (int) q("SELECT COUNT(*) FROM {pick_reports} WHERE order_item_id = ? AND status = 'OPEN'", [$itemId])->fetchColumn();
             return ['id' => $rid, 'item_id' => $itemId, 'issue_type' => $type, 'report_count' => $count, 'created_at' => $t, 'order_id' => (int) $o['id']];
         });
     }
 
-    /** Eigene Meldung schließen. */
-    public static function resolve(int $reportId, int $userId): array
+    /** Meldung schließen. Jeder darf das, weil alle die Meldungen sehen. */
+    public static function resolve(int $reportId): array
     {
-        return self::tx(function () use ($reportId, $userId) {
-            $r = q("SELECT order_id FROM {pick_reports} WHERE id = ? AND user_id = ? AND status = 'OPEN'", [$reportId, $userId])->fetch();
+        return self::tx(function () use ($reportId) {
+            $r = q("SELECT order_id FROM {pick_reports} WHERE id = ? AND status = 'OPEN'", [$reportId])->fetch();
             if (!$r) json_error('Meldung nicht gefunden', 400);
             q("UPDATE {pick_reports} SET status = 'RESOLVED' WHERE id = ?", [$reportId]);
             self::bump((int) $r['order_id']);

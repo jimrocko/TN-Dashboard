@@ -530,8 +530,8 @@ switch (true) {
         json_response(['pickers' => typed(q("SELECT id, display_name AS name FROM {users} WHERE active = 1 ORDER BY role DESC, display_name")->fetchAll(), ['id'])]);
 
     case count($parts) === 3 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && $method === 'GET':
-        $me = require_user();
-        $d = Picking::detail((int) $parts[2], (int) $me['id']);
+        require_user();
+        $d = Picking::detail((int) $parts[2]);
         $d ? json_response($d) : json_error('Bestellung nicht gefunden', 404);
 
     case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && $parts[3] === 'revision' && $method === 'GET':
@@ -566,8 +566,8 @@ switch (true) {
         json_response($r);
 
     case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'reports' && ctype_digit($parts[2]) && $parts[3] === 'resolve' && $method === 'POST':
-        $me = require_user();
-        json_response(Picking::resolve((int) $parts[2], (int) $me['id']));
+        require_user();
+        json_response(Picking::resolve((int) $parts[2]));
 
     case $route === 'picking/location-order' && $method === 'GET':
         require_user();
