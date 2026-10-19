@@ -243,7 +243,8 @@ CREATE TABLE IF NOT EXISTS {p}minifig_catalog (
   first_seen_at TEXT NOT NULL,
   last_seen_at TEXT NOT NULL,
   subset_fetched_at TEXT NULL,
-  subset_json TEXT NULL
+  subset_json TEXT NULL,
+  seq INTEGER NULL
 );
 
 CREATE TABLE IF NOT EXISTS {p}minifig_subset_state (

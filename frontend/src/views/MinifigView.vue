@@ -185,6 +185,18 @@ const applyPrices = () => run('Preise werden übernommen', async () => {
   await loadAll()
   return `${r.imported_combinations} Preise übernommen${r.conflicts ? `, ${r.conflicts} widersprüchlich (übersprungen)` : ''}.`
 })
+// Figurenkatalog ohne API: Datenbank des MinifigFinder Standalone, dessen Installer-ZIP, Ollies Transfer-ZIP oder Katalogdatei
+const catalogFile = ref(null)
+const importCatalog = () => run('Figurenkatalog wird eingelesen', async () => {
+  const form = new FormData()
+  form.append('file', catalogFile.value, catalogFile.value.name)
+  const r = await api.upload('minifig/catalog/import', form, {})
+  catalogFile.value = null
+  await loadAll()
+  const i = r.imported
+  return i.figuren !== undefined ? `${r.quelle}: ${num(i.figuren)} Figuren mit Stückliste, ${num(i.supersets)} Supersets, ${num(i.preise)} Preise übernommen.`
+    : `${r.quelle}: ${Object.entries(i).map(([k, v]) => `${k} ${v}`).join(', ')}.`
+})
 const transferFile = ref(null)
 const importTransfer = () => run('Daten werden übernommen', async () => {
   const form = new FormData()
@@ -350,6 +362,21 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <span v-if="transferFile" class="small faint">{{ transferFile.name }}</span>
           </div>
         </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Figurenkatalog einlesen</h2></div>
+          <div class="panel-body stack-s">
+            <p class="small muted">Figuren mit Stücklisten ohne BrickLink-API übernehmen. Möglich sind die Datenbank des MinifigFinder Standalone (<span class="mono">minifigfinder.db</span>), dessen Installer-ZIP, die Minifig-Transfer-ZIP aus Ollies Dashboard oder eine Katalogdatei (<span class="mono">.json.gz</span>). Gleiche Figuren werden ersetzt, Bestand und Aufträge bleiben unberührt.</p>
+            <div class="facts">
+              <div><span class="faint small">Figuren mit Stückliste</span>{{ num(st.cached_subsets) }}</div>
+              <div><span class="faint small">Mitgelieferter Katalog</span>{{ st.katalog ? `${num(st.katalog.figuren)} Figuren · Stand ${st.katalog.stand}` : '–' }}</div>
+            </div>
+            <div class="toolbar">
+              <label class="btn">Datei wählen<input type="file" accept=".db,.sqlite,.zip,.gz,application/zip,application/gzip" hidden @change="catalogFile = $event.target.files[0]" /></label>
+              <button class="btn btn-primary" :disabled="!catalogFile || busy" @click="importCatalog">Einlesen</button>
+            </div>
+            <span v-if="catalogFile" class="small faint">{{ catalogFile.name }}</span>
+          </div>
+        </section>
       </div>
         </div>
       </details>
@@ -446,14 +473,15 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
       </div>
 
       <section class="panel good-border">
-        <div class="panel-head"><h2>Gemeinsamer Bauplan</h2><span class="faint small">{{ res.joint_buildable_count }} von {{ res.individual_buildable_count }} gleichzeitig baubar</span></div>
+        <div class="panel-head"><h2>Gemeinsamer Bauplan</h2><span class="faint small">{{ res.joint_buildable_count }} Figuren ({{ res.joint_buildable_distinct_count ?? res.joint_buildable_count }} verschiedene) gleichzeitig baubar</span></div>
         <p class="small muted pad">Teile werden im Rechenmodell reserviert und nie doppelt vergeben. Zuerst zählt der wirtschaftliche Vorteil, dann Figurenwert und Bestandsreserve.</p>
         <div class="table-wrap">
           <table class="table">
             <thead><tr><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Teilewert</th><th class="num">Vorteil</th><th>Teile zum Bauen</th></tr></thead>
             <tbody>
               <tr v-for="r in res.joint_buildable" :key="r.minifig_no">
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div>
+                  <div class="small faint">Plan {{ r.buildable_qty || 1 }}×<template v-if="r.individual_buildable_qty > (r.buildable_qty || 1)"> · einzeln max. {{ r.individual_buildable_qty }}×</template></div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}</td><td class="num">{{ eur(r.parts_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide"><MinifigParts :row="{ ...r, catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`, image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` }" /></td>
               </tr>

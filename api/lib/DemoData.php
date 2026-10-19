@@ -107,9 +107,10 @@ final class DemoData
             foreach ($resp[0]['entries'] ?? [] as $e) {
                 $fno = $e['item']['no'];
                 if (q('SELECT 1 FROM {minifig_catalog} WHERE minifig_no = ?', [$fno])->fetch()) continue;
-                q('INSERT INTO {minifig_catalog} (minifig_no, name, category_id, first_seen_at, last_seen_at, subset_fetched_at, subset_json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                q('INSERT INTO {minifig_catalog} (minifig_no, name, category_id, first_seen_at, last_seen_at, subset_fetched_at, subset_json, seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                     [$fno, $e['item']['name'], $e['item']['category_id'], $t, $t, isset($loaded[$fno]) ? $t : null,
-                     isset($loaded[$fno]) ? json_encode($byNo[$fno]['subset'], JSON_UNESCAPED_UNICODE) : null]);
+                     isset($loaded[$fno]) ? json_encode($byNo[$fno]['subset'], JSON_UNESCAPED_UNICODE) : null,
+                     (int) q('SELECT COALESCE(MAX(seq), 0) + 1 FROM {minifig_catalog}')->fetchColumn()]);
             }
         }
         foreach ($data['price_guide'] ?? [] as $p) {

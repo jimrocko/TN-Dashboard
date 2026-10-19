@@ -91,6 +91,12 @@ final class Bsx
     /** Eine Datei aus einem ZIP lesen (unkomprimiert oder Deflate). */
     public static function unzip(string $zip, string $want): ?string
     {
+        return self::unzipFind($zip, fn ($name) => $name === $want);
+    }
+
+    /** Erste Datei im ZIP, deren Name zu $match passt (nur „gespeichert“ und „deflate“, wie sie Python und Windows erzeugen). */
+    public static function unzipFind(string $zip, callable $match): ?string
+    {
         $end = strrpos($zip, "PK\x05\x06");
         if ($end === false) throw new RuntimeException('Transferdatei ist kein gültiges ZIP.');
         $e = unpack('Vsig/vdisk/vstart/ventries/vtotal/Vsize/Voffset', substr($zip, $end, 22));
@@ -99,7 +105,7 @@ final class Bsx
             $c = unpack('Vsig/vmade/vneed/vflags/vmethod/vtime/vdate/Vcrc/Vcsize/Vsize/vnlen/vxlen/vclen/vdisk/vint/Vext/Voffset', substr($zip, $p, 46));
             $name = substr($zip, $p + 46, $c['nlen']);
             $p += 46 + $c['nlen'] + $c['xlen'] + $c['clen'];
-            if ($name !== $want) continue;
+            if (!$match($name)) continue;
             $l = unpack('Vsig/vneed/vflags/vmethod/vtime/vdate/Vcrc/Vcsize/Vsize/vnlen/vxlen', substr($zip, $c['offset'], 30));
             $raw = substr($zip, $c['offset'] + 30 + $l['nlen'] + $l['xlen'], $c['csize']);
             return match ($c['method']) { 0 => $raw, 8 => gzinflate($raw) ?: null, default => null };

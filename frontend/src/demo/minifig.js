@@ -52,6 +52,37 @@ export function supersetsOf(figs, no, color) {
 
 const mfOf = (db) => (db.minifig ??= seedMinifig())
 
+// ---------------------------------------------------------------- Mitgelieferter Figurenkatalog (wie Minifig::ensureBundledCatalog)
+// Nur in privaten Builds steckt der Katalog gepackt in den Daten (seed.katalog_gz = api/sql/minifig-katalog.json.gz als Base64).
+// Er bleibt im Arbeitsspeicher (zu groß für den Browser-Speicher) und ergänzt nur, was im Demo-Katalog fehlt.
+let BASE = null
+const gunzipText = (bytes) => new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+function baseFrom(data) {
+  return { catalog: (data.catalog ?? []).map((c) => ({ minifig_no: c.minifig_no, name: c.name, category_id: c.category_id, first_seen_at: c.first_seen_at,
+    last_seen_at: c.last_seen_at, subset_fetched_at: c.subset_fetched_at, subset: JSON.parse(c.subset_json) })),
+  superset: data.superset ?? [], prices: data.price_guide ?? [], meta: { quelle: data.quelle ?? '', stand: data.stand ?? '', figuren: (data.catalog ?? []).length } }
+}
+export async function loadBaseCatalog() {
+  if (BASE || !seed.katalog_gz) return
+  const bin = Uint8Array.from(atob(seed.katalog_gz), (c) => c.charCodeAt(0))
+  BASE = baseFrom(JSON.parse(await gunzipText(bin)))
+}
+// Katalog in Einfüge-Reihenfolge (wie seq in Minifig.php): erst der Demo-Katalog, dann fehlende Figuren aus dem
+// mitgelieferten Katalog. Hat eine Demo-Figur keine Stückliste, nimmt sie die aus dem mitgelieferten Katalog (Platz bleibt).
+let merged = null
+function catalogOf(mf) {
+  if (!BASE) return mf.catalog
+  if (merged && merged.src === mf.catalog && merged.len === mf.catalog.length) return merged.list
+  const base = new Map(BASE.catalog.map((c) => [c.minifig_no, c]))
+  const list = mf.catalog.map((c) => (!c.subset && base.has(c.minifig_no) ? base.get(c.minifig_no) : c))
+  const own = new Set(mf.catalog.map((c) => c.minifig_no))
+  for (const c of BASE.catalog) if (!own.has(c.minifig_no)) list.push(c)
+  merged = { src: mf.catalog, len: mf.catalog.length, list }
+  return list
+}
+const supersetCount = (mf) => Object.keys(mf.superset).length + (BASE ? BASE.superset.filter((r) => !mf.superset[key(r.item_no, r.color_id)]).length : 0)
+const guidePrices = (mf) => (BASE ? [...BASE.prices, ...mf.prices] : mf.prices)
+
 // ---------------------------------------------------------------- Bestand
 
 // Quelle der Teile wie Minifig::stockSource(): nur Lager, Lager + eigene BSX-Dateien oder nur BSX-Dateien
@@ -148,7 +179,7 @@ function prices(db) {
   const figHist = avg(items.filter((x) => ['MINIFIG', 'MINIFIGURE'].includes(up(x.item_type)) && x.price > 0), false)
   const guideParts = new Map()
   const guideFigs = new Map()
-  for (const r of mfOf(db).prices.filter((x) => x.currency === 'EUR').sort((a, b) => strCmp(a.fetched_at, b.fetched_at))) {
+  for (const r of guidePrices(mfOf(db)).filter((x) => x.currency === 'EUR').sort((a, b) => strCmp(a.fetched_at, b.fetched_at))) {
     if (!(r.avg_price > 0)) continue
     const t = up(r.item_type)
     if (['PART', 'P'].includes(t)) guideParts.set(key(r.item_no, r.color_id), r.avg_price)
@@ -214,6 +245,7 @@ function canAllocate(gs, remaining) {
   const ordered = [...gs].sort((a, b) => a.length - b.length || maxq(b) - maxq(a))
   let best = null
   let bestSlack = -1
+  // Nur geänderte Mengen merken (statt den ganzen Bestand je Schritt zu kopieren), Ergebnis wie im Original
   const search = (i, temp, chosen, slacks) => {
     if (i >= ordered.length) {
       const score = slacks.length ? Math.min(...slacks) : 0
@@ -222,7 +254,8 @@ function canAllocate(gs, remaining) {
     }
     const cands = []
     for (const r of ordered[i]) {
-      const have = temp.get(key(r.item_no, r.color_id)) ?? 0
+      const k = key(r.item_no, r.color_id)
+      const have = (temp.has(k) ? temp.get(k) : remaining.get(k)) ?? 0
       if (r.quantity <= 0 || have < r.quantity) continue
       cands.push([have - r.quantity, have, r])
     }
@@ -233,8 +266,27 @@ function canAllocate(gs, remaining) {
       search(i + 1, next, [...chosen, { ...r, have_before_reservation: have }], [...slacks, slack])
     }
   }
-  search(0, new Map(remaining), [], [])
+  search(0, new Map(), [], [])
   return [best !== null, best ?? [], bestSlack]
+}
+
+// Wie oft lässt sich die Figur bauen? Jede Kopie vom Restbestand abziehen (wie maxBuildableCopies in Minifig.php, Standalone 0.1.7)
+function maxBuildableCopies(gs, st, hardCap = 1000) {
+  if (gs.length && gs.every((alts) => alts.length === 1)) {
+    const totals = new Map()
+    for (const [r] of gs) totals.set(key(r.item_no, r.color_id), (totals.get(key(r.item_no, r.color_id)) ?? 0) + r.quantity)
+    const limits = [...totals].filter(([, q]) => q > 0).map(([k, q]) => Math.floor((st.get(k) ?? 0) / q))
+    return limits.length ? Math.min(...limits) : 0
+  }
+  const remaining = new Map(st)
+  let count = 0
+  while (count < Math.max(1, hardCap)) {
+    const [ok, req] = canAllocate(gs, remaining)
+    if (!ok) break
+    for (const r of req) remaining.set(key(r.item_no, r.color_id), (remaining.get(key(r.item_no, r.color_id)) ?? 0) - r.quantity)
+    count++
+  }
+  return count
 }
 
 function missingAfterReservations(gs, remaining) {
@@ -259,6 +311,7 @@ function jointPlan(cands, st) {
   const remaining = new Map(st)
   let pending = [...cands]
   const selected = []
+  const sourceByNo = new Map()
   const prio = (row, slack) => [row.economic_advantage !== null ? 1 : 0, row.economic_advantage ?? 0, row.figure_value !== null ? 1 : 0, row.figure_value ?? 0, slack, -row.required_groups]
   while (pending.length) {
     let best = null
@@ -271,9 +324,29 @@ function jointPlan(cands, st) {
     if (!best) break
     const [, row, req, slack] = best
     for (const r of req) remaining.set(key(r.item_no, r.color_id), (remaining.get(key(r.item_no, r.color_id)) ?? 0) - r.quantity)
-    selected.push({ minifig_no: row.minifig_no, name: row.name, required_groups: row.required_groups, completeness: 100, figure_value: row.figure_value,
-      parts_value: row.parts_value, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, allocation_slack: slack, reserved: req })
+    sourceByNo.set(String(row.minifig_no), row)
+    selected.push({ minifig_no: row.minifig_no, name: row.name, required_groups: row.required_groups, completeness: 100,
+      buildable_qty: 1, individual_buildable_qty: row.buildable_qty || 1, figure_value: row.figure_value,
+      parts_value: row.parts_value, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, allocation_slack: slack, reserved: [...req] })
     pending = pending.filter((r) => r.minifig_no !== row.minifig_no)
+  }
+  // Runde 2: zusätzliche Kopien aus dem echten Restbestand, erst wenn jede Figur ihre erste hat
+  const byNo = new Map(selected.map((r) => [String(r.minifig_no), r]))
+  while (selected.length) {
+    let best = null
+    for (const no of byNo.keys()) {
+      const [ok, req, slack] = canAllocate(sourceByNo.get(no).groups, remaining)
+      if (!ok) continue
+      const p = prio(sourceByNo.get(no), slack)
+      if (!best || (cmpTuple(p, best[0]) || strCmp(no, best[1])) > 0) best = [p, no, req, slack]
+    }
+    if (!best) break
+    const [, no, req, slack] = best
+    for (const r of req) remaining.set(key(r.item_no, r.color_id), (remaining.get(key(r.item_no, r.color_id)) ?? 0) - r.quantity)
+    const out = byNo.get(no)
+    out.buildable_qty = (out.buildable_qty || 1) + 1
+    out.allocation_slack = Math.min(out.allocation_slack || slack, slack)
+    out.reserved.push(...req)
   }
   const sel = new Set(selected.map((r) => r.minifig_no))
   const conflicts = cands.filter((r) => !sel.has(r.minifig_no)).map((row) => ({
@@ -477,21 +550,27 @@ export function analyze(db, limit = 500) {
   const rows = []
   const buildableInternal = []
   let underMin = 0
-  for (const fig of [...mf.catalog].filter((c) => c.subset).sort((a, b) => strCmp(a.minifig_no, b.minifig_no))) {
+  // Reihenfolge wie im Original: so, wie die Figuren in den Katalog kamen
+  for (const fig of catalogOf(mf).filter((c) => c.subset)) {
     const gs = groups(fig.subset)
     if (!gs.length) continue
     const bom = bomPartCount(gs)
     if (bom < 4) { underMin++; continue }
-    const [req, missing] = chooseRequirements(gs, st)
-    const present = gs.length - missing.length
-    const builds = []
-    if (!missing.length) {
-      const totals = new Map()
-      for (const r of req) totals.set(key(r.item_no, r.color_id), (totals.get(key(r.item_no, r.color_id)) ?? 0) + r.quantity)
-      for (const [k, q] of totals) builds.push(q ? Math.floor((st.get(k) ?? 0) / q) : 0)
+    // Wie Standalone 0.1.7: erst prüfen, ob eine Kopie wirklich aufgeht (Alternativen per Rückverfolgung)
+    const [oneOk, allocated] = canAllocate(gs, st)
+    let req, missing, present, buildQty
+    if (oneOk) {
+      req = allocated.map((r) => ({ ...r, have: st.get(key(r.item_no, r.color_id)) ?? 0 }))
+      missing = []
+      present = gs.length
+      buildQty = maxBuildableCopies(gs, st)
+    } else {
+      [req, missing] = chooseRequirements(gs, st)
+      present = gs.length - missing.length
+      buildQty = 0
     }
     let row = { minifig_no: fig.minifig_no, name: fig.name || fig.minifig_no, required_groups: gs.length, present_groups: present, bom_part_count: bom,
-      missing_count: missing.length, missing: missing.slice(0, 5), buildable_qty: builds.length ? Math.min(...builds) : 0,
+      missing_count: missing.length, missing: missing.slice(0, 5), buildable_qty: buildQty,
       completeness: pyRound((100 * present) / gs.length) }
     row = priceEnrich(row, req, pr)
     row._requirements = req
@@ -524,7 +603,7 @@ export function analyze(db, limit = 500) {
   const s = (x) => x.slice(0, limit)
   return {
     buildable: s(buildable), buildable_by_value: s(byValue), buildable_by_advantage: s(byAdv), almost_by_potential: s(byPot),
-    missing_frequency: s(freq), joint_buildable: s(joint), joint_conflicts: s(conflicts), joint_buildable_count: joint.length, joint_conflict_count: conflicts.length,
+    missing_frequency: s(freq), joint_buildable: s(joint), joint_conflicts: s(conflicts), joint_buildable_count: joint.reduce((t, r) => t + (r.buildable_qty || 1), 0), joint_buildable_distinct_count: joint.length, joint_conflict_count: conflicts.length,
     almost_joint_buildable: s(almostJoint), almost_joint_buildable_count: almostJoint.length, almost_joint_blocked_count: ajBlocked.length,
     almost_joint_excluded: excluded, almost_joint_excluded_count: excluded.length, individual_buildable_count: buildable.length, almost_count: almost.length,
     almost_without_cost_count: almostAll.length - almost.length, under_min_parts_count: underMin, almost: s(almost), all_count: rows.length,
@@ -539,7 +618,7 @@ function statusCounts(db) {
   const t = now()
   const states = Object.values(mf.subsetState)
   return {
-    scanned_variants: Object.keys(mf.superset).length, candidate_minifigs: mf.catalog.length, cached_subsets: mf.catalog.filter((c) => c.subset).length,
+    scanned_variants: supersetCount(mf), candidate_minifigs: catalogOf(mf).length, cached_subsets: catalogOf(mf).filter((c) => c.subset).length,
     subset_permanent_failed: states.filter((s) => s.status === 'permanent').length,
     subset_retry_waiting: states.filter((s) => s.status === 'retry' && s.next_retry_at > t).length,
     subset_retry_ready: states.filter((s) => s.status === 'retry' && (!s.next_retry_at || s.next_retry_at <= t)).length,
@@ -584,7 +663,7 @@ export function status(db) {
     remaining_subsets: Math.max(0, r.candidate_minifigs - r.cached_subsets),
     inventory_parts: db.inventory.reduce((s, i) => s + i.qty, 0), inventory_lots: db.inventory.length,
     inventory_value: Math.round(db.inventory.reduce((s, i) => s + i.qty * i.price, 0) * 100) / 100,
-    inventory_import_at: null, bricklink_configured: true, demo_api: true, source: sourceOf(db), bsx_files: bsxFiles(db),
+    inventory_import_at: null, bricklink_configured: true, demo_api: true, source: sourceOf(db), bsx_files: bsxFiles(db), katalog: BASE?.meta ?? null,
     ...refreshStatus(db), ...budget(db), ...priceStatus(db),
   }
 }
@@ -736,7 +815,7 @@ function almostJointMissingRows(r) {
 function priceExport(db, r) {
   const parts = new Map()
   for (const row of [...r.buildable, ...r.almost]) for (const p of row.pick_list) if (String(p.item_no).trim()) parts.set(`${String(p.item_no).toLowerCase()}\u0000${String(p.color_id).padStart(10, '0')}`, p)
-  const items = [...mfOf(db).catalog].sort((a, b) => strCmp(a.minifig_no.toLowerCase(), b.minifig_no.toLowerCase()))
+  const items = [...catalogOf(mfOf(db))].sort((a, b) => strCmp(a.minifig_no.toLowerCase(), b.minifig_no.toLowerCase()))
     .map((f) => ({ ItemTypeID: 'M', ItemID: f.minifig_no, ItemName: f.name || f.minifig_no, ColorID: '0', ColorName: '', Qty: '1', Price: '0', Condition: 'U', Status: 'I' }))
   for (const k of [...parts.keys()].sort(strCmp)) {
     const p = parts.get(k)
@@ -775,9 +854,19 @@ function priceImport(db, content, apply, filename) {
 const file = (name, type, data) => ({ __file: { name, type, data } })
 
 /** Routen des Minifig-Finders im Demo-Backend (gleich wie api/index.php). */
+function importTransfer(db, me, log, p) {
+  if (!p || p.format !== 'tn-dashboard-minifig-transfer' || !p.demo) throw new DemoError('Keine gültige Minifig-Transferdatei (in der Demo nur Dateien aus der Demo).', 400)
+  const mf = mfOf(db)
+  Object.assign(mf, { superset: p.demo.superset, catalog: p.demo.catalog, subsetState: p.demo.subsetState, decisions: p.demo.decisions, prices: p.price_guide })
+  const imported = { minifig_catalog: mf.catalog.length, minifig_superset_cache: Object.keys(mf.superset).length, price_guide: mf.prices.length }
+  log(me.id, 'minifig_transfer_import', 'minifig', imported)
+  return { ok: true, version: 1, exported_at: p.exported_at, imported }
+}
+
 export async function route(db, method, parts, params, body, requireUser, log, devAllowed) {
   if (parts[0] !== 'minifig') return undefined
   const me = requireUser()
+  await loadBaseCatalog()
   const r2 = parts.slice(1).join('/')
   const needDev = () => { if (!devAllowed(me)) throw new DemoError('Kein Zugang zum Dev-Bereich', 403) }
   if (method === 'GET' && r2 === 'status') return status(db)
@@ -869,18 +958,68 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     return file('minifig-transfer.zip', 'application/zip', zip({ 'minifig-transfer.json': JSON.stringify({ format: 'tn-dashboard-minifig-transfer', version: 1,
       exported_at: now(), demo: { superset: mf.superset, catalog: mf.catalog, subsetState: mf.subsetState, decisions: mf.decisions }, price_guide: mf.prices }) }))
   }
+  if (method === 'POST' && r2 === 'catalog/import') {
+    // Wie Minifig::catalogImport: Katalogdatei (.json.gz), Ollies Transfer-ZIP oder unser Transferpaket. Datenbank-Dateien (.db, Installer-ZIP) liest nur der Server.
+    needDev()
+    const f = body?.get?.('file')
+    if (!f) throw new DemoError('Keine Datei übertragen', 400)
+    const bytes = new Uint8Array(await f.arrayBuffer())
+    let data
+    let quelle
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+      data = JSON.parse(await gunzipText(bytes))
+      if (data?.format !== 'tn-minifig-katalog') throw new DemoError('Keine gültige Katalogdatei.', 400)
+      quelle = 'Katalogdatei'
+    } else if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+      const raw = await unzip(bytes, 'minifig-transfer.json')
+      const p = raw ? JSON.parse(raw) : null
+      if (p?.format === 'tn-dashboard-minifig-transfer') return { quelle: 'Transferpaket', ...importTransfer(db, me, log, p) }
+      if (p?.format !== 'bi-legoshop-minifig-transfer') throw new DemoError('Datenbank-Dateien und Installer-ZIP liest nur der Server. In der Demo: Katalogdatei (.json.gz) oder Ollies Transfer-ZIP.', 400)
+      const cache = (p.price_guide_cache ?? []).flatMap((r) => {
+        let pl = null
+        try { pl = JSON.parse(r.payload_json ?? '') } catch { /* ungültig */ }
+        const avg = Number(pl?.avg_price || pl?.qty_avg_price || 0)
+        return r.currency_code === 'EUR' && avg > 0 && ['M', 'MINIFIG', 'MINIFIGURE', 'P', 'PART'].includes(String(r.item_type).toUpperCase())
+          ? [{ item_type: r.item_type, item_no: r.item_no, color_id: r.color_id ?? -1, new_or_used: r.condition || 'U', currency: 'EUR', avg_price: avg, source: pl.source ?? 'brickstore_import', fetched_at: r.fetched_at }] : []
+      })
+      data = { catalog: p.tables?.minifig_catalog ?? [], superset: p.tables?.minifig_superset_cache ?? [], price_guide: cache }
+      quelle = 'Ollies Transfer-ZIP'
+    } else {
+      throw new DemoError('Datenbank-Dateien (.db) liest nur der Server. In der Demo: Katalogdatei (.json.gz) oder Ollies Transfer-ZIP.', 400)
+    }
+    const mf = mfOf(db)
+    const t = now()
+    const imported = { figuren: 0, supersets: 0, preise: 0 }
+    for (const c of data.catalog ?? []) {
+      if (!c.minifig_no || !c.subset_json) continue
+      const row = { minifig_no: c.minifig_no, name: c.name ?? '', category_id: c.category_id ?? null, first_seen_at: c.first_seen_at ?? t, last_seen_at: c.last_seen_at ?? t,
+        subset_fetched_at: c.subset_fetched_at ?? t, subset: JSON.parse(c.subset_json) }
+      const i = mf.catalog.findIndex((x) => x.minifig_no === c.minifig_no)
+      if (i >= 0) mf.catalog[i] = { ...mf.catalog[i], ...row, first_seen_at: mf.catalog[i].first_seen_at }
+      else mf.catalog.push(row)
+      imported.figuren++
+    }
+    for (const r of data.superset ?? []) {
+      if (!r.item_no || typeof r.response_json !== 'string') continue
+      mf.superset[key(r.item_no, r.color_id)] = { item_no: r.item_no, color_id: r.color_id, fetched_at: r.fetched_at ?? t, response: JSON.parse(r.response_json) }
+      imported.supersets++
+    }
+    for (const r of data.price_guide ?? []) {
+      if ((r.currency ?? 'EUR') !== 'EUR' || !(r.avg_price > 0) || !r.item_no) continue
+      const same = (x) => x.item_type === r.item_type && x.item_no === r.item_no && x.color_id === (r.color_id ?? -1) && x.new_or_used === (r.new_or_used ?? 'U')
+      mf.prices = mf.prices.filter((x) => !same(x))
+      mf.prices.push({ item_type: r.item_type, item_no: r.item_no, color_id: r.color_id ?? -1, new_or_used: r.new_or_used ?? 'U', currency: 'EUR', avg_price: r.avg_price, source: r.source ?? 'katalog', fetched_at: r.fetched_at ?? t })
+      imported.preise++
+    }
+    log(me.id, 'minifig_catalog_import', 'minifig', { quelle, ...imported })
+    return { quelle, imported }
+  }
   if (method === 'POST' && r2 === 'transfer/import') {
     needDev()
     const f = body?.get?.('file')
     if (!f) throw new DemoError('Keine Datei übertragen', 400)
     const raw = await unzip(new Uint8Array(await f.arrayBuffer()), 'minifig-transfer.json')
-    const p = raw ? JSON.parse(raw) : null
-    if (!p || p.format !== 'tn-dashboard-minifig-transfer' || !p.demo) throw new DemoError('Keine gültige Minifig-Transferdatei (in der Demo nur Dateien aus der Demo).', 400)
-    const mf = mfOf(db)
-    Object.assign(mf, { superset: p.demo.superset, catalog: p.demo.catalog, subsetState: p.demo.subsetState, decisions: p.demo.decisions, prices: p.price_guide })
-    const imported = { minifig_catalog: mf.catalog.length, minifig_superset_cache: Object.keys(mf.superset).length, price_guide: mf.prices.length }
-    log(me.id, 'minifig_transfer_import', 'minifig', imported)
-    return { ok: true, version: 1, exported_at: p.exported_at, imported }
+    return importTransfer(db, me, log, raw ? JSON.parse(raw) : null)
   }
   throw new DemoError('Nicht gefunden', 404)
 }

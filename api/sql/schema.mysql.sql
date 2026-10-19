@@ -246,7 +246,8 @@ CREATE TABLE IF NOT EXISTS {p}minifig_catalog (
   first_seen_at DATETIME NOT NULL,
   last_seen_at DATETIME NOT NULL,
   subset_fetched_at DATETIME NULL,
-  subset_json MEDIUMTEXT NULL
+  subset_json MEDIUMTEXT NULL,
+  seq INT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS {p}minifig_subset_state (

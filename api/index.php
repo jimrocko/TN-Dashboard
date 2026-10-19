@@ -51,6 +51,13 @@ function send_file(string $content, string $name, string $type): never
 function upload_body(int $max = 25 * 1024 * 1024): array
 {
     $f = $_FILES['file'] ?? null;
+    if ($f && in_array($f['error'] ?? 0, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+        json_error('Die Datei ist größer, als der Server erlaubt (upload_max_filesize = ' . ini_get('upload_max_filesize') . '). Bitte in der PHP-Einstellung erhöhen oder eine kleinere Datei wählen.', 413);
+    }
+    if (!$f && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 && str_starts_with((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/')) {
+        // post_max_size überschritten: PHP verwirft dann die ganze Anfrage
+        json_error('Die Datei ist größer, als der Server erlaubt (post_max_size = ' . ini_get('post_max_size') . ').', 413);
+    }
     if ($f && ($f['error'] ?? 1) === UPLOAD_ERR_OK) {
         if ($f['size'] > $max) json_error('Datei ist zu groß');
         return [file_get_contents($f['tmp_name']), (string) $f['name']];
@@ -691,6 +698,16 @@ switch (true) {
     case $route === 'minifig/transfer/export' && $method === 'GET':
         Dev::require();
         send_file(Minifig::transferExport(), 'minifig-transfer.zip', 'application/zip');
+
+    case $route === 'minifig/catalog/import' && $method === 'POST':
+        $me = Dev::require();
+        // Die Datenbank des Standalone ist über 20 MB groß; Einlesen braucht mehr Speicher als üblich
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+        [$content, $name] = upload_body(60 * 1024 * 1024);
+        $r = api_try(fn () => Minifig::catalogImport($content, $name));
+        ActivityLog::log((int) $me['id'], 'minifig_catalog_import', 'minifig', ['quelle' => $r['quelle']] + $r['imported']);
+        json_response($r);
 
     case $route === 'minifig/transfer/import' && $method === 'POST':
         $me = Dev::require();

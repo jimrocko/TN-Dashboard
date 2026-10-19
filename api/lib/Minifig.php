@@ -309,6 +309,37 @@ final class Minifig
         return [$best !== null, $best ?? [], $bestSlack];
     }
 
+    /**
+     * Wie oft lässt sich die Figur bauen? Jede Kopie wird vom Restbestand abgezogen (wie _max_buildable_copies
+     * im MinifigFinder Standalone 0.1.7), damit kein Teil doppelt zählt, auch bei Alternativteilen.
+     */
+    private static function maxBuildableCopies(array $groups, array $stock, int $hardCap = 1000): int
+    {
+        // Schneller Weg ohne Alternativen
+        if ($groups && !array_filter($groups, fn ($alts) => count($alts) !== 1)) {
+            $totals = [];
+            foreach ($groups as $alts) {
+                $k = self::key($alts[0]['item_no'], $alts[0]['color_id']);
+                $totals[$k] = ($totals[$k] ?? 0) + (int) $alts[0]['quantity'];
+            }
+            $limits = [];
+            foreach ($totals as $k => $q) if ($q > 0) $limits[] = intdiv((int) ($stock[$k] ?? 0), $q);
+            return $limits ? min($limits) : 0;
+        }
+        $remaining = $stock;
+        $count = 0;
+        while ($count < max(1, $hardCap)) {
+            [$ok, $req] = self::canAllocate($groups, $remaining);
+            if (!$ok) break;
+            foreach ($req as $r) {
+                $k = self::key($r['item_no'], $r['color_id']);
+                $remaining[$k] = (int) ($remaining[$k] ?? 0) - (int) $r['quantity'];
+            }
+            $count++;
+        }
+        return $count;
+    }
+
     private static function missingAfterReservations(array $groups, array $remaining): array
     {
         $temp = $remaining;
@@ -330,12 +361,16 @@ final class Minifig
         return $missing;
     }
 
-    /** Gemeinsamer Bauplan: Bestand virtuell reservieren, wirtschaftlich beste Figur zuerst. */
+    /**
+     * Gemeinsamer Bauplan: Bestand virtuell reservieren, wirtschaftlich beste Figur zuerst.
+     * Runde 1: jede Figur höchstens einmal. Runde 2: weitere Kopien aus dem echten Restbestand (Standalone 0.1.7).
+     */
     private static function jointPlan(array $cands, array $stock): array
     {
         $remaining = $stock;
         $pending = $cands;
         $selected = [];
+        $sourceByNo = [];
         $prio = fn ($row, $slack) => [
             $row['economic_advantage'] !== null ? 1 : 0, $row['economic_advantage'] !== null ? (float) $row['economic_advantage'] : 0.0,
             $row['figure_value'] !== null ? 1 : 0, $row['figure_value'] !== null ? (float) $row['figure_value'] : 0.0,
@@ -357,12 +392,38 @@ final class Minifig
                 $k = self::key($r['item_no'], $r['color_id']);
                 $remaining[$k] = (int) ($remaining[$k] ?? 0) - (int) $r['quantity'];
             }
+            $sourceByNo[(string) $row['minifig_no']] = $row;
             $selected[] = [
                 'minifig_no' => $row['minifig_no'], 'name' => $row['name'], 'required_groups' => $row['required_groups'], 'completeness' => 100,
+                'buildable_qty' => 1, 'individual_buildable_qty' => (int) ($row['buildable_qty'] ?: 1),
                 'figure_value' => $row['figure_value'], 'parts_value' => $row['parts_value'], 'economic_advantage' => $row['economic_advantage'],
                 'price_coverage_pct' => $row['price_coverage_pct'], 'allocation_slack' => $slack, 'reserved' => $req,
             ];
             $pending = array_values(array_filter($pending, fn ($r) => $r['minifig_no'] !== $row['minifig_no']));
+        }
+        // Runde 2: zusätzliche Kopien erst, wenn jede ausgewählte Figur ihre erste hat
+        $idx = [];
+        foreach ($selected as $i => $r) $idx[(string) $r['minifig_no']] = $i;
+        while ($selected) {
+            $best = null;
+            foreach ($idx as $no => $i) {
+                $src = $sourceByNo[$no];
+                [$ok, $req, $slack] = self::canAllocate($src['groups'], $remaining);
+                if (!$ok) continue;
+                $p = $prio($src, $slack);
+                if ($best === null || (self::cmpTuple($p, $best[0]) ?: strcmp((string) $no, $best[1])) > 0) $best = [$p, (string) $no, $req, $slack];
+            }
+            if (!$best) break;
+            [, $no, $req, $slack] = $best;
+            foreach ($req as $r) {
+                $k = self::key($r['item_no'], $r['color_id']);
+                $remaining[$k] = (int) ($remaining[$k] ?? 0) - (int) $r['quantity'];
+            }
+            $i = $idx[$no];
+            $selected[$i]['buildable_qty'] = (int) ($selected[$i]['buildable_qty'] ?: 1) + 1;
+            // Python: min(int(x or slack), slack)
+            $selected[$i]['allocation_slack'] = min((int) ($selected[$i]['allocation_slack'] ?: $slack), (int) $slack);
+            array_push($selected[$i]['reserved'], ...$req);
         }
         $sel = array_flip(array_column($selected, 'minifig_no'));
         $conflicts = [];
@@ -667,12 +728,13 @@ final class Minifig
     /** Komplette lokale Auswertung (keine API). */
     public static function analyze(int $limit = 500): array
     {
+        self::ensureBundledCatalog();
         $stock = self::stock();
         $lots = self::lots();
         $prices = self::prices();
         $rows = $buildableInternal = [];
         $underMin = 0;
-        foreach (q('SELECT minifig_no, name, subset_json FROM {minifig_catalog} WHERE subset_json IS NOT NULL ORDER BY minifig_no')->fetchAll() as $fig) {
+        foreach (q('SELECT minifig_no, name, subset_json FROM {minifig_catalog} WHERE subset_json IS NOT NULL ORDER BY seq, minifig_no')->fetchAll() as $fig) {
             $raw = json_decode((string) $fig['subset_json'], true);
             if (!is_array($raw)) continue;
             $groups = self::groups($raw);
@@ -680,22 +742,23 @@ final class Minifig
             // Eine echte Minifigur hat mindestens 4 Teile
             $bom = self::bomPartCount($groups);
             if ($bom < 4) { $underMin++; continue; }
-            [$req, $missing] = self::chooseRequirements($groups, $stock);
-            $present = count($groups) - count($missing);
-            $builds = [];
-            if (!$missing) {
-                $totals = [];
-                foreach ($req as $r) {
-                    $k = self::key($r['item_no'], $r['color_id']);
-                    $totals[$k] = ($totals[$k] ?? 0) + (int) $r['quantity'];
-                }
-                foreach ($totals as $k => $q) $builds[] = $q ? intdiv((int) ($stock[$k] ?? 0), $q) : 0;
+            // Wie Standalone 0.1.7: erst prüfen, ob eine Kopie wirklich aufgeht (Alternativen per Rückverfolgung)
+            [$oneOk, $allocated] = self::canAllocate($groups, $stock);
+            if ($oneOk) {
+                $req = array_map(fn ($r) => array_merge($r, ['have' => (int) ($stock[self::key((string) $r['item_no'], (int) $r['color_id'])] ?? 0)]), $allocated);
+                $missing = [];
+                $present = count($groups);
+                $buildQty = self::maxBuildableCopies($groups, $stock);
+            } else {
+                [$req, $missing] = self::chooseRequirements($groups, $stock);
+                $present = count($groups) - count($missing);
+                $buildQty = 0;
             }
             $row = [
                 'minifig_no' => (string) $fig['minifig_no'], 'name' => $fig['name'] ?: (string) $fig['minifig_no'],
                 'required_groups' => count($groups), 'present_groups' => $present, 'bom_part_count' => $bom,
                 'missing_count' => count($missing), 'missing' => array_slice($missing, 0, 5),
-                'buildable_qty' => $builds ? min($builds) : 0, 'completeness' => (int) self::pyRound(100 * $present / count($groups)),
+                'buildable_qty' => $buildQty, 'completeness' => (int) self::pyRound(100 * $present / count($groups)),
             ];
             $row = self::priceEnrich($row, $req, $prices);
             $row['_requirements'] = $req;
@@ -742,7 +805,8 @@ final class Minifig
             'buildable' => array_slice($buildable, 0, $limit), 'buildable_by_value' => array_slice($byValue, 0, $limit),
             'buildable_by_advantage' => array_slice($byAdv, 0, $limit), 'almost_by_potential' => array_slice($byPot, 0, $limit),
             'missing_frequency' => array_slice($freq, 0, $limit), 'joint_buildable' => array_slice($joint, 0, $limit),
-            'joint_conflicts' => array_slice($conflicts, 0, $limit), 'joint_buildable_count' => count($joint), 'joint_conflict_count' => count($conflicts),
+            'joint_conflicts' => array_slice($conflicts, 0, $limit), 'joint_buildable_count' => array_sum(array_map(fn ($r) => (int) ($r['buildable_qty'] ?: 1), $joint)),
+            'joint_buildable_distinct_count' => count($joint), 'joint_conflict_count' => count($conflicts),
             'almost_joint_buildable' => array_slice($almostJoint, 0, $limit), 'almost_joint_buildable_count' => count($almostJoint),
             'almost_joint_blocked_count' => count($ajBlocked), 'almost_joint_excluded' => $excluded, 'almost_joint_excluded_count' => count($excluded),
             'individual_buildable_count' => count($buildable), 'almost_count' => count($almost),
@@ -800,6 +864,7 @@ final class Minifig
 
     public static function status(): array
     {
+        self::ensureBundledCatalog();
         $variants = self::variants('core');
         $r = self::statusCounts();
         $inv = q('SELECT COALESCE(SUM(qty), 0) AS parts, COUNT(*) AS lots, COALESCE(SUM(qty * price), 0) AS value FROM {inventory}')->fetch();
@@ -811,6 +876,7 @@ final class Minifig
             'inventory_parts' => (int) $inv['parts'], 'inventory_lots' => (int) $inv['lots'], 'inventory_value' => round((float) $inv['value'], 2),
             'inventory_import_at' => $sync, 'bricklink_configured' => BrickLinkClient::fromConfig()->isConfigured(),
             'source' => self::stockSource(), 'bsx_files' => self::bsxFiles(),
+            'katalog' => json_decode((string) Dev::setting('minifig_bundle_meta'), true) ?: null,
         ];
         return $r + self::refreshStatus() + self::budget() + self::priceStatus();
     }
@@ -847,8 +913,8 @@ final class Minifig
                 q("UPDATE {minifig_catalog} SET name = CASE WHEN ? <> '' THEN ? ELSE name END, category_id = COALESCE(?, category_id), last_seen_at = ? WHERE minifig_no = ?",
                     [$name, html_entity_decode($name, ENT_QUOTES | ENT_HTML5), $cat, $t, $fno]);
             } else {
-                q('INSERT INTO {minifig_catalog} (minifig_no, name, category_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?, ?)',
-                    [$fno, html_entity_decode($name, ENT_QUOTES | ENT_HTML5), $cat, $t, $t]);
+                q('INSERT INTO {minifig_catalog} (minifig_no, name, category_id, first_seen_at, last_seen_at, seq) VALUES (?, ?, ?, ?, ?, ?)',
+                    [$fno, html_entity_decode($name, ENT_QUOTES | ENT_HTML5), $cat, $t, $t, self::nextSeq()]);
             }
         }
         $new = array_values(array_diff(array_map('strval', array_keys($cands)), array_keys($known)));
@@ -1242,6 +1308,186 @@ final class Minifig
             throw $e;
         }
         return ['ok' => true, 'version' => self::TRANSFER_VERSION, 'exported_at' => $p['exported_at'] ?? null, 'imported' => $imported];
+    }
+
+    // ---------------------------------------------------------------- Figurenkatalog ohne API (wie MinifigFinder Standalone)
+
+    /**
+     * Reihenfolge, in der Figuren in den Katalog kamen (Spalte seq). Das Original geht den Katalog in dieser Reihenfolge durch
+     * (SQLite-rowid); bei Gleichstand bestimmt sie die Reihenfolge der Listen. Alte Installationen bekommen die Spalte hier.
+     */
+    private static function ensureSeq(): void
+    {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        if (Dev::setting('minifig_seq') !== '1') {
+            if (!in_array('seq', self::tableColumns('minifig_catalog'), true)) db()->exec('ALTER TABLE ' . t('minifig_catalog') . ' ADD COLUMN seq ' . (Schema::sqlite() ? 'INTEGER' : 'INT') . ' NULL');
+            Dev::setSetting('minifig_seq', '1');
+        }
+        // Ohne seq eingefügte Figuren (alte Stände, Transferpakete) hinten anhängen
+        $open = q('SELECT minifig_no FROM {minifig_catalog} WHERE seq IS NULL ORDER BY ' . (Schema::sqlite() ? 'rowid' : 'minifig_no'))->fetchAll(PDO::FETCH_COLUMN);
+        if (!$open) return;
+        $next = self::nextSeq();
+        foreach ($open as $no) q('UPDATE {minifig_catalog} SET seq = ? WHERE minifig_no = ?', [$next++, $no]);
+    }
+
+    public static function nextSeq(): int
+    {
+        return (int) q('SELECT COALESCE(MAX(seq), 0) + 1 FROM {minifig_catalog}')->fetchColumn();
+    }
+
+    public const BUNDLE_FILE = __DIR__ . '/../sql/minifig-katalog.json.gz';
+
+    /**
+     * Mitgelieferten Katalog (api/sql/minifig-katalog.json.gz, erzeugt mit tools/make-minifig-katalog.py) einmal übernehmen.
+     * Ergänzt nur Fehlendes: per API geholte oder hochgeladene Stücklisten bleiben unverändert. Läuft erneut, wenn sich die Datei ändert.
+     */
+    public static function ensureBundledCatalog(): void
+    {
+        self::ensureSeq();
+        if (!is_file(self::BUNDLE_FILE)) return;
+        $sig = filesize(self::BUNDLE_FILE) . ':' . md5_file(self::BUNDLE_FILE);
+        if (Dev::setting('minifig_bundle') === $sig) return;
+        $raw = gzdecode((string) file_get_contents(self::BUNDLE_FILE));
+        $data = $raw === false ? null : json_decode($raw, true);
+        if (!is_array($data) || ($data['format'] ?? '') !== 'tn-minifig-katalog') return;
+        self::mergeCatalog($data, false);
+        Dev::setSetting('minifig_bundle', $sig);
+        Dev::setSetting('minifig_bundle_meta', json_encode(['quelle' => $data['quelle'] ?? '', 'stand' => $data['stand'] ?? '', 'figuren' => count($data['catalog'] ?? [])], JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Katalog, Supersets und Preise übernehmen. $overwrite = false ergänzt nur (mitgelieferte Datei),
+     * true ersetzt gleiche Einträge (Datei, die jemand bewusst hochlädt).
+     */
+    private static function mergeCatalog(array $data, bool $overwrite): array
+    {
+        $t = now();
+        $out = ['figuren' => 0, 'supersets' => 0, 'preise' => 0];
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $have = [];
+            $seq = self::nextSeq();
+            foreach (q('SELECT minifig_no, subset_json IS NOT NULL AS has FROM {minifig_catalog}')->fetchAll() as $r) $have[(string) $r['minifig_no']] = (bool) $r['has'];
+            foreach ($data['catalog'] ?? [] as $c) {
+                $no = trim((string) ($c['minifig_no'] ?? ''));
+                $sub = $c['subset_json'] ?? null;
+                if ($no === '' || !is_string($sub) || $sub === '') continue;
+                if (isset($have[$no]) && $have[$no] && !$overwrite) continue;
+                if (isset($have[$no])) {
+                    q('UPDATE {minifig_catalog} SET name = ?, category_id = ?, last_seen_at = ?, subset_fetched_at = ?, subset_json = ? WHERE minifig_no = ?',
+                        [(string) ($c['name'] ?? ''), $c['category_id'] ?? null, $c['last_seen_at'] ?? $t, $c['subset_fetched_at'] ?? $t, $sub, $no]);
+                } else {
+                    q('INSERT INTO {minifig_catalog} (minifig_no, name, category_id, first_seen_at, last_seen_at, subset_fetched_at, subset_json, seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$no, (string) ($c['name'] ?? ''), $c['category_id'] ?? null, $c['first_seen_at'] ?? $t, $c['last_seen_at'] ?? $t, $c['subset_fetched_at'] ?? $t, $sub, $seq++]);
+                }
+                $have[$no] = true;
+                $out['figuren']++;
+            }
+            $sets = [];
+            foreach (q('SELECT item_no, color_id FROM {minifig_superset_cache}')->fetchAll() as $r) $sets[self::key((string) $r['item_no'], (int) $r['color_id'])] = true;
+            foreach ($data['superset'] ?? [] as $r) {
+                $k = self::key((string) ($r['item_no'] ?? ''), (int) ($r['color_id'] ?? 0));
+                if (($r['item_no'] ?? '') === '' || !is_string($r['response_json'] ?? null) || (isset($sets[$k]) && !$overwrite)) continue;
+                q('DELETE FROM {minifig_superset_cache} WHERE item_no = ? AND color_id = ?', [(string) $r['item_no'], (int) $r['color_id']]);
+                q('INSERT INTO {minifig_superset_cache} (item_no, color_id, fetched_at, response_json) VALUES (?, ?, ?, ?)',
+                    [(string) $r['item_no'], (int) $r['color_id'], $r['fetched_at'] ?? $t, $r['response_json']]);
+                $sets[$k] = true;
+                $out['supersets']++;
+            }
+            $prices = [];
+            foreach (q("SELECT item_type, item_no, color_id, new_or_used FROM {price_guide} WHERE currency = 'EUR'")->fetchAll() as $r) {
+                $prices[implode("\0", [$r['item_type'], $r['item_no'], (int) $r['color_id'], $r['new_or_used']])] = true;
+            }
+            foreach ($data['price_guide'] ?? [] as $r) {
+                if (($r['currency'] ?? 'EUR') !== 'EUR' || (float) ($r['avg_price'] ?? 0) <= 0 || ($r['item_no'] ?? '') === '') continue;
+                $pk = [(string) $r['item_type'], (string) $r['item_no'], (int) ($r['color_id'] ?? -1), (string) ($r['new_or_used'] ?? 'U')];
+                if (isset($prices[implode("\0", $pk)]) && !$overwrite) continue;
+                q("DELETE FROM {price_guide} WHERE item_type = ? AND item_no = ? AND color_id = ? AND new_or_used = ? AND currency = 'EUR'", $pk);
+                q("INSERT INTO {price_guide} (item_type, item_no, color_id, new_or_used, currency, avg_price, source, fetched_at) VALUES (?, ?, ?, ?, 'EUR', ?, ?, ?)",
+                    [...$pk, (float) $r['avg_price'], (string) ($r['source'] ?? 'katalog'), (string) ($r['fetched_at'] ?? $t)]);
+                $prices[implode("\0", $pk)] = true;
+                $out['preise']++;
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return $out;
+    }
+
+    /** Katalog aus einer SQLite-Datei lesen (MinifigFinder Standalone oder Ollies Dashboard, gleiche Tabellen), nur lesend. */
+    private static function catalogFromSqlite(string $bytes): array
+    {
+        if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) throw new RuntimeException('Die PHP-Erweiterung pdo_sqlite fehlt auf dem Server.');
+        $tmp = tempnam(sys_get_temp_dir(), 'tnkat');
+        file_put_contents($tmp, $bytes);
+        try {
+            $opts = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC];
+            if (defined('PDO::SQLITE_ATTR_OPEN_FLAGS')) $opts[PDO::SQLITE_ATTR_OPEN_FLAGS] = PDO::SQLITE_OPEN_READONLY;
+            $src = new PDO('sqlite:' . $tmp, null, null, $opts);
+            $tables = $src->query("SELECT name FROM sqlite_master WHERE type = 'table'")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('minifig_catalog', $tables, true)) throw new RuntimeException('In der Datenbank gibt es keinen Minifig-Katalog.');
+            $data = ['catalog' => $src->query("SELECT minifig_no, name, category_id, first_seen_at, last_seen_at, subset_fetched_at, subset_json
+                FROM minifig_catalog WHERE subset_json IS NOT NULL AND subset_json <> '' ORDER BY rowid")->fetchAll()];
+            $data['superset'] = in_array('minifig_superset_cache', $tables, true)
+                ? $src->query('SELECT item_no, color_id, fetched_at, response_json FROM minifig_superset_cache')->fetchAll() : [];
+            $data['price_guide'] = in_array('assortment_price_guide_cache', $tables, true)
+                ? self::pricesFromCache($src->query("SELECT item_type, item_no, color_id, condition, currency_code, payload_json, fetched_at FROM assortment_price_guide_cache ORDER BY rowid")->fetchAll()) : [];
+            $src = null;
+            return $data;
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    /** Preise im Format von Ollies assortment_price_guide_cache (payload_json mit avg_price) in unser Format umrechnen. */
+    private static function pricesFromCache(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $r) {
+            if (($r['currency_code'] ?? '') !== 'EUR' || !in_array(strtoupper((string) $r['item_type']), ['M', 'MINIFIG', 'MINIFIGURE', 'P', 'PART'], true)) continue;
+            $p = json_decode((string) ($r['payload_json'] ?? ''), true);
+            // wie local_reference_prices im Original: avg_price, sonst qty_avg_price
+            $avg = is_array($p) ? (float) (($p['avg_price'] ?? 0) ?: ($p['qty_avg_price'] ?? 0)) : 0.0;
+            if ($avg <= 0) continue;
+            $out[] = ['item_type' => $r['item_type'], 'item_no' => $r['item_no'], 'color_id' => (int) ($r['color_id'] ?? -1), 'new_or_used' => $r['condition'] ?: 'U',
+                'currency' => 'EUR', 'avg_price' => $avg, 'source' => (string) ($p['source'] ?? 'brickstore_import'), 'fetched_at' => $r['fetched_at']];
+        }
+        return $out;
+    }
+
+    /**
+     * „Figurenkatalog einlesen“ (Technik): nimmt die Datenbank des MinifigFinder Standalone (.db), dessen Installer-ZIP,
+     * Ollies Minifig-Transfer-ZIP, unser Transferpaket oder eine Katalogdatei (.json.gz). Gleiche Einträge werden ersetzt.
+     */
+    public static function catalogImport(string $bytes, string $name = ''): array
+    {
+        if ($bytes === '') throw new RuntimeException('Leere Datei.');
+        if (str_starts_with($bytes, "SQLite format 3\0")) return ['quelle' => 'Datenbank', 'imported' => self::mergeCatalog(self::catalogFromSqlite($bytes), true)];
+        if (str_starts_with($bytes, "\x1f\x8b")) {
+            $data = json_decode((string) gzdecode($bytes), true);
+            if (!is_array($data) || ($data['format'] ?? '') !== 'tn-minifig-katalog') throw new RuntimeException('Keine gültige Katalogdatei.');
+            return ['quelle' => 'Katalogdatei', 'imported' => self::mergeCatalog($data, true)];
+        }
+        if (!str_starts_with($bytes, 'PK')) throw new RuntimeException('Unbekanntes Format. Erwartet wird eine .db-, .zip- oder .json.gz-Datei.');
+        $json = Bsx::unzip($bytes, 'minifig-transfer.json');
+        if ($json !== null) {
+            $p = json_decode($json, true);
+            if (($p['format'] ?? '') === 'tn-dashboard-minifig-transfer') return ['quelle' => 'Transferpaket'] + self::transferImport($bytes);
+            if (($p['format'] ?? '') !== 'bi-legoshop-minifig-transfer') throw new RuntimeException('Falsches Transferformat.');
+            // Transfer-ZIP aus Ollies Dashboard
+            $tb = $p['tables'] ?? [];
+            $data = ['catalog' => $tb['minifig_catalog'] ?? [], 'superset' => $tb['minifig_superset_cache'] ?? [], 'price_guide' => self::pricesFromCache($p['price_guide_cache'] ?? [])];
+            return ['quelle' => 'Ollies Transfer-ZIP', 'imported' => self::mergeCatalog($data, true)];
+        }
+        // Installer-ZIP des MinifigFinder Standalone: enthält data/minifigfinder.db
+        $db = Bsx::unzipFind($bytes, fn ($n) => (bool) preg_match('~(^|/)(minifigfinder|legoshop)\.db$~i', $n));
+        if ($db === null) throw new RuntimeException('In der ZIP-Datei wurde kein Minifig-Katalog gefunden.');
+        return ['quelle' => 'Installer-ZIP', 'imported' => self::mergeCatalog(self::catalogFromSqlite($db), true)];
     }
 
     private static function tableColumns(string $tb): array
