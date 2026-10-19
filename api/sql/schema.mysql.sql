@@ -288,5 +288,21 @@ CREATE TABLE IF NOT EXISTS {p}minifig_bsx (
   lots INT NOT NULL DEFAULT 0,
   parts INT NOT NULL DEFAULT 0,
   uploaded_by INT UNSIGNED NULL,
-  created_at DATETIME NOT NULL
+  created_at DATETIME NOT NULL,
+  sort_order INT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Minifig-Finder: gemeinsame Sammlung „Fertige Figuren“ (open → export → done), Teile je Lot in lots_json
+CREATE TABLE IF NOT EXISTS {p}minifig_builds (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  minifig_no VARCHAR(40) NOT NULL,
+  name VARCHAR(255) NOT NULL DEFAULT '',
+  qty INT NOT NULL DEFAULT 1,
+  lots_json MEDIUMTEXT NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'open',
+  user_id INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL,
+  export_by INT UNSIGNED NULL,
+  export_at DATETIME NULL,
+  done_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

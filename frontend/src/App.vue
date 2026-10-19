@@ -5,6 +5,7 @@ import AppHeader from './components/AppHeader.vue'
 import BottomNav from './components/BottomNav.vue'
 import XpShell from './components/XpShell.vue'
 import DebugOverlay from './components/DebugOverlay.vue'
+import PageLoading from './components/PageLoading.vue'
 import { useSettings } from './stores/settings'
 import { IS_TUTORIAL } from './api'
 import { help, helpSteps, closeHelp } from './tutorial/help'
@@ -32,6 +33,7 @@ watch(() => route.path, () => closeHelp())
     <BottomNav />
   </div>
   <DebugOverlay v-if="chrome" />
+  <PageLoading v-if="chrome" />
   <Coach v-if="IS_TUTORIAL" />
   <Coach v-else-if="help.topic" :key="help.run" :help="helpSteps(help.topic)" @close="closeHelp" />
 </template>

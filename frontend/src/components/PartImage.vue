@@ -6,7 +6,8 @@ import { Shapes } from 'lucide-vue-next'
 // Scheitert ein Bild, kommt die nächste Adresse dran (z. B. Minifigur: BrickOwl-Bild → BrickLink MN → altes BrickLink-Bild).
 // Ohne Internet oder bei unbekannten Teilen erscheint ein Platzhalter.
 // type: BrickLink-Art (PART, MINIFIG, SET …); Minifiguren und Sets haben eigene Bildpfade ohne Farbe.
-const props = defineProps({ no: String, color: Number, type: String, src: String, size: { type: Number, default: 64 } })
+// eager: sofort laden. In aufklappbaren Teilelisten nötig, dort lädt Safari (iPad) Bilder mit loading="lazy" oft nie.
+const props = defineProps({ no: String, color: Number, type: String, src: String, size: { type: Number, default: 64 }, eager: Boolean })
 const OTHER = { MINIFIG: 'MN', M: 'MN', SET: 'SN', S: 'SN', GEAR: 'GN', BOOK: 'BN', INSTRUCTION: 'IN', I: 'IN' }
 const urls = computed(() => {
   const no = encodeURIComponent(props.no ?? '')
@@ -25,7 +26,7 @@ watch(urls, () => { tries.value = 0 })
 
 <template>
   <span class="pimg" :style="{ width: `${size}px`, height: `${size}px` }">
-    <img v-if="url" :key="url" :src="url" alt="" loading="lazy" referrerpolicy="no-referrer" @error="tries++" />
+    <img v-if="url" :key="url" :src="url" alt="" :loading="eager ? 'eager' : 'lazy'" referrerpolicy="no-referrer" @error="tries++" />
     <Shapes v-else :size="Math.round(size * 0.45)" class="faint" />
   </span>
 </template>

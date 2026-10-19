@@ -285,5 +285,21 @@ CREATE TABLE IF NOT EXISTS {p}minifig_bsx (
   lots INTEGER NOT NULL DEFAULT 0,
   parts INTEGER NOT NULL DEFAULT 0,
   uploaded_by INTEGER NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  sort_order INTEGER NULL
+);
+
+-- Minifig-Finder: gemeinsame Sammlung „Fertige Figuren“ (open → export → done), Teile je Lot in lots_json
+CREATE TABLE IF NOT EXISTS {p}minifig_builds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  minifig_no TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  qty INTEGER NOT NULL DEFAULT 1,
+  lots_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  user_id INTEGER NULL,
+  created_at TEXT NOT NULL,
+  export_by INTEGER NULL,
+  export_at TEXT NULL,
+  done_at TEXT NULL
 );

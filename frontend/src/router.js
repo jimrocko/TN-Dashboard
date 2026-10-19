@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory, createMemoryHistory } from 'vue-rou
 import { useAuth } from './stores/auth'
 import { logActivity, IS_DEMO } from './api'
 import { moduleById } from './modules'
+import { markNavigation } from './utils/pageLoading'
 
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
@@ -42,9 +43,9 @@ const router = createRouter({
     { path: '/umlagern', component: TransferView, meta: { title: 'Umlagern', module: 'umlagern' } },
     { path: '/inventur', component: StocktakeView, meta: { title: 'Inventur & Bestandsprüfung', module: 'inventur' } },
     { path: '/analyse', component: AnalysisView, meta: { title: 'Lager- & Auftragsanalyse', module: 'analyse' } },
-    { path: '/pickliste', component: PicklisteView, meta: { title: 'Pickliste', module: 'pickliste' } },
+    { path: '/pickliste', component: PicklisteView, meta: { title: 'Pickliste', module: 'pickliste', ownLoader: true } },
     { path: '/pickliste/statistik', component: PicklisteStatsView, meta: { title: 'Pick-Statistik', module: 'pickliste', dev: true } },
-    { path: '/minifig', component: MinifigView, meta: { title: 'Minifig-Finder', module: 'minifig' } },
+    { path: '/minifig', component: MinifigView, meta: { title: 'Minifig-Finder', module: 'minifig', loadingText: 'Figuren werden berechnet …' } },
     { path: '/scanner', component: ScannerView, meta: { title: 'Teile-Scanner', module: 'scanner' } },
     { path: '/teil/:no', component: PartView, meta: { title: 'Teil', module: 'inventar' } },
     { path: '/lagerort/:code', component: LocationView, meta: { title: 'Lagerort', module: 'inventar' } },
@@ -82,6 +83,7 @@ router.beforeEach(async (to) => {
 // Jeder Modulaufruf landet im Protokoll (nur beim Wechsel des Moduls, nicht bei jedem Filter).
 const moduleOf = (r) => r.meta?.module ?? (r.path?.startsWith('/modul/') ? r.params.id : null)
 router.afterEach((to, from) => {
+  markNavigation()
   const m = moduleOf(to)
   if (m && m !== moduleOf(from)) logActivity('open', m)
 })

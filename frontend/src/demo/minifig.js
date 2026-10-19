@@ -4,15 +4,14 @@ import seed from '../../../api/sql/demo-data.json'
 import { DemoError, now } from './backend.js'
 import { pyRound, cmpTuple, strCmp, kbnAdd } from './rules.js'
 import { zip, buildBsx, parseBsx, unzip } from '../utils/files.js'
+import { LIST_FILES, listCsv, listBsx, almostJointCsv, almostJointBsx, csv, eurCsv as eur } from '../utils/minifigExport.js'
+export { LIST_FILES, listCsv, listBsx }
 
 const CORE_PREFIXES = ['torso ', 'hips ', 'hips and ', 'legs ', 'minifigure, head', 'minifigure head', 'minifigure, hair', 'minifigure hair',
   'minifigure, headgear', 'minifigure headgear', 'minifigure, neckwear', 'minifigure neckwear']
 const DAILY_BUDGET = 5000
 const RESERVE = 500
-export const LIST_FILES = {
-  all: '01-baubar-und-1-teil-fehlt', buildable: '02-einzeln-baubar', joint: '03-gemeinsam-baubar',
-  almost_joint: '04-gemeinsam-ergaenzbar-1-teil-fehlt', almost: '05-nur-1-teil-fehlt',
-}
+
 
 const key = (no, color) => `${no}|${color}`
 const isCore = (name) => { const v = String(name ?? '').trim().toLowerCase(); return CORE_PREFIXES.some((p) => v.startsWith(p)) }
@@ -89,12 +88,28 @@ const guidePrices = (mf) => (BASE ? [...BASE.prices, ...mf.prices] : mf.prices)
 export const SOURCES = ['bestand', 'beides', 'bsx']
 const sourceOf = (db) => (SOURCES.includes(mfOf(db).source) ? mfOf(db).source : 'bestand')
 
+// BSX-Dateien in ihrer Reihenfolge (sortOrder), wie Minifig::bsxRows: Remarks und Bemerkung getrennt, Dateiname in „file“
+const bsxSorted = (mf) => [...(mf.bsx ?? [])].sort((a, b) => (a.sort_order ?? a.id) - (b.sort_order ?? b.id) || a.id - b.id)
 function bsxRows(db) {
   const out = []
-  for (const f of mfOf(db).bsx ?? []) {
-    f.items.forEach((r, n) => out.push({ inventory_id: 800000000 + f.id * 100000 + n, item_no: r.item_no, item_name: r.item_name, color_id: r.color_id,
-      color_name: r.color_name, quantity: r.quantity, new_or_used: r.condition, remarks: (f.name + (r.remarks ? ` · ${r.remarks}` : '')).trim(),
-      description: null, stock_room_id: '' }))
+  bsxSorted(mfOf(db)).forEach((f, rank) => {
+    f.items.forEach((r, n) => {
+      if (r.quantity <= 0) return
+      out.push({ inventory_id: BSX_BASE + f.id * 100000 + n, item_no: r.item_no, item_name: r.item_name, color_id: r.color_id,
+        color_name: r.color_name, quantity: r.quantity, new_or_used: r.condition, remarks: r.remarks ?? '', description: r.comments ?? '', stock_room_id: '', file: f.name, _rank: rank + 1 })
+    })
+  })
+  return out
+}
+const BSX_BASE = 800000000
+const priorityOf = (db) => (mfOf(db).priority === 'bsx' ? 'bsx' : 'lager')
+
+// Von gesammelten Figuren belegte Mengen je Lot (wie Minifig::reservedByBuilds)
+function reservedByBuilds(db) {
+  const out = new Map()
+  for (const b of mfOf(db).builds ?? []) {
+    if (b.status !== 'open' && b.status !== 'export') continue
+    for (const l of b.lots) out.set(l.inventory_id, (out.get(l.inventory_id) ?? 0) + l.quantity)
   }
   return out
 }
@@ -106,10 +121,16 @@ function partRows(db) {
   if (src !== 'bsx') {
     rows = db.inventory.filter((i) => i.item_type === 'PART' && i.qty > 0)
       .map((i) => ({ inventory_id: i.bl_inventory_id ?? i.id, item_no: i.item_no, item_name: i.name, color_id: i.color_id, color_name: i.color_name,
-        quantity: i.qty, new_or_used: i.new_or_used ?? '', remarks: locCode(db, i.location_id), description: i.description ?? null, stock_room_id: '' }))
+        quantity: i.qty, new_or_used: i.new_or_used ?? '', remarks: locCode(db, i.location_id), description: i.description ?? null, stock_room_id: '', _rank: 0 }))
   }
   if (src !== 'bestand') rows = rows.concat(bsxRows(db))
-  return rows.sort((a, b) => strCmp(a.item_no.toLowerCase(), b.item_no.toLowerCase()) || a.color_id - b.color_id || a.inventory_id - b.inventory_id)
+  const used = reservedByBuilds(db)
+  if (used.size) rows = rows.map((r) => ({ ...r, quantity: r.quantity - (used.get(r.inventory_id) ?? 0) })).filter((r) => r.quantity > 0)
+  // Prio: Lager = Rang 0, BSX-Dateien 1, 2, …; bei „BSX zuerst“ das Lager ans Ende (wie Minifig::partRows)
+  const bsxFirst = priorityOf(db) === 'bsx'
+  const rank = (r) => (bsxFirst && r._rank === 0 ? Number.MAX_SAFE_INTEGER : r._rank)
+  return rows.sort((a, b) => strCmp(a.item_no.toLowerCase(), b.item_no.toLowerCase()) || a.color_id - b.color_id || rank(a) - rank(b) || a.inventory_id - b.inventory_id)
+    .map(({ _rank, ...r }) => r)
 }
 
 function variants(db, scope = 'core') {
@@ -141,17 +162,17 @@ function lotsOf(db) {
   return out
 }
 
-const bsxFiles = (db) => (mfOf(db).bsx ?? []).map(({ id, name, lots, parts, created_at, uploaded_by }) => ({ id, name, lots, parts, created_at, uploaded_by }))
+const bsxFiles = (db) => bsxSorted(mfOf(db)).map(({ id, name, lots, parts, created_at, uploaded_by }) => ({ id, name, lots, parts, created_at, uploaded_by }))
 
 function addBsx(db, content, name, user) {
   const [rows] = parseBsx(content)
   const items = rows.filter((r) => r.item_type.toUpperCase() === 'P').map((r) => ({ item_no: r.item_no, item_name: r.item_name, color_id: Math.max(0, r.color_id),
-    color_name: r.color_name, quantity: r.quantity, condition: r.condition, remarks: r.remarks ?? '' }))
+    color_name: r.color_name, quantity: r.quantity, condition: r.condition, remarks: r.remarks ?? '', comments: r.comments ?? '', price: r.price ?? 0 }))
   if (!items.length) throw new DemoError('In der Datei sind keine Teile (nur Teile zählen für Minifiguren)', 422)
   const mf = mfOf(db)
   mf.bsx ??= []
   const id = (mf.bsx.at(-1)?.id ?? 0) + 1
-  const f = { id, name: (name || 'datei.bsx').split(/[\\/]/).pop(), items, lots: items.length, parts: items.reduce((s, r) => s + r.quantity, 0), created_at: now(), uploaded_by: user.display_name }
+  const f = { id, sort_order: Math.max(0, ...mf.bsx.map((x) => x.sort_order ?? x.id)) + 1, name: (name || 'datei.bsx').split(/[\\/]/).pop(), items, lots: items.length, parts: items.reduce((s, r) => s + r.quantity, 0), created_at: now(), uploaded_by: user.display_name }
   mf.bsx.push(f)
   return { id, name: f.name, lots: f.lots, parts: f.parts }
 }
@@ -416,7 +437,7 @@ function almostJointPlan(cands, residual) {
 const copyLots = (lots) => new Map([...lots].map(([k, ls]) => [k, ls.map((l) => ({ ...l, remaining_quantity: l.quantity }))]))
 const colorName = (ls) => ls?.find((l) => l.color_name)?.color_name ?? ''
 const source = (l, take, withLot) => ({ inventory_id: l.inventory_id, quantity: take, ...(withLot ? { lot_quantity: l.quantity } : {}),
-  remarks: l.remarks ?? '', description: l.description ?? '', stock_room_id: '', new_or_used: l.new_or_used ?? '' })
+  remarks: l.remarks ?? '', description: l.description ?? '', stock_room_id: '', new_or_used: l.new_or_used ?? '', ...(l.file !== undefined ? { file: l.file } : {}) })
 const urls = (no) => ({ catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(no)}`,
   image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(no)}.png` })
 
@@ -663,7 +684,7 @@ export function status(db) {
     remaining_subsets: Math.max(0, r.candidate_minifigs - r.cached_subsets),
     inventory_parts: db.inventory.reduce((s, i) => s + i.qty, 0), inventory_lots: db.inventory.length,
     inventory_value: Math.round(db.inventory.reduce((s, i) => s + i.qty * i.price, 0) * 100) / 100,
-    inventory_import_at: null, bricklink_configured: true, demo_api: true, source: sourceOf(db), bsx_files: bsxFiles(db), katalog: BASE?.meta ?? null,
+    inventory_import_at: null, bricklink_configured: true, demo_api: true, source: sourceOf(db), priority: priorityOf(db), bsx_files: bsxFiles(db), katalog: BASE?.meta ?? null,
     ...refreshStatus(db), ...budget(db), ...priceStatus(db),
   }
 }
@@ -769,49 +790,6 @@ export function decide(db, no, action, reason) {
 
 // ---------------------------------------------------------------- Exporte (im Browser erzeugt)
 
-function exportRows(kind, r) {
-  if (!LIST_FILES[kind]) kind = 'all'
-  const jointIds = new Set(r.joint_buildable.map((x) => x.minifig_no))
-  const ajIds = new Set(r.almost_joint_buildable.map((x) => x.minifig_no))
-  const rows = { joint: r.joint_buildable, almost_joint: r.almost_joint_buildable, buildable: r.buildable, almost: r.almost }[kind] ?? [...r.buildable, ...r.almost]
-  return rows.map((row) => {
-    const no = String(row.minifig_no)
-    const status = ajIds.has(no) ? 'Gemeinsam ergänzbar · 1 Teil fehlt' : (row.missing ?? []).length ? 'Nur 1 Teil fehlt' : jointIds.has(no) ? 'Gemeinsam baubar' : 'Einzeln baubar'
-    const miss = (row.missing ?? []).length === 1 ? row.missing[0] : null
-    const locs = new Set()
-    for (const p of row.pick_list ?? []) {
-      if ((p.shortfall ?? 0) > 0) continue
-      for (const s of p.sources ?? []) { const l = String(s.remarks || s.stock_room_id || '').trim(); if (l) locs.add(`${p.item_no}: ${l}`) }
-    }
-    return { minifig_no: no, name: String(row.name), status, completeness: row.completeness ?? null, bom_part_count: row.bom_part_count ?? null,
-      figure_value: row.figure_value ?? null, parts_value: row.parts_value ?? null, completion_cost: row.completion_cost ?? null, economic_advantage: row.economic_advantage ?? null,
-      missing_item_no: miss?.item_no ?? '', missing_item_name: miss?.item_name ?? '', missing_color_id: miss?.color_id ?? null,
-      missing_quantity: miss ? Math.max(0, miss.quantity - (miss.have ?? 0)) : '', locations: [...locs].join(' | ') }
-  })
-}
-
-const csvCell = (v) => { const s = String(v ?? ''); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-const csv = (header, rows) => '﻿' + [header, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n') + '\r\n'
-const eur = (v) => (v === null || v === undefined ? '' : Number(v).toFixed(2).replace('.', ','))
-
-export function listCsv(kind, r) {
-  return csv(['Minifigur', 'Name', 'Status', 'Vollständigkeit %', 'Teileanzahl', 'Figurenwert', 'Lagerteilewert', 'Fehlteilkosten', 'Wirtschaftlicher Vorteil',
-    'Fehlteil', 'Fehlteilname', 'Farbe', 'Fehlmenge', 'Lagerorte'], exportRows(kind, r).map((x) => [x.minifig_no, x.name, x.status, x.completeness ?? '',
-    x.bom_part_count ?? '', eur(x.figure_value), eur(x.parts_value), eur(x.completion_cost), eur(x.economic_advantage), x.missing_item_no, x.missing_item_name,
-    x.missing_color_id ?? '', x.missing_quantity, x.locations]))
-}
-
-export function listBsx(kind, r) {
-  return buildBsx(exportRows(kind, r).map((x) => ({ ItemTypeID: 'M', ItemID: x.minifig_no, ItemName: x.name, ColorID: '0', Qty: '1', Price: '0', Condition: 'U', Status: 'I',
-    Remarks: x.status + (x.missing_item_no ? ` | Fehlteil: ${x.missing_item_no} Farbe ${x.missing_color_id}` : '') })))
-}
-
-function almostJointMissingRows(r) {
-  return r.almost_joint_buildable.flatMap((f) => f.missing.map((m) => ({ minifig_no: String(f.minifig_no), minifig_name: String(f.name), item_no: String(m.item_no),
-    item_name: m.item_name || String(m.item_no), color_id: m.color_id, quantity: Math.max(1, Math.max(0, m.quantity) - Math.max(0, m.have ?? 0)),
-    estimated_total: f.completion_cost, figure_value: f.figure_value, economic_advantage: f.economic_advantage })))
-}
-
 function priceExport(db, r) {
   const parts = new Map()
   for (const row of [...r.buildable, ...r.almost]) for (const p of row.pick_list) if (String(p.item_no).trim()) parts.set(`${String(p.item_no).toLowerCase()}\u0000${String(p.color_id).padStart(10, '0')}`, p)
@@ -854,6 +832,127 @@ function priceImport(db, content, apply, filename) {
 const file = (name, type, data) => ({ __file: { name, type, data } })
 
 /** Routen des Minifig-Finders im Demo-Backend (gleich wie api/index.php). */
+// ---------------------------------------------------------------- Fertige Figuren (gemeinsame Sammlung, wie Minifig.php)
+
+const exportActive = (db) => (mfOf(db).builds ?? []).some((b) => b.status === 'export')
+export const buildExportActive = exportActive
+const userName = (db, id) => db.users.find((u) => u.id === id)?.display_name ?? null
+
+function builds(db) {
+  const list = (mfOf(db).builds ?? []).filter((b) => b.status === 'open' || b.status === 'export')
+  const ex = list.find((b) => b.status === 'export')
+  return {
+    builds: list.map((b) => ({ id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, status: b.status, created_at: b.created_at,
+      user_name: userName(db, b.user_id), lots: b.lots, parts: b.lots.reduce((t, l) => t + l.quantity, 0) })),
+    export: ex ? { by: userName(db, ex.export_by), at: ex.export_at } : null,
+    transfer_open: (db.blExports ?? []).some((x) => x.open),
+  }
+}
+
+function addBuild(db, no, qty, lots, me) {
+  no = String(no ?? '').trim()
+  if (!no || !(qty >= 1)) throw new DemoError('Figur oder Anzahl fehlt', 422)
+  const want = new Map()
+  for (const l of lots ?? []) {
+    const id = Number(l.inventory_id)
+    const n = Number(l.quantity)
+    if (id > 0 && n > 0) want.set(id, (want.get(id) ?? 0) + n)
+  }
+  if (!want.size) throw new DemoError('Keine Teile angegeben', 422)
+  const avail = new Map(partRows(db).map((r) => [r.inventory_id, r]))
+  const stored = []
+  for (const [id, n] of want) {
+    const r = avail.get(id)
+    if (!r || r.quantity < n) throw new DemoError('Ein Teil ist nicht mehr in dieser Menge da (vielleicht hat jemand anderes es gerade gesammelt). Die Liste wird neu berechnet.', 409)
+    const l = { inventory_id: id, quantity: n, item_no: r.item_no, item_name: r.item_name, color_id: r.color_id, color_name: r.color_name, remarks: r.remarks ?? '', condition: r.new_or_used ?? '' }
+    if (id >= BSX_BASE) Object.assign(l, { kind: 'bsx', bsx_id: Math.floor((id - BSX_BASE) / 100000), line: (id - BSX_BASE) % 100000, file: r.file ?? '' })
+    else {
+      const inv = db.inventory.find((i) => i.bl_inventory_id === id) ?? db.inventory.find((i) => i.id === id && (i.bl_inventory_id === null || i.bl_inventory_id === undefined))
+      Object.assign(l, { kind: 'bestand', local_id: inv?.id ?? null, bl_lot_id: inv?.bl_inventory_id ?? null })
+    }
+    stored.push(l)
+  }
+  const mf = mfOf(db)
+  mf.builds ??= []
+  const name = catalogOf(mf).find((c) => c.minifig_no === no)?.name || no
+  const b = { id: (mf.builds.at(-1)?.id ?? 0) + 1, minifig_no: no, name, qty, lots: stored, status: 'open', user_id: me.id, created_at: now() }
+  mf.builds.push(b)
+  return { id: b.id, minifig_no: no, name, qty, parts: [...want.values()].reduce((t, n) => t + n, 0) }
+}
+
+function exportLots(db) {
+  const agg = new Map()
+  for (const b of mfOf(db).builds ?? []) {
+    if (b.status !== 'export') continue
+    for (const l of b.lots) {
+      if (agg.has(l.inventory_id)) agg.get(l.inventory_id).quantity += l.quantity
+      else agg.set(l.inventory_id, { ...l })
+    }
+  }
+  return [...agg.values()]
+}
+
+function buildExportFiles(db) {
+  let xml = ''
+  const noLot = []
+  const files = new Map()
+  for (const l of exportLots(db)) {
+    if (l.kind === 'bsx') {
+      const f = files.get(l.bsx_id) ?? { id: l.bsx_id, name: l.file ?? '', lots: 0, parts: 0 }
+      f.lots++
+      f.parts += l.quantity
+      files.set(l.bsx_id, f)
+    } else if (l.bl_lot_id) xml += `<ITEM><LOTID>${l.bl_lot_id}</LOTID><QTY>-${l.quantity}</QTY></ITEM>\n`
+    else noLot.push(l)
+  }
+  const b = builds(db)
+  return { xml: xml ? `<INVENTORY>\n${xml}</INVENTORY>\n` : '', bricklink_lots: (xml.match(/<ITEM>/g) ?? []).length, without_lot: noLot,
+    bsx_files: [...files.values()], export_by: b.export?.by ?? null, export_at: b.export?.at ?? null, ...b }
+}
+
+function bsxMinus(db, items, fileId) {
+  const out = items.map((r) => ({ ...r }))
+  for (const l of exportLots(db)) {
+    if (l.kind !== 'bsx' || l.bsx_id !== fileId || !out[l.line]) continue
+    out[l.line].quantity = Math.max(0, out[l.line].quantity - l.quantity)
+  }
+  return out
+}
+
+function finishBuildExport(db, done, applyBsx) {
+  if (!exportActive(db)) throw new DemoError('Dieser Abschluss wurde schon beendet.', 409)
+  const mf = mfOf(db)
+  const figs = mf.builds.filter((b) => b.status === 'export').reduce((t, b) => t + b.qty, 0)
+  let parts = 0
+  let lotsChanged = 0
+  const files = []
+  if (done) {
+    for (const l of exportLots(db)) {
+      if (l.kind !== 'bestand') continue
+      const inv = (l.local_id ? db.inventory.find((i) => i.id === l.local_id) : null) ?? (l.bl_lot_id ? db.inventory.find((i) => i.bl_inventory_id === l.bl_lot_id) : null)
+      if (!inv) continue
+      parts += Math.min(l.quantity, inv.qty)
+      inv.qty -= l.quantity
+      inv.updated_at = now()
+      if (inv.qty <= 0) db.inventory = db.inventory.filter((i) => i !== inv)
+      lotsChanged++
+    }
+    for (const fid of [...new Set((applyBsx ?? []).map(Number))]) {
+      const f = (mf.bsx ?? []).find((x) => x.id === fid)
+      if (!f) continue
+      f.items = bsxMinus(db, f.items, fid)
+      const alive = f.items.filter((r) => r.quantity > 0)
+      f.lots = alive.length
+      f.parts = alive.reduce((t, r) => t + r.quantity, 0)
+      files.push(fid)
+    }
+    for (const b of mf.builds) if (b.status === 'export') { b.status = 'done'; b.done_at = now() }
+  } else {
+    for (const b of mf.builds) if (b.status === 'export') { b.status = 'open'; b.export_by = null; b.export_at = null }
+  }
+  return { done, figures: figs, parts, lots: lotsChanged, bsx_files: files }
+}
+
 function importTransfer(db, me, log, p) {
   if (!p || p.format !== 'tn-dashboard-minifig-transfer' || !p.demo) throw new DemoError('Keine gültige Minifig-Transferdatei (in der Demo nur Dateien aus der Demo).', 400)
   const mf = mfOf(db)
@@ -883,6 +982,53 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     mfOf(db).source = body.source
     log(me.id, 'minifig_source', 'minifig', { quelle: body.source })
     return { source: body.source }
+  }
+  if (method === 'POST' && r2 === 'priority') {
+    if (!['lager', 'bsx'].includes(body.priority)) throw new DemoError('Unbekannte Reihenfolge', 422)
+    const mf = mfOf(db)
+    mf.priority = body.priority
+    ;(body.bsx_order ?? []).map(Number).forEach((id, i) => { const f = (mf.bsx ?? []).find((x) => x.id === id); if (f) f.sort_order = i + 1 })
+    log(me.id, 'minifig_priority', 'minifig', { zuerst: body.priority })
+    return { priority: body.priority, bsx_files: bsxFiles(db) }
+  }
+  if (method === 'GET' && r2 === 'builds') return builds(db)
+  if (method === 'POST' && r2 === 'builds') {
+    const r = addBuild(db, body.minifig_no, Number(body.qty) || 1, body.lots, me)
+    log(me.id, 'minifig_build_add', 'minifig', { figur: r.minifig_no, menge: r.qty, teile: r.parts })
+    return r
+  }
+  if (method === 'POST' && /^builds\/\d+\/delete$/.test(r2)) {
+    const mf = mfOf(db)
+    const b = (mf.builds ?? []).find((x) => x.id === Number(parts[2]) && x.status === 'open')
+    if (!b) throw new DemoError('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409)
+    mf.builds.splice(mf.builds.indexOf(b), 1)
+    log(me.id, 'minifig_build_delete', 'minifig', { figur: b.minifig_no, menge: b.qty })
+    return { ok: true }
+  }
+  if (method === 'POST' && r2 === 'builds/start') {
+    const mf = mfOf(db)
+    if (!exportActive(db)) {
+      if ((db.blExports ?? []).some((x) => x.open)) throw new DemoError('Gerade läuft eine BrickLink-Übertragung vom Umlagern. Bitte die erst abschließen („Ja, ist eingefügt“ oder „Verwerfen“).', 409)
+      const open = (mf.builds ?? []).filter((b) => b.status === 'open')
+      if (!open.length) throw new DemoError('In der Sammlung sind keine Figuren.', 400)
+      for (const b of open) Object.assign(b, { status: 'export', export_by: me.id, export_at: now() })
+      const r = buildExportFiles(db)
+      log(me.id, 'minifig_build_export_start', 'minifig', { figuren: r.builds.length, lots: r.bricklink_lots })
+      return r
+    }
+    return buildExportFiles(db)
+  }
+  if (method === 'GET' && r2 === 'builds/bsx') {
+    const f = (mfOf(db).bsx ?? []).find((x) => x.id === Number(params.id))
+    if (!f) throw new DemoError('BSX-Datei nicht gefunden', 404)
+    const items = bsxMinus(db, f.items, f.id).filter((r) => r.quantity > 0).map((r) => ({ ItemTypeID: 'P', ItemID: r.item_no, ItemName: r.item_name, ColorID: String(r.color_id),
+      ColorName: r.color_name, Qty: String(r.quantity), Price: String(r.price ?? 0), Condition: r.condition || 'U', Status: 'I', Remarks: r.remarks ?? '', Comments: r.comments ?? '' }))
+    return file(`${f.name.replace(/\.bsx$/i, '')}-nach-figuren.bsx`, 'application/xml', buildBsx(items))
+  }
+  if (method === 'POST' && r2 === 'builds/finish') {
+    const r = finishBuildExport(db, !!body.done, body.apply_bsx)
+    log(me.id, r.done ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig', { figuren: r.figures, teile: r.parts, lots: r.lots, bsx: r.bsx_files.length })
+    return r
   }
   if (method === 'GET' && r2 === 'bsx') return { files: bsxFiles(db) }
   if (method === 'POST' && r2 === 'bsx') {
@@ -920,20 +1066,8 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     return file(`minifig-listen-${fmt}.zip`, 'application/zip', zip(files))
   }
   if (method === 'GET' && r2 === 'almost-joint-export') {
-    const rows = almostJointMissingRows(analyze(db, 10000))
-    if (params.format === 'bsx') {
-      const agg = new Map()
-      for (const r of rows) {
-        const k = `${r.item_no}\u0000${String(r.color_id).padStart(10, '0')}`
-        if (!agg.has(k)) agg.set(k, { ...r, quantity: 0, figures: [] })
-        agg.get(k).quantity += r.quantity
-        agg.get(k).figures.push(r.minifig_no)
-      }
-      return file('minifig-fehlteile.bsx', 'application/xml', buildBsx([...agg.keys()].sort(strCmp).map((k) => agg.get(k)).map((r) => ({ ItemTypeID: 'P', ItemID: r.item_no,
-        ItemName: r.item_name, ColorID: String(r.color_id), Qty: String(r.quantity), Price: '0', Condition: 'U', Status: 'I', Remarks: `Minifig Finder: ${r.figures.join(', ')}` }))))
-    }
-    return file('minifig-fehlteile.csv', 'text/csv;charset=utf-8', csv(['Minifigur', 'Name', 'Fehlteil', 'Teilname', 'Farbe', 'Menge', 'geschätzte Fehlteilkosten', 'Figurenwert', 'Vorteil nach Zukauf'],
-      rows.map((r) => [r.minifig_no, r.minifig_name, r.item_no, r.item_name, r.color_id, r.quantity, eur(r.estimated_total), eur(r.figure_value), eur(r.economic_advantage)])))
+    const r = analyze(db, 10000)
+    return params.format === 'bsx' ? file('minifig-fehlteile.bsx', 'application/xml', almostJointBsx(r)) : file('minifig-fehlteile.csv', 'text/csv;charset=utf-8', almostJointCsv(r))
   }
   if (method === 'GET' && r2 === 'prices/status') {
     const r = analyze(db, 10000)

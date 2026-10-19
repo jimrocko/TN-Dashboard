@@ -84,26 +84,53 @@ final class Minifig
         return $s;
     }
 
-    /** Teile-Lots aus den hochgeladenen BSX-Dateien (gleiche Form wie lots()). Lot-Nr. ab 800000000, Lagerort = Datei + Bemerkung. */
+    public const BSX_BASE = 800000000;
+
+    /**
+     * Teile-Lots aus den hochgeladenen BSX-Dateien (gleiche Form wie lots()). Lot-Nr. = 800000000 + Datei-ID * 100000 + Zeile.
+     * Remarks und Bemerkung (BrickStore „Comments“) bleiben getrennt, der Dateiname steht in „file“ (Wunsch des Inhabers, Sitzung 7).
+     */
     private static function bsxRows(): array
     {
         $out = [];
-        foreach (q('SELECT id, name, items_json FROM {minifig_bsx} ORDER BY id')->fetchAll() as $f) {
+        foreach (q('SELECT id, name, items_json, sort_order FROM {minifig_bsx} ORDER BY sort_order, id')->fetchAll() as $rank => $f) {
             foreach (json_decode((string) $f['items_json'], true) ?: [] as $n => $r) {
+                if ((int) $r['quantity'] <= 0) continue;
                 $out[] = [
-                    'inventory_id' => 800000000 + (int) $f['id'] * 100000 + $n, 'item_no' => (string) $r['item_no'], 'item_name' => (string) $r['item_name'],
+                    'inventory_id' => self::BSX_BASE + (int) $f['id'] * 100000 + $n, 'item_no' => (string) $r['item_no'], 'item_name' => (string) $r['item_name'],
                     'color_id' => (int) $r['color_id'], 'color_name' => (string) $r['color_name'], 'quantity' => (int) $r['quantity'],
-                    'new_or_used' => (string) $r['condition'], 'remarks' => trim($f['name'] . ($r['remarks'] !== '' ? ' · ' . $r['remarks'] : '')),
-                    'description' => null, 'stock_room_id' => '',
+                    'new_or_used' => (string) $r['condition'], 'remarks' => (string) ($r['remarks'] ?? ''),
+                    'description' => (string) ($r['comments'] ?? ''), 'stock_room_id' => '', 'file' => (string) $f['name'], '_rank' => $rank + 1,
                 ];
             }
         }
         return $out;
     }
 
-    /** Alle Teile-Lots der gewählten Quelle, sortiert nach Teil, Farbe, Lot-Nr. */
+    /** Welche Quelle zuerst genommen wird, wenn ein Teil im Lager und in BSX-Dateien liegt: 'lager' (wie im Original) oder 'bsx'. */
+    public static function priority(): string
+    {
+        return Dev::setting('minifig_priority') === 'bsx' ? 'bsx' : 'lager';
+    }
+
+    /** Prio und Reihenfolge der BSX-Dateien speichern (gemeinsame Einstellung). */
+    public static function setPriority(string $prio, array $bsxOrder): array
+    {
+        self::ensureSchema();
+        if (!in_array($prio, ['lager', 'bsx'], true)) throw new InvalidArgumentException('Unbekannte Reihenfolge');
+        Dev::setSetting('minifig_priority', $prio);
+        foreach (array_values(array_map('intval', $bsxOrder)) as $i => $id) q('UPDATE {minifig_bsx} SET sort_order = ? WHERE id = ?', [$i + 1, $id]);
+        return ['priority' => $prio, 'bsx_files' => self::bsxFiles()];
+    }
+
+    /**
+     * Alle Teile-Lots der gewählten Quelle, sortiert nach Teil, Farbe, Quelle (Prio), Lot-Nr.
+     * Bei Prio „Lager zuerst“ und ohne gesammelte Figuren genau wie im Original. Gesammelte, noch nicht hochgeladene Figuren
+     * („Fertige Figuren“) sind schon abgezogen, damit ihre Teile nicht ein zweites Mal verplant werden.
+     */
     private static function partRows(): array
     {
+        self::ensureSchema();
         $src = self::stockSource();
         $rows = [];
         if ($src !== 'bsx') {
@@ -112,11 +139,24 @@ final class Minifig
                 WHERE i.item_type = 'PART' AND i.qty > 0")->fetchAll() as $r) {
                 $r = typed([$r], ['inventory_id', 'color_id', 'quantity'])[0];
                 $r['stock_room_id'] = '';
+                $r['_rank'] = 0;
                 $rows[] = $r;
             }
         }
         if ($src !== 'bestand') $rows = array_merge($rows, self::bsxRows());
-        usort($rows, fn ($a, $b) => [strtolower($a['item_no']), $a['color_id'], $a['inventory_id']] <=> [strtolower($b['item_no']), $b['color_id'], $b['inventory_id']]);
+        $used = self::reservedByBuilds();
+        if ($used) {
+            $rows = array_values(array_filter(array_map(function ($r) use ($used) {
+                $r['quantity'] -= $used[$r['inventory_id']] ?? 0;
+                return $r;
+            }, $rows), fn ($r) => $r['quantity'] > 0));
+        }
+        // Rang der Quelle: Lager = 0, BSX-Dateien 1, 2, … in ihrer Reihenfolge; bei „BSX zuerst“ kommt das Lager ans Ende
+        $bsxFirst = self::priority() === 'bsx';
+        $rank = fn ($r) => $bsxFirst && $r['_rank'] === 0 ? PHP_INT_MAX : $r['_rank'];
+        usort($rows, fn ($a, $b) => [strtolower($a['item_no']), $a['color_id'], $rank($a), $a['inventory_id']] <=> [strtolower($b['item_no']), $b['color_id'], $rank($b), $b['inventory_id']]);
+        foreach ($rows as &$r) unset($r['_rank']);
+        unset($r);
         return $rows;
     }
 
@@ -154,8 +194,9 @@ final class Minifig
     /** Hochgeladene BSX-Dateien (ohne Inhalt). */
     public static function bsxFiles(): array
     {
+        self::ensureSchema();
         return typed(q('SELECT f.id, f.name, f.lots, f.parts, f.created_at, u.display_name AS uploaded_by FROM {minifig_bsx} f
-            LEFT JOIN {users} u ON u.id = f.uploaded_by ORDER BY f.id')->fetchAll(), ['id', 'lots', 'parts']);
+            LEFT JOIN {users} u ON u.id = f.uploaded_by ORDER BY f.sort_order, f.id')->fetchAll(), ['id', 'lots', 'parts']);
     }
 
     /** BSX-Datei als Teilebestand speichern (nur Teile, Status X und Menge 0 fallen weg wie beim Einlesen). */
@@ -166,13 +207,15 @@ final class Minifig
         foreach ($rows as $r) {
             if (strtoupper($r['item_type']) !== 'P') continue;
             $items[] = ['item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => max(0, $r['color_id']), 'color_name' => $r['color_name'],
-                'quantity' => $r['quantity'], 'condition' => $r['condition'], 'remarks' => $r['remarks']];
+                'quantity' => $r['quantity'], 'condition' => $r['condition'], 'remarks' => $r['remarks'], 'comments' => $r['comments'], 'price' => $r['price']];
         }
         if (!$items) throw new RuntimeException('In der Datei sind keine Teile (nur Teile zählen für Minifiguren)');
         $name = trim(basename($name)) ?: 'datei.bsx';
         $parts = array_sum(array_column($items, 'quantity'));
-        q('INSERT INTO {minifig_bsx} (name, items_json, lots, parts, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [$name, json_encode($items, JSON_UNESCAPED_UNICODE), count($items), $parts, $userId, now()]);
+        self::ensureSchema();
+        q('INSERT INTO {minifig_bsx} (name, items_json, lots, parts, uploaded_by, created_at, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$name, json_encode($items, JSON_UNESCAPED_UNICODE), count($items), $parts, $userId, now(),
+             (int) q('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM {minifig_bsx}')->fetchColumn()]);
         return ['id' => (int) db()->lastInsertId(), 'name' => $name, 'lots' => count($items), 'parts' => $parts];
     }
 
@@ -531,7 +574,10 @@ final class Minifig
     {
         $s = ['inventory_id' => $lot['inventory_id'], 'quantity' => $take];
         if ($withLotQty) $s['lot_quantity'] = (int) $lot['quantity'];
-        return $s + ['remarks' => $lot['remarks'] ?? '', 'description' => $lot['description'] ?? '', 'stock_room_id' => '', 'new_or_used' => $lot['new_or_used'] ?? ''];
+        $s += ['remarks' => $lot['remarks'] ?? '', 'description' => $lot['description'] ?? '', 'stock_room_id' => '', 'new_or_used' => $lot['new_or_used'] ?? ''];
+        // Nur bei BSX-Teilen: aus welcher Datei (für die getrennte Anzeige von Remarks und Bemerkung)
+        if (isset($lot['file'])) $s['file'] = $lot['file'];
+        return $s;
     }
 
     /** Teileliste je Lot für den gemeinsamen Bauplan (Lots werden nacheinander verbraucht). */
@@ -875,7 +921,7 @@ final class Minifig
             'remaining_subsets' => max(0, $r['candidate_minifigs'] - $r['cached_subsets']),
             'inventory_parts' => (int) $inv['parts'], 'inventory_lots' => (int) $inv['lots'], 'inventory_value' => round((float) $inv['value'], 2),
             'inventory_import_at' => $sync, 'bricklink_configured' => BrickLinkClient::fromConfig()->isConfigured(),
-            'source' => self::stockSource(), 'bsx_files' => self::bsxFiles(),
+            'source' => self::stockSource(), 'priority' => self::priority(), 'bsx_files' => self::bsxFiles(),
             'katalog' => json_decode((string) Dev::setting('minifig_bundle_meta'), true) ?: null,
         ];
         return $r + self::refreshStatus() + self::budget() + self::priceStatus();
@@ -1097,7 +1143,8 @@ final class Minifig
             foreach ($row['pick_list'] ?? [] as $p) {
                 if ((int) ($p['shortfall'] ?? 0) > 0) continue;
                 foreach ($p['sources'] ?? [] as $s) {
-                    $l = trim((string) (($s['remarks'] ?? '') ?: ($s['stock_room_id'] ?? '')));
+                    // Teile aus BSX-Dateien: Dateiname · Remarks
+                    $l = implode(' · ', array_filter([trim((string) ($s['file'] ?? '')), trim((string) (($s['remarks'] ?? '') ?: ($s['stock_room_id'] ?? '')))], fn ($x) => $x !== ''));
                     if ($l !== '') $locs["{$p['item_no']}: $l"] = true;
                 }
             }
@@ -1310,6 +1357,228 @@ final class Minifig
         return ['ok' => true, 'version' => self::TRANSFER_VERSION, 'exported_at' => $p['exported_at'] ?? null, 'imported' => $imported];
     }
 
+    // ---------------------------------------------------------------- Fertige Figuren (gemeinsame Sammlung, Wunsch des Inhabers, Sitzung 7)
+    // Ablauf: „Fertig gebaut“ im gemeinsamen Bauplan legt eine Figur mit ihren Lots in die Sammlung (status open). Die Teile sind ab dann
+    // in der Rechnung abgezogen. „Sammlung abschließen“ (status export, nur eine Person zugleich) erzeugt eine BrickLink-Datei mit
+    // Minus-Mengen je Lot und geänderte BSX-Dateien. Erst „Ja, ist hochgeladen“ zieht die Teile im Dashboard-Bestand ab (status done).
+
+    /** Von gesammelten Figuren belegte Mengen je Lot (Lot-Nr. wie in partRows). */
+    private static function reservedByBuilds(): array
+    {
+        $out = [];
+        foreach (q("SELECT lots_json FROM {minifig_builds} WHERE status IN ('open', 'export')")->fetchAll(PDO::FETCH_COLUMN) as $j) {
+            foreach (json_decode((string) $j, true) ?: [] as $l) $out[(int) $l['inventory_id']] = ($out[(int) $l['inventory_id']] ?? 0) + (int) $l['quantity'];
+        }
+        return $out;
+    }
+
+    /** Läuft gerade ein Abschluss der Sammlung? Dann darf keine Bestands-Übertragung (Umlagern) starten und umgekehrt. */
+    public static function buildExportActive(): bool
+    {
+        self::ensureSchema();
+        return (bool) q("SELECT 1 FROM {minifig_builds} WHERE status = 'export' LIMIT 1")->fetchColumn();
+    }
+
+    public static function builds(): array
+    {
+        self::ensureSchema();
+        $rows = q("SELECT b.id, b.minifig_no, b.name, b.qty, b.lots_json, b.status, b.created_at, b.export_at, u.display_name AS user_name, e.display_name AS export_name
+            FROM {minifig_builds} b LEFT JOIN {users} u ON u.id = b.user_id LEFT JOIN {users} e ON e.id = b.export_by
+            WHERE b.status IN ('open', 'export') ORDER BY b.id")->fetchAll();
+        $out = [];
+        $export = null;
+        foreach ($rows as $r) {
+            $lots = json_decode((string) $r['lots_json'], true) ?: [];
+            $out[] = ['id' => (int) $r['id'], 'minifig_no' => $r['minifig_no'], 'name' => $r['name'], 'qty' => (int) $r['qty'], 'status' => $r['status'],
+                'created_at' => $r['created_at'], 'user_name' => $r['user_name'], 'lots' => $lots, 'parts' => array_sum(array_column($lots, 'quantity'))];
+            if ($r['status'] === 'export') $export ??= ['by' => $r['export_name'], 'at' => $r['export_at']];
+        }
+        $bl = BrickLinkSync::openExport();
+        return ['builds' => $out, 'export' => $export, 'transfer_open' => $bl !== null];
+    }
+
+    /**
+     * Figur in die Sammlung legen. $lots = [{inventory_id, quantity}] aus der Teileliste des Bauplans; der Server prüft, ob die
+     * Lots (nach Abzug der schon gesammelten Figuren) noch reichen, und merkt sich alles, was für die Dateien nötig ist.
+     */
+    public static function addBuild(string $no, int $qty, array $lots, int $userId): array
+    {
+        self::ensureSchema();
+        $no = trim($no);
+        if ($no === '' || $qty < 1) throw new InvalidArgumentException('Figur oder Anzahl fehlt');
+        $want = [];
+        foreach ($lots as $l) {
+            $id = (int) ($l['inventory_id'] ?? 0);
+            $n = (int) ($l['quantity'] ?? 0);
+            if ($id > 0 && $n > 0) $want[$id] = ($want[$id] ?? 0) + $n;
+        }
+        if (!$want) throw new InvalidArgumentException('Keine Teile angegeben');
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $avail = [];
+            foreach (self::partRows() as $r) $avail[(int) $r['inventory_id']] = $r;
+            $stored = [];
+            foreach ($want as $id => $n) {
+                $r = $avail[$id] ?? null;
+                if (!$r || $r['quantity'] < $n) throw new RuntimeException('Ein Teil ist nicht mehr in dieser Menge da (vielleicht hat jemand anderes es gerade gesammelt). Die Liste wird neu berechnet.');
+                $l = ['inventory_id' => $id, 'quantity' => $n, 'item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => $r['color_id'],
+                    'color_name' => $r['color_name'], 'remarks' => (string) ($r['remarks'] ?? ''), 'condition' => (string) ($r['new_or_used'] ?? '')];
+                if ($id >= self::BSX_BASE) {
+                    $l += ['kind' => 'bsx', 'bsx_id' => intdiv($id - self::BSX_BASE, 100000), 'line' => ($id - self::BSX_BASE) % 100000, 'file' => $r['file'] ?? ''];
+                } else {
+                    $inv = q('SELECT id, bl_inventory_id FROM {inventory} WHERE bl_inventory_id = ?', [$id])->fetch()
+                        ?: q('SELECT id, bl_inventory_id FROM {inventory} WHERE id = ? AND bl_inventory_id IS NULL', [$id])->fetch();
+                    $l += ['kind' => 'bestand', 'local_id' => $inv ? (int) $inv['id'] : null, 'bl_lot_id' => $inv && $inv['bl_inventory_id'] !== null ? (int) $inv['bl_inventory_id'] : null];
+                }
+                $stored[] = $l;
+            }
+            $name = (string) (q('SELECT name FROM {minifig_catalog} WHERE minifig_no = ?', [$no])->fetchColumn() ?: $no);
+            q("INSERT INTO {minifig_builds} (minifig_no, name, qty, lots_json, status, user_id, created_at) VALUES (?, ?, ?, ?, 'open', ?, ?)",
+                [$no, $name, $qty, json_encode($stored, JSON_UNESCAPED_UNICODE), $userId, now()]);
+            $id = (int) $pdo->lastInsertId();
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return ['id' => $id, 'minifig_no' => $no, 'name' => $name, 'qty' => $qty, 'parts' => array_sum($want)];
+    }
+
+    /** Figur wieder aus der Sammlung nehmen (nicht, solange der Abschluss läuft). */
+    public static function deleteBuild(int $id): ?array
+    {
+        self::ensureSchema();
+        $b = q("SELECT minifig_no, qty FROM {minifig_builds} WHERE id = ? AND status = 'open'", [$id])->fetch();
+        if (!$b) return null;
+        q('DELETE FROM {minifig_builds} WHERE id = ?', [$id]);
+        return $b;
+    }
+
+    /** Lots der gesammelten Figuren im Abschluss, zusammengefasst je Lot. */
+    private static function exportLots(): array
+    {
+        $agg = [];
+        foreach (q("SELECT lots_json FROM {minifig_builds} WHERE status = 'export' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) as $j) {
+            foreach (json_decode((string) $j, true) ?: [] as $l) {
+                $k = (int) $l['inventory_id'];
+                if (isset($agg[$k])) $agg[$k]['quantity'] += (int) $l['quantity'];
+                else $agg[$k] = $l;
+            }
+        }
+        return array_values($agg);
+    }
+
+    /** Abschluss: alle offenen Figuren übernehmen und die Dateien liefern. Läuft er schon, bekommt man denselben Stand. */
+    public static function startBuildExport(int $userId): array
+    {
+        self::ensureSchema();
+        if (!self::buildExportActive()) {
+            if (BrickLinkSync::openExport()) json_error('Gerade läuft eine BrickLink-Übertragung vom Umlagern. Bitte die erst abschließen („Ja, ist eingefügt“ oder „Verwerfen“).', 409);
+            $n = q("UPDATE {minifig_builds} SET status = 'export', export_by = ?, export_at = ? WHERE status = 'open'", [$userId, now()])->rowCount();
+            if (!$n) json_error('In der Sammlung sind keine Figuren.', 400);
+        }
+        return self::buildExportFiles();
+    }
+
+    private static function buildExportFiles(): array
+    {
+        $lots = self::exportLots();
+        $xml = '';
+        $noLot = [];
+        $files = [];
+        foreach ($lots as $l) {
+            if (($l['kind'] ?? '') === 'bsx') {
+                $f = $files[$l['bsx_id']] ??= ['id' => (int) $l['bsx_id'], 'name' => (string) ($l['file'] ?? ''), 'lots' => 0, 'parts' => 0];
+                $files[$l['bsx_id']]['lots']++;
+                $files[$l['bsx_id']]['parts'] += (int) $l['quantity'];
+            } elseif (!empty($l['bl_lot_id'])) {
+                $xml .= "<ITEM><LOTID>{$l['bl_lot_id']}</LOTID><QTY>-" . (int) $l['quantity'] . "</QTY></ITEM>\n";
+            } else {
+                $noLot[] = $l;
+            }
+        }
+        $exp = q("SELECT b.export_at, u.display_name FROM {minifig_builds} b LEFT JOIN {users} u ON u.id = b.export_by WHERE b.status = 'export' LIMIT 1")->fetch() ?: [];
+        return ['xml' => $xml === '' ? '' : "<INVENTORY>\n$xml</INVENTORY>\n", 'bricklink_lots' => substr_count($xml, '<ITEM>'), 'without_lot' => $noLot,
+            'bsx_files' => array_values($files), 'export_by' => $exp['display_name'] ?? null, 'export_at' => $exp['export_at'] ?? null] + self::builds();
+    }
+
+    /** Neue Fassung einer BSX-Datei (ohne die Teile der Sammlung im Abschluss); Teile mit Menge 0 fallen weg. */
+    public static function bsxAfterExport(int $fileId): array
+    {
+        self::ensureSchema();
+        $f = q('SELECT id, name, items_json FROM {minifig_bsx} WHERE id = ?', [$fileId])->fetch();
+        if (!$f) throw new RuntimeException('BSX-Datei nicht gefunden');
+        $items = self::bsxMinus(json_decode((string) $f['items_json'], true) ?: [], $fileId);
+        $out = [];
+        foreach ($items as $r) {
+            if ((int) $r['quantity'] <= 0) continue;
+            $out[] = ['ItemTypeID' => 'P', 'ItemID' => $r['item_no'], 'ItemName' => $r['item_name'], 'ColorID' => (string) $r['color_id'], 'ColorName' => $r['color_name'],
+                'Qty' => (string) $r['quantity'], 'Price' => (string) ($r['price'] ?? 0), 'Condition' => $r['condition'] ?: 'U', 'Status' => 'I',
+                'Remarks' => (string) ($r['remarks'] ?? ''), 'Comments' => (string) ($r['comments'] ?? '')];
+        }
+        return [preg_replace('/\.bsx$/i', '', (string) $f['name']) . '-nach-figuren.bsx', Bsx::build($out)];
+    }
+
+    /** Mengen der Sammlung im Abschluss von den Zeilen einer BSX-Datei abziehen (Zeilen bleiben stehen, damit die Lot-Nr. gleich bleiben). */
+    private static function bsxMinus(array $items, int $fileId): array
+    {
+        foreach (self::exportLots() as $l) {
+            if (($l['kind'] ?? '') !== 'bsx' || (int) $l['bsx_id'] !== $fileId || !isset($items[(int) $l['line']])) continue;
+            $items[(int) $l['line']]['quantity'] = max(0, (int) $items[(int) $l['line']]['quantity'] - (int) $l['quantity']);
+        }
+        return $items;
+    }
+
+    /**
+     * Abschluss beenden. $done = bei BrickLink hochgeladen: Bestand im Dashboard abziehen, BSX-Dateien aus $applyBsx im Finder
+     * ersetzen, Figuren gelten als erledigt. Sonst gehen die Figuren zurück in die Sammlung.
+     */
+    public static function finishBuildExport(bool $done, array $applyBsx): array
+    {
+        self::ensureSchema();
+        if (!self::buildExportActive()) json_error('Dieser Abschluss wurde schon beendet.', 409);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $figs = (int) q("SELECT COALESCE(SUM(qty), 0) FROM {minifig_builds} WHERE status = 'export'")->fetchColumn();
+            $parts = $lotsChanged = 0;
+            $files = [];
+            if ($done) {
+                foreach (self::exportLots() as $l) {
+                    if (($l['kind'] ?? '') !== 'bestand') continue;
+                    $inv = (!empty($l['local_id']) ? q('SELECT id, qty FROM {inventory} WHERE id = ?', [$l['local_id']])->fetch() : null)
+                        ?: (!empty($l['bl_lot_id']) ? q('SELECT id, qty FROM {inventory} WHERE bl_inventory_id = ?', [$l['bl_lot_id']])->fetch() : null);
+                    if (!$inv) continue;
+                    $left = (int) $inv['qty'] - (int) $l['quantity'];
+                    if ($left > 0) q('UPDATE {inventory} SET qty = ?, updated_at = ? WHERE id = ?', [$left, now(), $inv['id']]);
+                    else q('DELETE FROM {inventory} WHERE id = ?', [$inv['id']]);
+                    $parts += min((int) $l['quantity'], (int) $inv['qty']);
+                    $lotsChanged++;
+                }
+                foreach (array_unique(array_map('intval', $applyBsx)) as $fid) {
+                    $f = q('SELECT items_json FROM {minifig_bsx} WHERE id = ?', [$fid])->fetch();
+                    if (!$f) continue;
+                    $items = self::bsxMinus(json_decode((string) $f['items_json'], true) ?: [], $fid);
+                    $alive = array_filter($items, fn ($r) => (int) $r['quantity'] > 0);
+                    q('UPDATE {minifig_bsx} SET items_json = ?, lots = ?, parts = ? WHERE id = ?',
+                        [json_encode($items, JSON_UNESCAPED_UNICODE), count($alive), array_sum(array_column($alive, 'quantity')), $fid]);
+                    $files[] = $fid;
+                }
+                q("UPDATE {minifig_builds} SET status = 'done', done_at = ? WHERE status = 'export'", [now()]);
+            } else {
+                q("UPDATE {minifig_builds} SET status = 'open', export_by = NULL, export_at = NULL WHERE status = 'export'");
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        // Ollies Dashboard kennt den Abzug erst nach seinem nächsten Laden (wie nach „Ja, ist eingefügt“ beim Umlagern)
+        if ($done && $lotsChanged) OllieSync::markExported();
+        return ['done' => $done, 'figures' => $figs, 'parts' => $parts, 'lots' => $lotsChanged, 'bsx_files' => $files];
+    }
+
     // ---------------------------------------------------------------- Figurenkatalog ohne API (wie MinifigFinder Standalone)
 
     /**
@@ -1321,15 +1590,42 @@ final class Minifig
         static $done = false;
         if ($done) return;
         $done = true;
-        if (Dev::setting('minifig_seq') !== '1') {
-            if (!in_array('seq', self::tableColumns('minifig_catalog'), true)) db()->exec('ALTER TABLE ' . t('minifig_catalog') . ' ADD COLUMN seq ' . (Schema::sqlite() ? 'INTEGER' : 'INT') . ' NULL');
-            Dev::setSetting('minifig_seq', '1');
-        }
+        self::ensureSchema();
         // Ohne seq eingefügte Figuren (alte Stände, Transferpakete) hinten anhängen
         $open = q('SELECT minifig_no FROM {minifig_catalog} WHERE seq IS NULL ORDER BY ' . (Schema::sqlite() ? 'rowid' : 'minifig_no'))->fetchAll(PDO::FETCH_COLUMN);
         if (!$open) return;
         $next = self::nextSeq();
         foreach ($open as $no) q('UPDATE {minifig_catalog} SET seq = ? WHERE minifig_no = ?', [$next++, $no]);
+    }
+
+    /** Neue Spalten und Tabellen für bestehende Installationen (Katalog-Reihenfolge, BSX-Reihenfolge, „Fertige Figuren“). */
+    public static function ensureSchema(): void
+    {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        if (Dev::setting('minifig_schema') === '2') return;
+        $sqlite = Schema::sqlite();
+        if (!in_array('seq', self::tableColumns('minifig_catalog'), true)) db()->exec('ALTER TABLE ' . t('minifig_catalog') . ' ADD COLUMN seq ' . ($sqlite ? 'INTEGER' : 'INT') . ' NULL');
+        if (!in_array('sort_order', self::tableColumns('minifig_bsx'), true)) {
+            db()->exec('ALTER TABLE ' . t('minifig_bsx') . ' ADD COLUMN sort_order ' . ($sqlite ? 'INTEGER' : 'INT') . ' NULL');
+            q('UPDATE {minifig_bsx} SET sort_order = id');
+        }
+        db()->exec('CREATE TABLE IF NOT EXISTS ' . t('minifig_builds') . ' (
+            id ' . ($sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT UNSIGNED AUTO_INCREMENT PRIMARY KEY') . ',
+            minifig_no ' . ($sqlite ? 'TEXT' : 'VARCHAR(40)') . ' NOT NULL,
+            name ' . ($sqlite ? 'TEXT' : 'VARCHAR(255)') . " NOT NULL DEFAULT '',
+            qty INTEGER NOT NULL DEFAULT 1,
+            lots_json " . ($sqlite ? 'TEXT' : 'MEDIUMTEXT') . ' NOT NULL,
+            status ' . ($sqlite ? 'TEXT' : 'VARCHAR(16)') . " NOT NULL DEFAULT 'open',
+            user_id " . ($sqlite ? 'INTEGER' : 'INT UNSIGNED') . ' NULL,
+            created_at ' . ($sqlite ? 'TEXT' : 'DATETIME') . ' NOT NULL,
+            export_by ' . ($sqlite ? 'INTEGER' : 'INT UNSIGNED') . ' NULL,
+            export_at ' . ($sqlite ? 'TEXT' : 'DATETIME') . ' NULL,
+            done_at ' . ($sqlite ? 'TEXT' : 'DATETIME') . ' NULL
+        )' . ($sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
+        Dev::setSetting('minifig_seq', '1');
+        Dev::setSetting('minifig_schema', '2');
     }
 
     public static function nextSeq(): int

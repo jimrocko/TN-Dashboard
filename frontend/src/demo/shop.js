@@ -546,6 +546,8 @@ export function route(db, method, parts, params, body, requireUser, log) {
     const stIds = clean(body.stocktake_ids)
     if (!ids.length && !stIds.length) throw new DemoError('Keine offenen Änderungen', 400)
     if (db.blExports.some((x) => x.open)) throw new DemoError('Gerade läuft schon eine Übertragung. Bitte den kopierten Bestand nicht einfügen.', 409)
+    // Sonst könnte der ganze Bestand die Minus-Mengen der fertigen Minifiguren wieder überschreiben (wie BrickLinkSync::start)
+    if ((db.minifig?.builds ?? []).some((b) => b.status === 'export')) throw new DemoError('Gerade wird die Sammlung „Fertige Figuren“ im Minifig-Finder hochgeladen. Bitte die erst abschließen.', 409)
     const e = { id: db.blExports.length + 1, open: true, transfer_ids: ids, stocktake_ids: stIds, created_by: me.id, created_at: now() }
     db.blExports.push(e)
     log(me.id, 'bricklink_export_start', 'umlagern', { umlagerungen: ids.length, inventuren: stIds.length })

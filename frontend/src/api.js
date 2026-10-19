@@ -1,6 +1,7 @@
 import * as demoBackend from './demo/backend.js'
 import { devFlags, recordApi } from './utils/devtools.js'
 import { saveBlob } from './utils/files.js'
+import { trackLoad } from './utils/pageLoading.js'
 
 // Demo-Version (npm run build:demo): läuft ohne Server, Daten nur im Browser.
 // Tutorial (npm run build:tutorial): dieselbe Demo, dazu führt Klemmi Schritt für Schritt durch die App.
@@ -39,6 +40,8 @@ async function request(method, route, opts = {}) {
 
 async function send(method, route, { body, params, form } = {}) {
   if (IS_DEMO) {
+    // Kurz Luft lassen, damit eine Ladeanzeige gezeichnet wird, bevor das Demo-Backend länger rechnet
+    await new Promise((r) => setTimeout(r, 0))
     try {
       return await demoBackend.handle(method, route, params, form ?? body)
     } catch (e) {
@@ -62,7 +65,7 @@ async function send(method, route, { body, params, form } = {}) {
 }
 
 export const api = {
-  get: (route, params) => request('GET', route, { params }),
+  get: (route, params) => trackLoad(request('GET', route, { params })),
   post: (route, body) => request('POST', route, { body }),
   /** Datei-Upload als multipart/form-data, z. B. ein Foto für die Teileerkennung. */
   upload: (route, form, params) => request('POST', route, { form, params }),

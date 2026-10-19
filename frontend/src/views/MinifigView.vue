@@ -1,13 +1,16 @@
 <script setup>
 import PartImage from '../components/PartImage.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files } from 'lucide-vue-next'
+import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files, ArrowUp, ArrowDown, PackageCheck, Copy, X } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import MinifigParts from '../components/MinifigParts.vue'
 import TnDialog from '../components/TnDialog.vue'
 import { api, IS_DEMO } from '../api'
 import { useAuth } from '../stores/auth'
-import { num, eur, dateTime } from '../utils/format'
+import { num, eur, dateTime, htmlText } from '../utils/format'
+import { LIST_FILES, listCsv, listBsx, almostJointCsv, almostJointBsx } from '../utils/minifigExport'
+import { saveBlob, zip } from '../utils/files'
+import { copyText, BRICKLINK_XML_URL } from '../utils/bricklinkXml'
 
 // Minifig-Finder: gleiche Auswertung wie das bisherige Programm. Abrufe bei BrickLink (Teile prüfen, Stücklisten laden,
 // neue Figuren) nur mit Dev-Rolle und auf Knopfdruck; alles andere rechnet mit der eigenen Datenbank.
@@ -24,9 +27,11 @@ const newFigs = ref([])
 async function loadStatus() { st.value = await api.get('minifig/status') }
 async function loadResults() { res.value = await api.get('minifig/results', { limit: 10000 }) }
 async function loadPrices() { try { prices.value = await api.get('minifig/prices/status') } catch { /* optional */ } }
+const bd = ref(null)
+async function loadBuilds() { bd.value = await api.get('minifig/builds') }
 async function loadAll() {
   err.value = ''
-  try { await Promise.all([loadStatus(), loadResults(), loadPrices()]) } catch (e) { err.value = e.message }
+  try { await Promise.all([loadStatus(), loadResults(), loadPrices(), loadBuilds()]) } catch (e) { err.value = e.message }
 }
 
 async function run(label, fn) {
@@ -92,6 +97,109 @@ const removeFile = (f) => run('Datei wird entfernt', async () => {
   await loadAll()
   return `${f.name} entfernt.`
 })
+
+// ---- Prio: welche Quelle zuerst, Reihenfolge der BSX-Dateien (gilt für alle) ----
+const priority = computed(() => st.value?.priority ?? 'lager')
+const savePriority = (prio, order) => run('Reihenfolge wird gespeichert', async () => {
+  await api.post('minifig/priority', { priority: prio, bsx_order: order })
+  await loadAll()
+  return prio === 'bsx' ? 'Zuerst werden Teile aus den BSX-Dateien genommen, dann aus dem Lager.' : 'Zuerst werden Teile aus dem Lager genommen, dann aus den BSX-Dateien.'
+})
+const moveFile = (i, d) => {
+  const ids = files.value.map((f) => f.id)
+  ;[ids[i], ids[i + d]] = [ids[i + d], ids[i]]
+  savePriority(priority.value, ids)
+}
+
+// ---- Fertige Figuren: gemeinsame Sammlung, erst am Ende einmal zu BrickLink (Wunsch des Inhabers) ----
+const buildQty = ref({})
+const figs = (n) => `${num(n)} ${n === 1 ? 'Figur' : 'Figuren'}`
+const builds = computed(() => bd.value?.builds ?? [])
+const buildCount = computed(() => builds.value.reduce((t, b) => t + b.qty, 0))
+const markBuilt = (r) => run(`${r.minifig_no} wird in die Sammlung gelegt`, async () => {
+  const k = Math.max(1, Math.min(r.buildable_qty || 1, Number(buildQty.value[r.minifig_no]) || 1))
+  // Die Teileliste des Bauplans enthält alle geplanten Kopien hintereinander (je Kopie eine Zeile pro Teilegruppe)
+  const lots = new Map()
+  for (const p of (r.pick_list ?? []).slice(0, k * r.required_groups)) for (const s of p.sources ?? []) lots.set(s.inventory_id, (lots.get(s.inventory_id) ?? 0) + s.quantity)
+  try {
+    await api.post('minifig/builds', { minifig_no: r.minifig_no, qty: k, lots: [...lots].map(([inventory_id, quantity]) => ({ inventory_id, quantity })) })
+  } finally { await loadAll() }
+  return `${k}× ${r.minifig_no} liegt in „Fertige Figuren“. Die Teile sind in der Rechnung schon abgezogen.`
+})
+const removeBuild = (b) => run('Figur wird aus der Sammlung genommen', async () => {
+  await api.post(`minifig/builds/${b.id}/delete`)
+  await loadAll()
+  return `${b.minifig_no} ist wieder aus der Sammlung raus.`
+})
+const expo = ref(null)
+const applyBsx = ref([])
+const copied = ref(false)
+const startExport = () => run('Sammlung wird abgeschlossen', async () => {
+  expo.value = await api.post('minifig/builds/start')
+  applyBsx.value = expo.value.bsx_files.map((f) => f.id)
+  copied.value = false
+  await loadBuilds()
+  return ''
+})
+function copyXml() {
+  // Kopieren und Öffnen direkt im Tipp, sonst blockiert Safari beides
+  copyText(expo.value.xml)
+  window.open(BRICKLINK_XML_URL, '_blank', 'noopener')
+  copied.value = true
+}
+const saveXml = () => saveBlob(new Blob([expo.value.xml], { type: 'application/xml' }), 'fertige-figuren-bricklink.xml')
+const finishExport = (done) => run(done ? 'Bestand wird angepasst' : 'Abschluss wird verworfen', async () => {
+  const r = await api.post('minifig/builds/finish', { done, apply_bsx: done ? applyBsx.value : [] })
+  expo.value = null
+  await loadAll()
+  if (done && r.lots) api.post('ollie/after-export').catch(() => {})
+  return done ? `Erledigt: ${figs(r.figures)}, ${num(r.parts)} Teile aus dem Bestand abgezogen${r.bsx_files.length ? `, ${r.bsx_files.length} BSX-Datei(en) aktualisiert` : ''}.`
+    : 'Verworfen. Die Figuren bleiben in der Sammlung.'
+})
+
+// ---- Download-Fenster: Liste, Bereich (Nr. von–bis) und Format wählen ----
+const DL_LISTS = [
+  { value: 'rang', label: 'Rangliste (wie angezeigt, mit Filter und Sortierung)' },
+  { value: 'joint', label: 'Gemeinsamer Bauplan' },
+  { value: 'buildable', label: 'Einzeln baubar' },
+  { value: 'almost_joint', label: 'Gemeinsam ergänzbar · 1 Teil fehlt' },
+  { value: 'almost', label: 'Nur 1 Teil fehlt' },
+  { value: 'fehlteile', label: 'Fehlteile zum Nachkaufen (gemeinsam ergänzbar)' },
+  { value: 'zip', label: 'Alle Listen als ZIP' },
+]
+const dlOpen = ref(false)
+const dl2 = ref({ list: 'rang', from: 1, to: 1, format: 'csv' })
+const dlRows = (list) => (list === 'rang' ? filtered.value : list === 'fehlteile' ? res.value.almost_joint_buildable
+  : { joint: res.value.joint_buildable, buildable: res.value.buildable, almost_joint: res.value.almost_joint_buildable, almost: res.value.almost }[list] ?? [])
+const dlCount = computed(() => (res.value && dl2.value.list !== 'zip' ? dlRows(dl2.value.list).length : 0))
+function openDownload(list) {
+  dl2.value = { ...dl2.value, list, from: 1, to: res.value ? dlRows(list).length : 1 }
+  dlOpen.value = true
+}
+watch(() => dl2.value.list, (l) => { if (dlOpen.value && res.value) Object.assign(dl2.value, { from: 1, to: l === 'zip' ? 0 : dlRows(l).length }) })
+function doDownload() {
+  const { list, format } = dl2.value
+  const r = res.value
+  const ext = format === 'bsx' ? 'bsx' : 'csv'
+  if (list === 'zip') {
+    saveBlob(zip(Object.fromEntries(Object.entries(LIST_FILES).map(([kind, name]) => [`${name}.${ext}`, ext === 'bsx' ? listBsx(kind, r) : listCsv(kind, r)]))), `minifig-listen-${ext}.zip`)
+  } else {
+    const from = Math.max(1, Math.trunc(dl2.value.from) || 1)
+    const to = Math.min(dlCount.value, Math.max(from, Math.trunc(dl2.value.to) || dlCount.value))
+    const sel = dlRows(list).slice(from - 1, to)
+    const range = from === 1 && to === dlCount.value ? '' : `-nr-${from}-${to}`
+    let text
+    let name
+    if (list === 'fehlteile') { text = ext === 'bsx' ? almostJointBsx(r, sel) : almostJointCsv(r, sel); name = `minifig-fehlteile${range}` }
+    else {
+      const kind = list === 'rang' ? 'all' : list
+      text = ext === 'bsx' ? listBsx(kind, r, sel) : listCsv(kind, r, sel)
+      name = `minifig-${list === 'rang' ? 'rangliste' : LIST_FILES[list]}${range}`
+    }
+    saveBlob(new Blob([text], { type: ext === 'bsx' ? 'application/xml' : 'text/csv;charset=utf-8' }), `${name}.${ext}`)
+  }
+  dlOpen.value = false
+}
 
 const recalc = () => run('Wird neu berechnet', async () => { await loadAll(); return 'Ergebnis neu berechnet.' })
 
@@ -238,16 +346,54 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <div class="toolbar">
             <label class="btn" :class="{ 'btn-primary': source !== 'bestand' }"><Upload :size="16" /> BSX-Datei hinzufügen
               <input type="file" accept=".bsx,.xml,application/xml,text/xml" multiple hidden @change="addFiles" /></label>
-            <span class="small faint">BrickStore-Dateien (.bsx). Gezählt werden nur Teile; Bemerkung = Lagerort.</span>
+            <span class="small faint">BrickStore-Dateien (.bsx). Gezählt werden nur Teile; Remarks und Bemerkung stehen bei jedem Teil.</span>
           </div>
           <p v-if="source === 'bsx' && !files.length" class="small warnc">Noch keine BSX-Datei hochgeladen, deshalb gibt es keine Teile.</p>
+          <div v-if="source === 'beides' && files.length" class="prio">
+            <span class="small"><strong>Gleiches Teil im Lager und in einer Datei:</strong> zuerst nehmen aus</span>
+            <div class="seg" role="radiogroup" aria-label="Reihenfolge der Quellen">
+              <button type="button" :class="{ on: priority === 'lager' }" role="radio" :aria-checked="priority === 'lager'" :disabled="busy" @click="priority !== 'lager' && savePriority('lager', files.map((f) => f.id))">Lager</button>
+              <button type="button" :class="{ on: priority === 'bsx' }" role="radio" :aria-checked="priority === 'bsx'" :disabled="busy" @click="priority !== 'bsx' && savePriority('bsx', files.map((f) => f.id))">BSX-Dateien</button>
+            </div>
+          </div>
           <ul v-if="files.length" class="files">
-            <li v-for="f in files" :key="f.id">
-              <span><strong>{{ f.name }}</strong> <span class="small muted">{{ num(f.lots) }} Lots · {{ num(f.parts) }} Teile · {{ dateTime(f.created_at) }}<template v-if="f.uploaded_by"> · {{ f.uploaded_by }}</template></span></span>
+            <li v-for="(f, fi) in files" :key="f.id">
+              <span v-if="files.length > 1" class="order">
+                <button class="btn btn-ghost btn-sm" :disabled="busy || fi === 0" :title="`${f.name} nach oben`" @click="moveFile(fi, -1)"><ArrowUp :size="14" /></button>
+                <button class="btn btn-ghost btn-sm" :disabled="busy || fi === files.length - 1" :title="`${f.name} nach unten`" @click="moveFile(fi, 1)"><ArrowDown :size="14" /></button>
+              </span>
+              <span class="grow"><strong>{{ fi + 1 }}. {{ f.name }}</strong> <span class="small muted">{{ num(f.lots) }} Lots · {{ num(f.parts) }} Teile · {{ dateTime(f.created_at) }}<template v-if="f.uploaded_by"> · {{ f.uploaded_by }}</template></span></span>
               <button class="btn btn-ghost btn-sm" :disabled="busy" :title="`${f.name} entfernen`" @click="removeFile(f)"><Trash2 :size="15" /></button>
             </li>
           </ul>
           <p v-if="files.length && source === 'bestand'" class="small muted">Die Dateien werden gerade nicht benutzt. Oben „Lager + BSX-Dateien“ oder „Nur BSX-Dateien“ wählen.</p>
+        </div>
+      </section>
+
+      <section v-if="builds.length || bd?.export" class="panel good-border">
+        <div class="panel-head"><h2><PackageCheck :size="18" /> Fertige Figuren</h2><span class="faint small">{{ figs(buildCount) }} gesammelt · für alle gemeinsam</span></div>
+        <div class="panel-body stack-s">
+          <p class="small muted">Hier landen alle Figuren, die jemand mit „Fertig gebaut“ markiert hat. Ihre Teile sind in der Rechnung schon abgezogen. Am Ende einmal „Sammlung abschließen“: dann kommt eine Datei für BrickLink und, falls Teile aus BSX-Dateien stammen, die geänderten Dateien.</p>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th class="num">Anzahl</th><th class="num">Teile</th><th>Gesammelt von</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="(b, i) in builds" :key="b.id">
+                  <td class="nr">{{ i + 1 }}</td>
+                  <td><div class="partcell"><PartImage :no="b.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ b.minifig_no }}</strong><div class="small">{{ htmlText(b.name) }}</div></div></div></td>
+                  <td class="num"><strong>{{ b.qty }}×</strong></td><td class="num">{{ num(b.parts) }}</td>
+                  <td class="small">{{ b.user_name || '–' }}<div class="faint">{{ dateTime(b.created_at) }}</div></td>
+                  <td class="num"><button v-if="b.status === 'open'" class="btn btn-ghost btn-sm" :disabled="busy" :title="`${b.minifig_no} aus der Sammlung nehmen`" @click="removeBuild(b)"><Trash2 :size="15" /></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-if="bd.export" class="small warnc">Abschluss läuft (gestartet von {{ bd.export.by || '–' }}, {{ dateTime(bd.export.at) }}). Erst bestätigen oder verwerfen, dann geht es weiter.</p>
+          <p v-else-if="bd.transfer_open" class="small warnc">Beim Umlagern ist gerade eine BrickLink-Übertragung offen. Die bitte zuerst abschließen, dann geht „Sammlung abschließen“.</p>
+          <div class="toolbar">
+            <button class="btn btn-primary" :disabled="busy || (!bd.export && (bd.transfer_open || !builds.length))" @click="startExport">
+              <PackageCheck :size="16" /> {{ bd.export ? 'Abschluss fortsetzen' : 'Sammlung abschließen' }}</button>
+          </div>
         </div>
       </section>
 
@@ -401,36 +547,31 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           </div>
           <p class="small muted">„Vorteil“ = Wert der Figur − Wert der Lagerteile − Fehlteilkosten, vor Gebühren und Versand. Ohne Figurenpreis bleibt er offen.</p>
           <div class="toolbar">
-            <button class="btn btn-sm" @click="dl('minifig/export', { kind: status, format: 'csv' })"><Download :size="14" /> Liste als CSV</button>
-            <button class="btn btn-sm" @click="dl('minifig/export', { kind: status, format: 'bsx' })"><Download :size="14" /> Liste für BrickStore</button>
-            <button class="btn btn-sm" @click="dl('minifig/export-all', { format: 'csv' })">Alle Listen (CSV-ZIP)</button>
-            <button class="btn btn-sm" @click="dl('minifig/export-all', { format: 'bsx' })">Alle Listen (BrickStore-ZIP)</button>
-            <template v-if="status === 'almost_joint'">
-              <button class="btn btn-sm" @click="dl('minifig/almost-joint-export', { format: 'csv' })">Fehlteile als CSV</button>
-              <button class="btn btn-sm" @click="dl('minifig/almost-joint-export', { format: 'bsx' })">Fehlteile für BrickStore</button>
-            </template>
+            <button class="btn btn-sm" @click="openDownload('rang')"><Download :size="14" /> Herunterladen …</button>
           </div>
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Minifigur</th><th>Status</th><th class="num">Figurenwert</th><th class="num">Lagerteile</th><th class="num">Fehlteil</th><th class="num">Vorteil</th><th>Teile / Lagerort</th></tr></thead>
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Status</th><th class="num">Figurenwert</th><th class="num">Lagerteile</th><th class="num">Fehlteil</th><th class="num">Vorteil</th><th>Teile / Lagerort</th></tr></thead>
             <tbody>
-              <tr v-for="r in pageRows" :key="r.minifig_no">
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
-                <td><span class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
+              <tr v-for="(r, i) in pageRows" :key="r.minifig_no">
+                <td class="nr">{{ (page - 1) * limit + i + 1 }}</td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
+                <td><span v-if="r.rank === 'buildable'" class="qtybadge">{{ r.buildable_qty }}× baubar</span>
+                  <span class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
                   <div class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
                 <td class="num">{{ eur(r.parts_value) }}</td>
                 <td class="num">{{ r.rank === 'almost' ? eur(r.completion_cost) : '–' }}</td>
                 <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide">
-                  <MinifigParts :row="r" />
+                  <MinifigParts :row="r" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" />
                   <div v-if="r.aj" class="toolbar rej">
                     <button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>
                   </div>
                 </td>
               </tr>
-              <tr v-if="!pageRows.length"><td colspan="7" class="empty">Keine Treffer für diesen Filter.</td></tr>
+              <tr v-if="!pageRows.length"><td colspan="8" class="empty">Keine Treffer für diesen Filter.</td></tr>
             </tbody>
           </table>
         </div>
@@ -451,7 +592,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
               <thead><tr><th>Fehlteil</th><th class="num">Figuren</th><th class="num">Menge</th><th class="num">Preis</th></tr></thead>
               <tbody>
                 <tr v-for="m in res.missing_frequency.slice(0, 100)" :key="`${m.item_no}|${m.color_id}`">
-                  <td><div class="partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ m.item_name }}</div></div></div></td>
+                  <td><div class="partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ htmlText(m.item_name) }}</div></div></div></td>
                   <td class="num"><strong>{{ m.figures_affected }}</strong></td><td class="num">{{ m.total_shortfall }}</td>
                   <td class="num">{{ eur(m.estimated_unit_price) }}<div v-if="m.price_source" class="small faint">{{ m.price_source }}</div></td>
                 </tr>
@@ -477,15 +618,22 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         <p class="small muted pad">Teile werden im Rechenmodell reserviert und nie doppelt vergeben. Zuerst zählt der wirtschaftliche Vorteil, dann Figurenwert und Bestandsreserve.</p>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Teilewert</th><th class="num">Vorteil</th><th>Teile zum Bauen</th></tr></thead>
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Teilewert</th><th class="num">Vorteil</th><th>Teile zum Bauen</th></tr></thead>
             <tbody>
-              <tr v-for="r in res.joint_buildable" :key="r.minifig_no">
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div>
-                  <div class="small faint">Plan {{ r.buildable_qty || 1 }}×<template v-if="r.individual_buildable_qty > (r.buildable_qty || 1)"> · einzeln max. {{ r.individual_buildable_qty }}×</template></div></div></div></td>
+              <tr v-for="(r, i) in res.joint_buildable" :key="r.minifig_no">
+                <td class="nr">{{ i + 1 }}</td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div>
+                  <div><span class="qtybadge">{{ r.buildable_qty || 1 }}× bauen</span><span v-if="r.individual_buildable_qty > (r.buildable_qty || 1)" class="small faint"> einzeln max. {{ r.individual_buildable_qty }}×</span></div>
+                  <div class="built">
+                    <select v-if="(r.buildable_qty || 1) > 1" v-model.number="buildQty[r.minifig_no]" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`">
+                      <option v-for="n in r.buildable_qty" :key="n" :value="n">{{ n }}×</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(r)"><PackageCheck :size="14" /> Fertig gebaut</button>
+                  </div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}</td><td class="num">{{ eur(r.parts_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
-                <td class="wide"><MinifigParts :row="{ ...r, catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`, image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` }" /></td>
+                <td class="wide"><MinifigParts :copies="r.buildable_qty || 1" :row="{ ...r, catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`, image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` }" /></td>
               </tr>
-              <tr v-if="!res.joint_buildable.length"><td colspan="5" class="empty">Noch keine gemeinsam baubaren Figuren.</td></tr>
+              <tr v-if="!res.joint_buildable.length"><td colspan="6" class="empty">Noch keine gemeinsam baubaren Figuren.</td></tr>
             </tbody>
           </table>
         </div>
@@ -496,21 +644,21 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <span class="faint small">{{ res.almost_joint_buildable_count }} vorbereitbar · {{ res.almost_joint_blocked_count }} blockiert · {{ res.almost_joint_excluded_count }} ausgeschlossen</span></div>
         <p class="small muted pad">Zweite Runde: Die Teile des gemeinsamen Bauplans bleiben reserviert. Nur der Rest wird auf Figuren mit genau einem Fehlteil verteilt.</p>
         <div class="toolbar pad">
-          <button class="btn btn-sm" @click="dl('minifig/almost-joint-export', { format: 'csv' })"><Download :size="14" /> Fehlteile als CSV</button>
-          <button class="btn btn-sm" @click="dl('minifig/almost-joint-export', { format: 'bsx' })"><Download :size="14" /> Fehlteile für BrickStore</button>
+          <button class="btn btn-sm" @click="openDownload('fehlteile')"><Download :size="14" /> Fehlteile herunterladen …</button>
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Minifigur</th><th>Fehlteil</th><th class="num">Fehlteilkosten</th><th class="num">Figurenwert</th><th class="num">Vorteil nach Zukauf</th><th>Teile / Entscheidung</th></tr></thead>
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Fehlteil</th><th class="num">Fehlteilkosten</th><th class="num">Figurenwert</th><th class="num">Vorteil nach Zukauf</th><th>Teile / Entscheidung</th></tr></thead>
             <tbody>
-              <tr v-for="r in res.almost_joint_buildable" :key="r.minifig_no">
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
-                <td><div class="partcell"><PartImage :no="r.missing[0]?.item_no" :color="r.missing[0]?.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(r.missing[0]?.item_no ?? '')}`">{{ r.missing[0]?.item_no }}</RouterLink> · Farbe {{ r.missing[0]?.color_id }}<div class="small muted">{{ r.missing[0]?.item_name }}</div></div></div></td>
+              <tr v-for="(r, i) in res.almost_joint_buildable" :key="r.minifig_no">
+                <td class="nr">{{ i + 1 }}</td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
+                <td><div class="partcell"><PartImage :no="r.missing[0]?.item_no" :color="r.missing[0]?.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(r.missing[0]?.item_no ?? '')}`">{{ r.missing[0]?.item_no }}</RouterLink> · Farbe {{ r.missing[0]?.color_id }}<div class="small muted">{{ htmlText(r.missing[0]?.item_name) }}</div></div></div></td>
                 <td class="num">{{ eur(r.completion_cost) }}</td><td class="num">{{ eur(r.figure_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide"><MinifigParts :row="r" />
                   <div class="toolbar rej"><button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button></div></td>
               </tr>
-              <tr v-if="!res.almost_joint_buildable.length"><td colspan="6" class="empty">Aktuell keine Figuren aus dem Restbestand vorbereitbar.</td></tr>
+              <tr v-if="!res.almost_joint_buildable.length"><td colspan="7" class="empty">Aktuell keine Figuren aus dem Restbestand vorbereitbar.</td></tr>
             </tbody>
           </table>
         </div>
@@ -519,7 +667,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <div class="table-wrap">
             <table class="table"><tbody>
               <tr v-for="r in res.almost_joint_excluded" :key="r.minifig_no">
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" /><span><strong class="mono">{{ r.minifig_no }}</strong> {{ r.name }}</span></div></td><td>{{ REASONS[r.reason] ?? 'Nicht bauen' }}</td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" /><span><strong class="mono">{{ r.minifig_no }}</strong> {{ htmlText(r.name) }}</span></div></td><td>{{ REASONS[r.reason] ?? 'Nicht bauen' }}</td>
                 <td class="num"><button class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
               </tr>
             </tbody></table>
@@ -532,11 +680,11 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <div class="panel-head"><h2>Einzeln baubar</h2><span class="faint small">{{ res.individual_buildable_count }}</span></div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Minifigur</th><th>Treffer</th><th class="num">Baubar</th></tr></thead>
+              <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Treffer</th><th class="num">Baubar</th></tr></thead>
               <tbody>
-                <tr v-for="r in res.buildable" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
-                  <td><span class="pill ok">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td><td class="num"><strong>{{ r.buildable_qty }}×</strong></td></tr>
-                <tr v-if="!res.buildable.length"><td colspan="3" class="empty">Noch keine Treffer.</td></tr>
+                <tr v-for="(r, i) in res.buildable" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
+                  <td><span class="pill ok">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td><td class="num"><span class="qtybadge">{{ r.buildable_qty }}×</span></td></tr>
+                <tr v-if="!res.buildable.length"><td colspan="4" class="empty">Noch keine Treffer.</td></tr>
               </tbody>
             </table>
           </div>
@@ -545,12 +693,12 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <div class="panel-head"><h2>Nur 1 Teil fehlt</h2><span class="faint small">{{ res.almost_count }}</span></div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Minifigur</th><th>Treffer</th><th>Fehlend</th></tr></thead>
+              <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Treffer</th><th>Fehlend</th></tr></thead>
               <tbody>
-                <tr v-for="r in res.almost" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
+                <tr v-for="(r, i) in res.almost" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
                   <td><span class="pill warn">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td>
                   <td><div v-for="m in r.missing" :key="m.item_no" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div></td></tr>
-                <tr v-if="!res.almost.length"><td colspan="3" class="empty">Noch keine Treffer.</td></tr>
+                <tr v-if="!res.almost.length"><td colspan="4" class="empty">Noch keine Treffer.</td></tr>
               </tbody>
             </table>
           </div>
@@ -562,17 +710,67 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         <p class="small muted pad">Einzeln baubar, im gemeinsamen Bauplan aber nicht mehr vollständig, weil Teile schon anderen Figuren zugeordnet sind.</p>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Minifigur</th><th>Nach Reservierung fehlend</th></tr></thead>
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Nach Reservierung fehlend</th></tr></thead>
             <tbody>
-              <tr v-for="r in res.joint_conflicts" :key="r.minifig_no"><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ r.name }}</div></div></div></td>
+              <tr v-for="(r, i) in res.joint_conflicts" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
                 <td><div v-for="m in r.missing_after_reservations" :key="`${m.item_no}|${m.color_id}`" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · Rest {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div>
                   <span v-if="!r.missing_after_reservations.length" class="faint small">Gemeinsame Teile bereits reserviert</span></td></tr>
-              <tr v-if="!res.joint_conflicts.length"><td colspan="2" class="empty">Keine Konflikte – alle einzeln baubaren Figuren passen gleichzeitig.</td></tr>
+              <tr v-if="!res.joint_conflicts.length"><td colspan="3" class="empty">Keine Konflikte – alle einzeln baubaren Figuren passen gleichzeitig.</td></tr>
             </tbody>
           </table>
         </div>
       </section>
     </template>
+
+ <TnDialog v-if="dlOpen" title="Liste herunterladen" @close="dlOpen = false">
+      <label class="field"><span>Liste</span>
+        <select v-model="dl2.list" class="select"><option v-for="o in DL_LISTS" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
+      <div v-if="dl2.list !== 'zip'" class="range">
+        <label class="field"><span>von Nr.</span><input v-model.number="dl2.from" class="input" type="number" min="1" :max="dlCount" /></label>
+        <label class="field"><span>bis Nr.</span><input v-model.number="dl2.to" class="input" type="number" min="1" :max="dlCount" /></label>
+        <span class="small faint">{{ num(dlCount) }} Figuren in dieser Liste</span>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Format">
+        <button type="button" :class="{ on: dl2.format === 'csv' }" role="radio" :aria-checked="dl2.format === 'csv'" @click="dl2.format = 'csv'">CSV (Excel)</button>
+        <button type="button" :class="{ on: dl2.format === 'bsx' }" role="radio" :aria-checked="dl2.format === 'bsx'" @click="dl2.format = 'bsx'">BrickStore (BSX)</button>
+      </div>
+      <p v-if="dl2.list === 'rang'" class="small muted">Die Nummern sind die aus der Rangliste, so wie sie gerade gefiltert und sortiert ist.</p>
+      <template #actions>
+        <button class="btn" @click="dlOpen = false">Abbrechen</button>
+        <button class="btn btn-primary" :disabled="dl2.list !== 'zip' && !dlCount" @click="doDownload"><Download :size="16" /> Herunterladen</button>
+      </template>
+    </TnDialog>
+
+    <TnDialog v-if="expo" title="Sammlung abschließen" wide @close="expo = null">
+      <p>{{ figs(expo.builds.reduce((t, b) => t + b.qty, 0)) }} fertig gebaut ({{ expo.builds.length === 1 ? '1 Eintrag' : `${num(expo.builds.length)} Einträge` }}).</p>
+      <section v-if="expo.xml" class="step">
+        <h3>1. BrickLink: Teile abziehen</h3>
+        <p class="small muted">{{ num(expo.bricklink_lots) }} Lots mit Minus-Mengen. Bei BrickLink unter „Upload/Update Inventory (XML)“ als <strong>Update</strong> einfügen.</p>
+        <div class="toolbar">
+          <button class="btn btn-primary" @click="copyXml"><Copy :size="16" /> Kopieren und BrickLink öffnen</button>
+          <button class="btn" @click="saveXml"><Download :size="16" /> Als Datei speichern</button>
+          <span v-if="copied" class="small ok">Kopiert.</span>
+        </div>
+      </section>
+      <p v-if="expo.without_lot.length" class="small warnc">{{ expo.without_lot.length }} Lots haben keine BrickLink-Lot-Nr. (z. B. neu angelegt) und stehen nicht in der Datei: {{ expo.without_lot.map((l) => `${l.item_no} ${l.remarks}`).join(', ') }}. Diese bitte bei BrickLink von Hand abziehen.</p>
+      <section v-if="expo.bsx_files.length" class="step">
+        <h3>{{ expo.xml ? 2 : 1 }}. BSX-Dateien</h3>
+        <p class="small muted">Teile aus diesen Dateien wurden benutzt. Die neue Fassung enthält die Teile ohne die gebauten Figuren.</p>
+        <ul class="files">
+          <li v-for="f in expo.bsx_files" :key="f.id">
+            <span class="grow"><strong>{{ f.name }}</strong> <span class="small muted">{{ num(f.parts) }} Teile aus {{ num(f.lots) }} Zeilen</span></span>
+            <label class="small chk"><input v-model="applyBsx" type="checkbox" :value="f.id" /> im Finder übernehmen</label>
+            <button class="btn btn-sm" @click="dl('minifig/builds/bsx', { id: f.id })"><Download :size="14" /> Herunterladen</button>
+          </li>
+        </ul>
+      </section>
+      <p class="small">Erst wenn bei BrickLink alles hochgeladen ist: <strong>„Ja, ist hochgeladen“</strong>. Dann werden die Teile auch im Dashboard-Bestand abgezogen{{ expo.bsx_files.length ? ' und die angehakten BSX-Dateien ersetzt' : '' }}.</p>
+      <template #actions>
+        <button class="btn" :disabled="busy" @click="finishExport(false)"><X :size="16" /> Verwerfen</button>
+        <button class="btn" @click="expo = null">Später</button>
+        <button class="btn btn-primary" :disabled="busy" @click="finishExport(true)">Ja, ist hochgeladen</button>
+      </template>
+    </TnDialog>
 
     <TnDialog v-if="pricePreview" title="Preise importieren?" @close="pricePreview = null">
       <p>{{ priceFile?.name }}: {{ num(pricePreview.rows) }} Zeilen, {{ num(pricePreview.usable_combinations) }} Preise{{ pricePreview.conflicts ? `, ${pricePreview.conflicts} widersprüchlich (werden übersprungen)` : '' }}.</p>
@@ -614,6 +812,22 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 .pad { padding: 10px var(--pad) 0; margin: 0; }
 .wide { min-width: 280px; }
 .rej { margin-top: 8px; }
+.nr { width: 1%; white-space: nowrap; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
+.qtybadge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-weight: 700; font-size: 0.85rem; margin-right: 4px; }
+.built { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.select-sm { height: 30px; padding: 0 6px; width: auto; }
+.prio { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-sm); background: var(--bg); border: 1px solid var(--border); }
+.seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 4px; background: none; color: var(--text-2); font: inherit; cursor: pointer; }
+.seg button.on { background: var(--surface-2); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong); font-weight: 500; }
+.order { display: inline-flex; }
+.grow { flex: 1; min-width: 0; }
+.range { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+.range .input { width: 110px; }
+.step { margin: 12px 0; }
+.step h3 { margin: 0 0 4px; font-size: 1rem; }
+.chk { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.ok { color: var(--ok); }
 .pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px var(--pad); }
 .good-border { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
 .warn-border { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }

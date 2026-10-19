@@ -29,7 +29,7 @@ export function parseBsx(text) {
     if (status === 'X' || qty <= 0) return
     const color = Number(t('ColorID', '-1'))
     rows.push({ item_type: type, item_no: no, color_id: Number.isFinite(color) ? Math.trunc(color) : -1, condition: cond, quantity: qty,
-      price: Number(t('Price', '0')) || 0, lot_id: Number(t('LotID', '0')) || null, item_name: t('ItemName'), color_name: t('ColorName'), remarks: t('Remarks'), index: idx })
+      price: Number(t('Price', '0')) || 0, lot_id: Number(t('LotID', '0')) || null, item_name: t('ItemName'), color_name: t('ColorName'), remarks: t('Remarks'), comments: t('Comments'), index: idx })
   })
   if (!rows.length) throw new Error('Keine verwendbaren Bestandspositionen in der BrickStore-Datei gefunden')
   return [rows, currency]

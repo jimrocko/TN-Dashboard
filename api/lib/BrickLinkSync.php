@@ -162,6 +162,8 @@ final class BrickLinkSync
         $ids = $clean($ids);
         $stIds = $clean($stocktakeIds);
         if (!$ids && !$stIds) json_error('Keine offenen Änderungen', 400);
+        // Sonst könnte der ganze Bestand die Minus-Mengen der fertigen Minifiguren bei BrickLink wieder überschreiben
+        if (Minifig::buildExportActive()) json_error('Gerade wird die Sammlung „Fertige Figuren“ im Minifig-Finder hochgeladen. Bitte die erst abschließen.', 409);
         try {
             q('INSERT INTO {bl_exports} (open_flag, transfer_ids, stocktake_ids, created_by, created_at) VALUES (1, ?, ?, ?, ?)',
                 [json_encode($ids), json_encode($stIds), $userId, now()]);

@@ -615,6 +615,60 @@ switch (true) {
         ActivityLog::log((int) $me['id'], 'minifig_source', 'minifig', ['quelle' => $src]);
         json_response(['source' => $src]);
 
+    case $route === 'minifig/priority' && $method === 'POST':
+        // Welche Quelle zuerst (Lager oder BSX-Dateien) und Reihenfolge der BSX-Dateien (gilt für alle)
+        $me = require_user();
+        $in = request_json();
+        try { $r = Minifig::setPriority((string) ($in['priority'] ?? ''), (array) ($in['bsx_order'] ?? [])); } catch (InvalidArgumentException $e) { json_error($e->getMessage(), 422); }
+        ActivityLog::log((int) $me['id'], 'minifig_priority', 'minifig', ['zuerst' => $r['priority']]);
+        json_response($r);
+
+    case $route === 'minifig/builds' && $method === 'GET':
+        require_user();
+        json_response(Minifig::builds());
+
+    case $route === 'minifig/builds' && $method === 'POST':
+        // „Fertig gebaut“: Figur in die gemeinsame Sammlung legen (Teile sind dann in der Rechnung abgezogen)
+        $me = require_user();
+        $in = request_json();
+        try {
+            $r = Minifig::addBuild((string) ($in['minifig_no'] ?? ''), (int) ($in['qty'] ?? 1), (array) ($in['lots'] ?? []), (int) $me['id']);
+        } catch (InvalidArgumentException $e) {
+            json_error($e->getMessage(), 422);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 409);
+        }
+        ActivityLog::log((int) $me['id'], 'minifig_build_add', 'minifig', ['figur' => $r['minifig_no'], 'menge' => $r['qty'], 'teile' => $r['parts']]);
+        json_response($r);
+
+    case preg_match('#^minifig/builds/(\d+)/delete$#', $route, $m) === 1 && $method === 'POST':
+        $me = require_user();
+        $b = Minifig::deleteBuild((int) $m[1]);
+        if ($b === null) json_error('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409);
+        ActivityLog::log((int) $me['id'], 'minifig_build_delete', 'minifig', ['figur' => $b['minifig_no'], 'menge' => (int) $b['qty']]);
+        json_response(['ok' => true]);
+
+    case $route === 'minifig/builds/start' && $method === 'POST':
+        // „Sammlung abschließen“: BrickLink-Datei (Minus-Mengen je Lot) und geänderte BSX-Dateien
+        $me = require_user();
+        $active = Minifig::buildExportActive();
+        $r = Minifig::startBuildExport((int) $me['id']);
+        if (!$active) ActivityLog::log((int) $me['id'], 'minifig_build_export_start', 'minifig', ['figuren' => count($r['builds']), 'lots' => $r['bricklink_lots']]);
+        json_response($r);
+
+    case $route === 'minifig/builds/bsx' && $method === 'GET':
+        require_user();
+        try { [$name, $content] = Minifig::bsxAfterExport((int) ($_GET['id'] ?? 0)); } catch (RuntimeException $e) { json_error($e->getMessage(), 404); }
+        send_file($content, $name, 'application/xml');
+
+    case $route === 'minifig/builds/finish' && $method === 'POST':
+        $me = require_user();
+        $in = request_json();
+        $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []));
+        ActivityLog::log((int) $me['id'], $r['done'] ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig',
+            ['figuren' => $r['figures'], 'teile' => $r['parts'], 'lots' => $r['lots'], 'bsx' => count($r['bsx_files'])]);
+        json_response($r);
+
     case $route === 'minifig/bsx' && $method === 'GET':
         require_user();
         json_response(['files' => Minifig::bsxFiles()]);
