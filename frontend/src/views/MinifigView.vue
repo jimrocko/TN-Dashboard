@@ -158,21 +158,22 @@ const finishExport = (done) => run(done ? 'Bestand wird angepasst' : 'Abschluss 
 })
 
 // ---- Download-Fenster: Liste, Bereich (Nr. von–bis) und Format wählen ----
-const DL_LISTS = [
-  { value: 'rang', label: 'Rangliste (wie angezeigt, mit Filter und Sortierung)' },
+const DL_LISTS = computed(() => [
+  ...(isFigTab.value ? [{ value: 'view', label: `Diese Ansicht: ${TABS.find((t) => t.value === tab.value).label} (mit Suche und Sortierung)` }] : []),
   { value: 'joint', label: 'Gemeinsamer Bauplan' },
   { value: 'buildable', label: 'Einzeln baubar' },
   { value: 'almost_joint', label: 'Gemeinsam ergänzbar · 1 Teil fehlt' },
   { value: 'almost', label: 'Nur 1 Teil fehlt' },
   { value: 'fehlteile', label: 'Fehlteile zum Nachkaufen (gemeinsam ergänzbar)' },
   { value: 'zip', label: 'Alle Listen als ZIP' },
-]
+])
+const TAB_KIND = { plan: 'joint', einzeln: 'buildable', fehlt: 'almost', ergaenzbar: 'almost_joint' }
 const dlOpen = ref(false)
-const dl2 = ref({ list: 'rang', from: 1, to: 1, format: 'csv' })
-const dlRows = (list) => (list === 'rang' ? filtered.value : list === 'fehlteile' ? res.value.almost_joint_buildable
+const dl2 = ref({ list: 'view', from: 1, to: 1, format: 'csv' })
+const dlRows = (list) => (list === 'view' ? filtered.value : list === 'fehlteile' ? res.value.almost_joint_buildable
   : { joint: res.value.joint_buildable, buildable: res.value.buildable, almost_joint: res.value.almost_joint_buildable, almost: res.value.almost }[list] ?? [])
 const dlCount = computed(() => (res.value && dl2.value.list !== 'zip' ? dlRows(dl2.value.list).length : 0))
-function openDownload(list) {
+function openDownload(list = isFigTab.value ? 'view' : 'fehlteile') {
   dl2.value = { ...dl2.value, list, from: 1, to: res.value ? dlRows(list).length : 1 }
   dlOpen.value = true
 }
@@ -192,9 +193,9 @@ function doDownload() {
     let name
     if (list === 'fehlteile') { text = ext === 'bsx' ? almostJointBsx(r, sel) : almostJointCsv(r, sel); name = `minifig-fehlteile${range}` }
     else {
-      const kind = list === 'rang' ? 'all' : list
+      const kind = list === 'view' ? TAB_KIND[tab.value] ?? 'all' : list
       text = ext === 'bsx' ? listBsx(kind, r, sel) : listCsv(kind, r, sel)
-      name = `minifig-${list === 'rang' ? 'rangliste' : LIST_FILES[list]}${range}`
+      name = `minifig-${list === 'view' ? `ansicht-${tab.value}` : LIST_FILES[list]}${range}`
     }
     saveBlob(new Blob([text], { type: ext === 'bsx' ? 'application/xml' : 'text/csv;charset=utf-8' }), `${name}.${ext}`)
   }
@@ -219,28 +220,62 @@ const freshness = computed(() => {
   return h <= 6 ? { text: 'aktuell', cls: 'ok' } : h <= 24 ? { text: `${Math.max(1, Math.round(h))} Std. alt`, cls: 'warn' } : { text: `${Math.max(1, Math.round(h / 24))} Tg. alt`, cls: 'danger' }
 })
 
-// ---- Rangliste ----
+// ---- Eine Liste mit Reitern statt vieler Listen (Wunsch des Inhabers) ----
+const TABS = [
+  { value: 'plan', label: 'Bauplan', hint: 'Gemeinsamer Bauplan: Teile werden reserviert und nie doppelt vergeben. Zuerst zählt der wirtschaftliche Vorteil, dann Figurenwert und Bestandsreserve.' },
+  { value: 'einzeln', label: 'Einzeln baubar', hint: 'Jede Figur für sich gerechnet, so oft wie die Teile reichen. „Fertig gebaut“ gibt es bei Figuren aus dem gemeinsamen Bauplan.' },
+  { value: 'fehlt', label: '1 Teil fehlt', hint: 'Figuren, bei denen genau ein Teil fehlt.' },
+  { value: 'ergaenzbar', label: 'Gemeinsam ergänzbar', hint: 'Zweite Runde: Die Teile des Bauplans bleiben reserviert. Nur der Rest wird auf Figuren mit genau einem Fehlteil verteilt.' },
+  { value: 'blockiert', label: 'Blockiert', hint: 'Einzeln baubar, im gemeinsamen Bauplan aber nicht mehr vollständig, weil Teile schon anderen Figuren zugeordnet sind.' },
+  { value: 'fehlteile', label: 'Fehlteile', hint: 'Nur Figuren mit „1 Teil fehlt“: Welches Teil würde die meisten Figuren freischalten?' },
+  { value: 'alle', label: 'Alle', hint: 'Baubar und 1 Teil fehlt zusammen (frühere Rangliste).' },
+]
+const tab = ref('plan')
 const q = ref('')
-const status = ref('all')
-const sort = ref('figure_desc')
-const limit = ref(100)
+const sort = ref('order')
+const limit = ref(50)
 const page = ref(1)
-watch([q, status, sort, limit], () => { page.value = 1 })
+watch([q, sort, limit], () => { page.value = 1 })
+watch(tab, (t) => { page.value = 1; sort.value = t === 'alle' ? 'figure_desc' : 'order' })
+function showTab(t) {
+  tab.value = t
+  document.querySelector('.mflist')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+// Zeile des gemeinsamen Bauplans je Figur: für „Fertig gebaut“ auch in den anderen Reitern (gleiche Lots wie im Bauplan)
+const jointMap = computed(() => new Map((res.value?.joint_buildable ?? []).map((x) => [x.minifig_no, x])))
 const rankRows = computed(() => {
   const r = res.value
   if (!r) return []
-  const joint = new Set(r.joint_buildable.map((x) => x.minifig_no))
   const aj = new Map(r.almost_joint_buildable.map((x) => [x.minifig_no, x]))
-  return [...r.buildable.map((x) => ({ ...x, rank: 'buildable', joint: joint.has(x.minifig_no), aj: false })),
+  return [...r.buildable.map((x) => ({ ...x, rank: 'buildable', joint: jointMap.value.has(x.minifig_no), aj: false })),
     ...r.almost.map((x) => ({ ...x, ...(aj.get(x.minifig_no) ?? {}), rank: 'almost', joint: false, aj: aj.has(x.minifig_no) }))]
 })
+const tabRows = computed(() => {
+  const r = res.value
+  if (!r) return []
+  const all = rankRows.value
+  return {
+    plan: r.joint_buildable.map((x) => ({ ...x, rank: 'buildable', joint: true, aj: false })),
+    einzeln: all.filter((x) => x.rank === 'buildable'),
+    fehlt: all.filter((x) => x.rank === 'almost'),
+    ergaenzbar: r.almost_joint_buildable.map((x) => ({ ...x, rank: 'almost', joint: false, aj: true })),
+    blockiert: r.joint_conflicts,
+    fehlteile: r.missing_frequency,
+    alle: all,
+  }[tab.value] ?? []
+})
+const tabCount = (t) => {
+  const r = res.value
+  if (!r) return 0
+  return { plan: r.joint_buildable.length, einzeln: r.buildable.length, fehlt: r.almost.length, ergaenzbar: r.almost_joint_buildable.length,
+    blockiert: r.joint_conflicts.length, fehlteile: r.missing_frequency.length, alle: r.buildable.length + r.almost.length }[t]
+}
+const isFigTab = computed(() => tab.value !== 'fehlteile')
 const filtered = computed(() => {
-  let rows = [...rankRows.value]
+  let rows = [...tabRows.value]
   const t = q.value.trim().toLowerCase()
-  if (t) rows = rows.filter((r) => `${r.minifig_no} ${r.name}`.toLowerCase().includes(t))
-  if (status.value === 'joint') rows = rows.filter((r) => r.joint)
-  else if (status.value === 'almost_joint') rows = rows.filter((r) => r.aj)
-  else if (status.value !== 'all') rows = rows.filter((r) => r.rank === status.value)
+  if (t) rows = rows.filter((r) => (isFigTab.value ? `${r.minifig_no} ${r.name}` : `${r.item_no} ${r.item_name}`).toLowerCase().includes(t))
+  if (!isFigTab.value || sort.value === 'order') return rows
   const v = (r, k, m) => (r[k] === null || r[k] === undefined ? m : Number(r[k]))
   const cmp = {
     figure_desc: (a, b) => v(b, 'figure_value', -1e15) - v(a, 'figure_value', -1e15),
@@ -251,11 +286,13 @@ const filtered = computed(() => {
     complete_desc: (a, b) => Number(b.completeness || 0) - Number(a.completeness || 0),
     name_asc: (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de'),
   }[sort.value]
-  return rows.sort(cmp)
+  return cmp ? rows.sort(cmp) : rows
 })
 const pages = computed(() => Math.max(1, Math.ceil(filtered.value.length / limit.value)))
 const pageRows = computed(() => filtered.value.slice((page.value - 1) * limit.value, page.value * limit.value))
 const statusLabel = (r) => (r.aj ? 'gemeinsam ergänzbar · 1 Teil fehlt' : r.rank === 'almost' ? '1 Teil fehlt' : r.joint ? 'gemeinsam baubar' : 'einzeln baubar')
+const withLinks = (r) => ({ ...r, catalog_url: r.catalog_url ?? `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`,
+  image_url: r.image_url ?? `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` })
 
 const coverage = computed(() => {
   const all = rankRows.value
@@ -398,10 +435,10 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
       </section>
 
       <div v-if="res" class="kpis">
-        <div class="kpi good"><div class="label">Sofort baubar</div><div class="value">{{ num(res.individual_buildable_count) }}</div><div class="hint">jede Figur für sich gezählt</div></div>
-        <div class="kpi good"><div class="label">Alle zusammen baubar</div><div class="value">{{ num(res.joint_buildable_count) }}</div><div class="hint">kein Teil doppelt verplant</div></div>
-        <div class="kpi warn"><div class="label">Es fehlt nur 1 Teil</div><div class="value">{{ num(res.almost_count) }}</div><div class="hint">lohnt sich zum Nachkaufen</div></div>
-        <div class="kpi warn"><div class="label">Blockiert</div><div class="value">{{ num(res.joint_conflict_count) }}</div><div class="hint">Teile schon für andere Figur verplant</div></div>
+        <button type="button" class="kpi good" @click="showTab('einzeln')"><div class="label">Sofort baubar</div><div class="value">{{ num(res.individual_buildable_count) }}</div><div class="hint">jede Figur für sich gezählt</div></button>
+        <button type="button" class="kpi good" @click="showTab('plan')"><div class="label">Alle zusammen baubar</div><div class="value">{{ num(res.joint_buildable_count) }}</div><div class="hint">kein Teil doppelt verplant</div></button>
+        <button type="button" class="kpi warn" @click="showTab('fehlt')"><div class="label">Es fehlt nur 1 Teil</div><div class="value">{{ num(res.almost_count) }}</div><div class="hint">lohnt sich zum Nachkaufen</div></button>
+        <button type="button" class="kpi warn" @click="showTab('blockiert')"><div class="label">Blockiert</div><div class="value">{{ num(res.joint_conflict_count) }}</div><div class="hint">Teile schon für andere Figur verplant</div></button>
       </div>
 
       <details class="panel tech">
@@ -481,6 +518,17 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         </div>
       </section>
 
+      <section v-if="res" class="panel">
+          <div class="panel-head"><h2>Preisabdeckung</h2></div>
+          <table class="table"><tbody>
+            <tr><td>Figuren mit Referenzwert</td><td class="num"><strong>{{ coverage.fig }}/{{ coverage.all }}</strong></td></tr>
+            <tr><td>„1 Teil fehlt“ mit Fehlteilpreis</td><td class="num"><strong>{{ coverage.miss }}/{{ coverage.almost }}</strong></td></tr>
+            <tr><td>100 % Teile-Preisabdeckung</td><td class="num"><strong>{{ coverage.full }}/{{ coverage.all }}</strong></td></tr>
+            <tr><td>„1 Teil fehlt“ ohne Fehlteilpreis (nicht gelistet)</td><td class="num">{{ res.almost_without_cost_count }}</td></tr>
+            <tr><td>Stücklisten mit weniger als 4 Teilen (übersprungen)</td><td class="num">{{ res.under_min_parts_count }}</td></tr>
+          </tbody></table>
+        </section>
+
       <div v-if="auth.canDev" class="grid-2">
         <section class="panel">
           <div class="panel-head"><h2>Neue Minifiguren prüfen</h2></div>
@@ -529,49 +577,93 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
     </template>
 
     <template v-if="res">
-      <section class="panel">
-        <div class="panel-head"><h2>Rangliste</h2><span class="faint small">lokal berechnet · ohne API</span></div>
+      <section class="panel mflist">
+        <div class="panel-head"><h2>Figuren</h2><span class="faint small">lokal berechnet · ohne API</span></div>
+        <div class="tabs" role="tablist" aria-label="Listen">
+          <button v-for="t in TABS" :key="t.value" type="button" role="tab" class="tabbtn" :class="[{ on: tab === t.value }, `t-${t.value}`]" :aria-selected="tab === t.value" @click="tab = t.value">
+            {{ t.label }} <span class="cnt">{{ num(tabCount(t.value)) }}</span></button>
+        </div>
         <div class="panel-body stack-s">
+          <p class="small muted">{{ TABS.find((t) => t.value === tab).hint }}<template v-if="tab === 'plan'">{{ ' ' }}{{ figs(res.joint_buildable_count) }} ({{ num(res.joint_buildable_distinct_count ?? res.joint_buildable_count) }} verschiedene) gleichzeitig baubar.</template>
+            <template v-if="tab === 'ergaenzbar'">{{ ' ' }}{{ num(res.almost_joint_buildable_count) }} vorbereitbar · {{ num(res.almost_joint_blocked_count) }} blockiert · {{ num(res.almost_joint_excluded_count) }} ausgeschlossen.</template></p>
           <div class="toolbar">
-            <label class="searchbox"><Search :size="16" /><input v-model="q" class="input" type="search" placeholder="Nummer oder Name" aria-label="Suche" /></label>
-            <select v-model="status" class="select" aria-label="Status">
-              <option value="all">Baubar + 1 Teil fehlt</option><option value="buildable">Einzeln baubar</option><option value="joint">Gemeinsam baubar</option>
-              <option value="almost_joint">Gemeinsam ergänzbar · 1 Teil fehlt</option><option value="almost">Nur 1 Teil fehlt</option>
-            </select>
-            <select v-model="sort" class="select" aria-label="Sortierung">
+            <label class="searchbox"><Search :size="16" /><input v-model="q" class="input" type="search" :placeholder="isFigTab ? 'Nummer oder Name' : 'Teil-Nr. oder Name'" aria-label="Suche" /></label>
+            <select v-if="isFigTab" v-model="sort" class="select" aria-label="Sortierung">
+              <option value="order">{{ tab === 'plan' ? 'Reihenfolge des Bauplans' : 'Vorgabe-Reihenfolge' }}</option>
               <option value="figure_desc">Figurenwert ↓</option><option value="adv_desc">Vorteil ↓</option><option value="completion_asc">Fehlteilkosten ↑</option>
               <option value="completion_desc">Fehlteilkosten ↓</option><option value="parts_desc">Wert der Lagerteile ↓</option><option value="complete_desc">Vollständigkeit ↓</option>
               <option value="name_asc">Name A–Z</option>
             </select>
-            <select v-model.number="limit" class="select" aria-label="Anzeige"><option v-for="n in [50, 100, 250, 500, 1000]" :key="n" :value="n">{{ n }}</option></select>
+            <select v-model.number="limit" class="select" aria-label="Anzeige"><option v-for="n in [25, 50, 100, 250, 500]" :key="n" :value="n">{{ n }} pro Seite</option></select>
+            <button v-if="tab !== 'blockiert'" class="btn btn-sm" @click="openDownload()"><Download :size="14" /> Herunterladen …</button>
           </div>
-          <p class="small muted">„Vorteil“ = Wert der Figur − Wert der Lagerteile − Fehlteilkosten, vor Gebühren und Versand. Ohne Figurenpreis bleibt er offen.</p>
-          <div class="toolbar">
-            <button class="btn btn-sm" @click="openDownload('rang')"><Download :size="14" /> Herunterladen …</button>
-          </div>
+          <p v-if="isFigTab && tab !== 'blockiert'" class="small faint">„Vorteil“ = Wert der Figur − Wert der Lagerteile − Fehlteilkosten, vor Gebühren und Versand. Ohne Figurenpreis bleibt er offen.</p>
         </div>
-        <div class="table-wrap">
+
+        <div v-if="tab === 'fehlteile'" class="table-wrap">
           <table class="table">
-            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Status</th><th class="num">Figurenwert</th><th class="num">Lagerteile</th><th class="num">Fehlteil</th><th class="num">Vorteil</th><th>Teile / Lagerort</th></tr></thead>
+            <thead><tr><th class="nr">Nr.</th><th>Fehlteil</th><th class="num">Figuren</th><th class="num">Menge</th><th class="num">Preis</th></tr></thead>
+            <tbody>
+              <tr v-for="(m, i) in pageRows" :key="`${m.item_no}|${m.color_id}`">
+                <td class="nr">{{ (page - 1) * limit + i + 1 }}</td>
+                <td><div class="partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ htmlText(m.item_name) }}</div></div></div></td>
+                <td class="num"><strong>{{ m.figures_affected }}</strong></td><td class="num">{{ m.total_shortfall }}</td>
+                <td class="num">{{ eur(m.estimated_unit_price) }}<div v-if="m.price_source" class="small faint">{{ m.price_source }}</div></td>
+              </tr>
+              <tr v-if="!pageRows.length"><td colspan="5" class="empty">Keine Fehlteile.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else-if="tab === 'blockiert'" class="table-wrap">
+          <table class="table">
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Nach Reservierung fehlend</th></tr></thead>
+            <tbody>
+              <tr v-for="(r, i) in pageRows" :key="r.minifig_no"><td class="nr">{{ (page - 1) * limit + i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
+                <td><div v-for="m in r.missing_after_reservations" :key="`${m.item_no}|${m.color_id}`" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · Rest {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div>
+                  <span v-if="!r.missing_after_reservations.length" class="faint small">Gemeinsame Teile bereits reserviert</span></td></tr>
+              <tr v-if="!pageRows.length"><td colspan="3" class="empty">{{ q ? 'Keine Treffer.' : 'Keine Konflikte – alle einzeln baubaren Figuren passen gleichzeitig.' }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-else class="table-wrap">
+          <table class="table">
+            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Lagerteile</th><th v-if="tab !== 'plan' && tab !== 'einzeln'">Fehlteil</th><th class="num">Vorteil</th><th>Teile / Lagerort</th></tr></thead>
             <tbody>
               <tr v-for="(r, i) in pageRows" :key="r.minifig_no">
                 <td class="nr">{{ (page - 1) * limit + i + 1 }}</td>
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
-                <td><span v-if="r.rank === 'buildable'" class="qtybadge">{{ r.buildable_qty }}× baubar</span>
-                  <span class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
-                  <div class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</div></td>
+                <td><div class="partcell top"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div>
+                  <div class="badges">
+                    <span v-if="tab === 'plan'" class="qtybadge">{{ r.buildable_qty || 1 }}× bauen</span>
+                    <span v-else-if="r.rank === 'buildable'" class="qtybadge">{{ r.buildable_qty }}× baubar</span>
+                    <span v-if="tab === 'plan' && r.individual_buildable_qty > (r.buildable_qty || 1)" class="small faint">einzeln max. {{ r.individual_buildable_qty }}×</span>
+                    <span v-if="tab !== 'plan'" class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
+                    <span v-if="r.completeness !== undefined" class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</span>
+                  </div>
+                  <div v-if="jointMap.get(r.minifig_no)" class="built">
+                    <select v-if="(jointMap.get(r.minifig_no).buildable_qty || 1) > 1" v-model.number="buildQty[r.minifig_no]" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`">
+                      <option v-for="n in jointMap.get(r.minifig_no).buildable_qty" :key="n" :value="n">{{ n }}×</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> Fertig gebaut</button>
+                  </div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
                 <td class="num">{{ eur(r.parts_value) }}</td>
-                <td class="num">{{ r.rank === 'almost' ? eur(r.completion_cost) : '–' }}</td>
+                <td v-if="tab !== 'plan' && tab !== 'einzeln'" class="misscol">
+                  <template v-if="r.rank === 'almost'">
+                    <div v-for="m in r.missing ?? []" :key="`${m.item_no}|${m.color_id}`" class="small partcell miss"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<br /><span class="faint">vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></span></div>
+                    <div class="small">Kosten <strong>{{ eur(r.completion_cost) }}</strong></div>
+                  </template><template v-else>–</template></td>
                 <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide">
-                  <MinifigParts :row="r" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" />
+                  <MinifigParts v-if="tab === 'plan'" :copies="r.buildable_qty || 1" :row="withLinks(r)" />
+                  <MinifigParts v-else :row="r" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" />
                   <div v-if="r.aj" class="toolbar rej">
                     <button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>
                   </div>
                 </td>
               </tr>
-              <tr v-if="!pageRows.length"><td colspan="8" class="empty">Keine Treffer für diesen Filter.</td></tr>
+              <tr v-if="!pageRows.length"><td colspan="7" class="empty">{{ q ? 'Keine Treffer.' : 'Noch keine Figuren in dieser Liste.' }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -581,89 +673,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <span class="small">Seite {{ page }} / {{ pages }}</span>
           <button class="btn btn-sm" :disabled="page >= pages" @click="page++">›</button>
         </div>
-      </section>
-
-      <div class="grid-2">
-        <section class="panel">
-          <div class="panel-head"><h2>Häufigste Fehlteile</h2></div>
-          <p class="small muted pad">Nur Figuren mit „1 Teil fehlt“: Welches Teil würde die meisten Figuren freischalten?</p>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Fehlteil</th><th class="num">Figuren</th><th class="num">Menge</th><th class="num">Preis</th></tr></thead>
-              <tbody>
-                <tr v-for="m in res.missing_frequency.slice(0, 100)" :key="`${m.item_no}|${m.color_id}`">
-                  <td><div class="partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<div class="small muted">{{ htmlText(m.item_name) }}</div></div></div></td>
-                  <td class="num"><strong>{{ m.figures_affected }}</strong></td><td class="num">{{ m.total_shortfall }}</td>
-                  <td class="num">{{ eur(m.estimated_unit_price) }}<div v-if="m.price_source" class="small faint">{{ m.price_source }}</div></td>
-                </tr>
-                <tr v-if="!res.missing_frequency.length"><td colspan="4" class="empty">Keine Fehlteile.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section class="panel">
-          <div class="panel-head"><h2>Preisabdeckung</h2></div>
-          <table class="table"><tbody>
-            <tr><td>Figuren mit Referenzwert</td><td class="num"><strong>{{ coverage.fig }}/{{ coverage.all }}</strong></td></tr>
-            <tr><td>„1 Teil fehlt“ mit Fehlteilpreis</td><td class="num"><strong>{{ coverage.miss }}/{{ coverage.almost }}</strong></td></tr>
-            <tr><td>100 % Teile-Preisabdeckung</td><td class="num"><strong>{{ coverage.full }}/{{ coverage.all }}</strong></td></tr>
-            <tr><td>„1 Teil fehlt“ ohne Fehlteilpreis (nicht gelistet)</td><td class="num">{{ res.almost_without_cost_count }}</td></tr>
-            <tr><td>Stücklisten mit weniger als 4 Teilen (übersprungen)</td><td class="num">{{ res.under_min_parts_count }}</td></tr>
-          </tbody></table>
-        </section>
-      </div>
-
-      <section class="panel good-border">
-        <div class="panel-head"><h2>Gemeinsamer Bauplan</h2><span class="faint small">{{ res.joint_buildable_count }} Figuren ({{ res.joint_buildable_distinct_count ?? res.joint_buildable_count }} verschiedene) gleichzeitig baubar</span></div>
-        <p class="small muted pad">Teile werden im Rechenmodell reserviert und nie doppelt vergeben. Zuerst zählt der wirtschaftliche Vorteil, dann Figurenwert und Bestandsreserve.</p>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th class="num">Figurenwert</th><th class="num">Teilewert</th><th class="num">Vorteil</th><th>Teile zum Bauen</th></tr></thead>
-            <tbody>
-              <tr v-for="(r, i) in res.joint_buildable" :key="r.minifig_no">
-                <td class="nr">{{ i + 1 }}</td>
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div>
-                  <div><span class="qtybadge">{{ r.buildable_qty || 1 }}× bauen</span><span v-if="r.individual_buildable_qty > (r.buildable_qty || 1)" class="small faint"> einzeln max. {{ r.individual_buildable_qty }}×</span></div>
-                  <div class="built">
-                    <select v-if="(r.buildable_qty || 1) > 1" v-model.number="buildQty[r.minifig_no]" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`">
-                      <option v-for="n in r.buildable_qty" :key="n" :value="n">{{ n }}×</option>
-                    </select>
-                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(r)"><PackageCheck :size="14" /> Fertig gebaut</button>
-                  </div></div></div></td>
-                <td class="num">{{ eur(r.figure_value) }}</td><td class="num">{{ eur(r.parts_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
-                <td class="wide"><MinifigParts :copies="r.buildable_qty || 1" :row="{ ...r, catalog_url: `https://www.bricklink.com/v2/catalog/catalogitem.page?M=${encodeURIComponent(r.minifig_no)}`, image_url: `https://img.bricklink.com/ItemImage/MN/0/${encodeURIComponent(r.minifig_no)}.png` }" /></td>
-              </tr>
-              <tr v-if="!res.joint_buildable.length"><td colspan="6" class="empty">Noch keine gemeinsam baubaren Figuren.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel good-border">
-        <div class="panel-head"><h2>Gemeinsam ergänzbar · 1 Teil fehlt</h2>
-          <span class="faint small">{{ res.almost_joint_buildable_count }} vorbereitbar · {{ res.almost_joint_blocked_count }} blockiert · {{ res.almost_joint_excluded_count }} ausgeschlossen</span></div>
-        <p class="small muted pad">Zweite Runde: Die Teile des gemeinsamen Bauplans bleiben reserviert. Nur der Rest wird auf Figuren mit genau einem Fehlteil verteilt.</p>
-        <div class="toolbar pad">
-          <button class="btn btn-sm" @click="openDownload('fehlteile')"><Download :size="14" /> Fehlteile herunterladen …</button>
-        </div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Fehlteil</th><th class="num">Fehlteilkosten</th><th class="num">Figurenwert</th><th class="num">Vorteil nach Zukauf</th><th>Teile / Entscheidung</th></tr></thead>
-            <tbody>
-              <tr v-for="(r, i) in res.almost_joint_buildable" :key="r.minifig_no">
-                <td class="nr">{{ i + 1 }}</td>
-                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
-                <td><div class="partcell"><PartImage :no="r.missing[0]?.item_no" :color="r.missing[0]?.color_id" :size="32" /><div><RouterLink class="mono" :to="`/teil/${encodeURIComponent(r.missing[0]?.item_no ?? '')}`">{{ r.missing[0]?.item_no }}</RouterLink> · Farbe {{ r.missing[0]?.color_id }}<div class="small muted">{{ htmlText(r.missing[0]?.item_name) }}</div></div></div></td>
-                <td class="num">{{ eur(r.completion_cost) }}</td><td class="num">{{ eur(r.figure_value) }}</td><td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
-                <td class="wide"><MinifigParts :row="r" />
-                  <div class="toolbar rej"><button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button></div></td>
-              </tr>
-              <tr v-if="!res.almost_joint_buildable.length"><td colspan="7" class="empty">Aktuell keine Figuren aus dem Restbestand vorbereitbar.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <template v-if="res.almost_joint_excluded.length">
-          <p class="small pad"><strong>Ausgeschlossen</strong> · ihre Teile sind für andere Figuren wieder frei.</p>
+        <details v-if="tab === 'ergaenzbar' && res.almost_joint_excluded.length" class="excl">
+          <summary class="small"><strong>Ausgeschlossen ({{ res.almost_joint_excluded.length }})</strong> · ihre Teile sind für andere Figuren wieder frei</summary>
           <div class="table-wrap">
             <table class="table"><tbody>
               <tr v-for="r in res.almost_joint_excluded" :key="r.minifig_no">
@@ -672,57 +683,11 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
               </tr>
             </tbody></table>
           </div>
-        </template>
-      </section>
-
-      <div class="grid-2">
-        <section class="panel">
-          <div class="panel-head"><h2>Einzeln baubar</h2><span class="faint small">{{ res.individual_buildable_count }}</span></div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Treffer</th><th class="num">Baubar</th></tr></thead>
-              <tbody>
-                <tr v-for="(r, i) in res.buildable" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
-                  <td><span class="pill ok">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td><td class="num"><span class="qtybadge">{{ r.buildable_qty }}×</span></td></tr>
-                <tr v-if="!res.buildable.length"><td colspan="4" class="empty">Noch keine Treffer.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section class="panel">
-          <div class="panel-head"><h2>Nur 1 Teil fehlt</h2><span class="faint small">{{ res.almost_count }}</span></div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Treffer</th><th>Fehlend</th></tr></thead>
-              <tbody>
-                <tr v-for="(r, i) in res.almost" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
-                  <td><span class="pill warn">{{ r.present_groups }}/{{ r.required_groups }} · {{ r.completeness }} %</span></td>
-                  <td><div v-for="m in r.missing" :key="m.item_no" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div></td></tr>
-                <tr v-if="!res.almost.length"><td colspan="4" class="empty">Noch keine Treffer.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      <section class="panel warn-border">
-        <div class="panel-head"><h2>Durch gemeinsame Reservierung blockiert</h2><span class="faint small">{{ res.joint_conflict_count }}</span></div>
-        <p class="small muted pad">Einzeln baubar, im gemeinsamen Bauplan aber nicht mehr vollständig, weil Teile schon anderen Figuren zugeordnet sind.</p>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th>Nach Reservierung fehlend</th></tr></thead>
-            <tbody>
-              <tr v-for="(r, i) in res.joint_conflicts" :key="r.minifig_no"><td class="nr">{{ i + 1 }}</td><td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="40" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
-                <td><div v-for="m in r.missing_after_reservations" :key="`${m.item_no}|${m.color_id}`" class="small partcell"><PartImage :no="m.item_no" :color="m.color_id" :size="28" /><span><span class="mono">{{ m.item_no }}</span> · Farbe {{ m.color_id }} · Rest {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></div>
-                  <span v-if="!r.missing_after_reservations.length" class="faint small">Gemeinsame Teile bereits reserviert</span></td></tr>
-              <tr v-if="!res.joint_conflicts.length"><td colspan="3" class="empty">Keine Konflikte – alle einzeln baubaren Figuren passen gleichzeitig.</td></tr>
-            </tbody>
-          </table>
-        </div>
+        </details>
       </section>
     </template>
 
- <TnDialog v-if="dlOpen" title="Liste herunterladen" @close="dlOpen = false">
+    <TnDialog v-if="dlOpen" title="Liste herunterladen" @close="dlOpen = false">
       <label class="field"><span>Liste</span>
         <select v-model="dl2.list" class="select"><option v-for="o in DL_LISTS" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
       <div v-if="dl2.list !== 'zip'" class="range">
@@ -734,7 +699,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         <button type="button" :class="{ on: dl2.format === 'csv' }" role="radio" :aria-checked="dl2.format === 'csv'" @click="dl2.format = 'csv'">CSV (Excel)</button>
         <button type="button" :class="{ on: dl2.format === 'bsx' }" role="radio" :aria-checked="dl2.format === 'bsx'" @click="dl2.format = 'bsx'">BrickStore (BSX)</button>
       </div>
-      <p v-if="dl2.list === 'rang'" class="small muted">Die Nummern sind die aus der Rangliste, so wie sie gerade gefiltert und sortiert ist.</p>
+      <p v-if="dl2.list === 'view'" class="small muted">Die Nummern sind die aus der Liste, so wie sie gerade gesucht und sortiert ist.</p>
       <template #actions>
         <button class="btn" @click="dlOpen = false">Abbrechen</button>
         <button class="btn btn-primary" :disabled="dl2.list !== 'zip' && !dlCount" @click="doDownload"><Download :size="16" /> Herunterladen</button>
@@ -832,5 +797,21 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 .good-border { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
 .warn-border { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
 label.btn { cursor: pointer; }
+button.kpi { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.kpi:hover { border-color: var(--border-strong); }
+.mflist { scroll-margin-top: 12px; }
+.tabs { display: flex; gap: 4px; padding: 8px var(--pad) 0; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+.tabbtn { flex: none; display: inline-flex; gap: 6px; align-items: center; padding: 8px 12px; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: none; color: var(--text-2); font: inherit; font-size: 0.9rem; cursor: pointer; margin-bottom: -1px; }
+.tabbtn.on { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 600; }
+.tabbtn .cnt { padding: 0 7px; border-radius: 10px; background: var(--surface-2); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.tabbtn.t-plan .cnt, .tabbtn.t-einzeln .cnt { color: var(--ok); }
+.tabbtn.t-fehlt .cnt, .tabbtn.t-ergaenzbar .cnt, .tabbtn.t-blockiert .cnt { color: var(--warn); }
+.badges { display: flex; gap: 4px 6px; align-items: center; flex-wrap: wrap; margin-top: 3px; }
+.miss { margin-bottom: 4px; }
+.misscol { min-width: 190px; }
+.partcell.top { align-items: flex-start; }
+.excl { padding: 10px var(--pad) 12px; }
+.excl summary { cursor: pointer; margin-bottom: 8px; }
 td { vertical-align: top !important; }
 </style>

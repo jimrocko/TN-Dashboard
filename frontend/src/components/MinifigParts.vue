@@ -8,7 +8,7 @@ import { htmlText } from '../utils/format'
 // Aufklappbare Teileliste einer Minifigur: Bild, BrickLink-Katalog, jedes Teil mit Lots, Remarks und Bemerkung.
 // copies = wie viele Figuren die Teileliste abdeckt (gemeinsamer Bauplan „Plan 3×“: die Liste enthält alle 3 Kopien).
 // Gleiche Teile (Teil + Farbe) werden zusammengefasst: „je Figur 2× · für 3 Figuren 6×“.
-// upTo = einzeln gerechnet so oft baubar (Rangliste, „Einzeln baubar“): zeigt zusätzlich die Menge für alle diese Figuren.
+// upTo = einzeln gerechnet so oft baubar (Reiter „Einzeln baubar“ und „Alle“): zeigt zusätzlich die Menge für alle diese Figuren.
 const props = defineProps({ row: Object, open: Boolean, copies: { type: Number, default: 1 }, upTo: { type: Number, default: 0 } })
 const shown = ref(props.open)
 

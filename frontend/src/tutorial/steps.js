@@ -65,12 +65,12 @@ const studentList = [
     target: () => q('main .kpis + .kpis') ?? q('main .kpis'), wait: 'next', go: '/minifig',
   },
   {
-    say: 'Der gemeinsame Bauplan verteilt die Teile so, dass keins doppelt verplant wird. Tipp bei einer Figur auf „Teile & Lagerorte“.',
-    target: () => panel('Gemeinsamer Bauplan')?.querySelector('summary'), wait: 'click', go: '/minifig',
+    say: 'Unten stehen alle Figuren in einer Liste mit Reitern. Der erste Reiter „Bauplan“ verteilt die Teile so, dass keins doppelt verplant wird. Tipp bei einer Figur auf „Teile & Lagerorte“.',
+    target: () => panel('Figuren')?.querySelector('details.figdetails summary'), wait: 'click', go: '/minifig',
   },
   {
     say: 'Hier steht jedes Teil mit dem Kästchen, in dem es liegt. Das Kästchen kannst du antippen und direkt hingehen. Zusammenbauen, fertig!',
-    target: () => panel('Gemeinsamer Bauplan')?.querySelector('details[open] .parts'), wait: 'next', go: '/minifig', mood: 'cheer',
+    target: () => panel('Figuren')?.querySelector('details[open] .parts'), wait: 'next', go: '/minifig', mood: 'cheer',
   },
   // ---------- Pickliste ----------
   {
