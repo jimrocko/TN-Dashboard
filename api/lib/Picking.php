@@ -399,8 +399,8 @@ final class Picking
             } else {
                 $new = 1;
             }
+            // Vormerkung bleibt beim Picken/Enticken bestehen, nur „Markieren“ entfernt sie (Wunsch des Inhabers, Original löscht sie)
             $t = now();
-            if ($new) q('DELETE FROM {pick_claims} WHERE order_item_id = ? AND user_id = ?', [$itemId, $uid]);
             q('DELETE FROM {pick_progress} WHERE order_item_id = ?', [$itemId]);
             q('INSERT INTO {pick_progress} (order_item_id, picked, user_id, picked_at) VALUES (?, ?, ?, ?)', [$itemId, $new, $new ? $uid : null, $new ? $t : null]);
             q('INSERT INTO {pick_events} (order_item_id, user_id, action, created_at) VALUES (?, ?, ?, ?)', [$itemId, $uid, $new ? 'picked' : 'reopened', $t]);
@@ -410,15 +410,15 @@ final class Picking
         });
     }
 
-    /** Position für sich vormerken (Markieren-Modus) oder Vormerkung aufheben. */
+    /** Position für sich vormerken (Markieren-Modus) oder Vormerkung aufheben (auch an gepickten Positionen). */
     public static function claim(int $itemId, array $user): array
     {
         return self::tx(function () use ($itemId, $user) {
             $uid = (int) $user['id'];
             $o = self::itemOrder($itemId);
             if (self::state((int) $o['id'])['completed']) json_error("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400);
-            if (q('SELECT picked FROM {pick_progress} WHERE order_item_id = ?', [$itemId])->fetchColumn()) json_error('Position ist bereits gepickt', 400);
             $owner = q('SELECT user_id FROM {pick_claims} WHERE order_item_id = ?', [$itemId])->fetchColumn();
+            if (!$owner && q('SELECT picked FROM {pick_progress} WHERE order_item_id = ?', [$itemId])->fetchColumn()) json_error('Position ist bereits gepickt', 400);
             if ($owner) {
                 if ((int) $owner !== $uid) {
                     json_error('Diese Position ist bereits für ' . (self::userName((int) $owner) ?? 'einen anderen Picker') . ' vorgemerkt.', 409);

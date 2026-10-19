@@ -247,8 +247,8 @@ export function toggle(db, itemId, user) {
     }
     neu = 0
   }
+  // Vormerkung bleibt beim Picken/Enticken bestehen, nur „Markieren“ entfernt sie (wie Picking.php)
   const t = now()
-  if (neu && claim?.user_id === user.id) delete p.claims[itemId]
   p.progress[itemId] = { picked: neu, user_id: neu ? user.id : null, picked_at: neu ? t : null }
   p.events.push({ id: p.nextEvent++, order_item_id: itemId, user_id: user.id, action: neu ? 'picked' : 'reopened', created_at: t })
   bump(db, order.id)
@@ -259,8 +259,8 @@ export function claim(db, itemId, user) {
   const { order } = itemOrder(db, itemId)
   const p = pk(db)
   if (state(db, order.id).completed) throw new DemoError("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400)
-  if (p.progress[itemId]?.picked) throw new DemoError('Position ist bereits gepickt', 400)
   const owner = p.claims[itemId]
+  if (!owner && p.progress[itemId]?.picked) throw new DemoError('Position ist bereits gepickt', 400)
   if (owner) {
     if (owner.user_id !== user.id) throw new DemoError(`Diese Position ist bereits für ${userName(db, owner.user_id) ?? 'einen anderen Picker'} vorgemerkt.`, 409)
     delete p.claims[itemId]
