@@ -12,4 +12,7 @@ cpSync(resolve(root, 'api'), resolve(root, 'dist/api'), {
 // Tutorial mit Klemmi neben die App legen (Knopf in den Einstellungen öffnet tutorial.html).
 const tutorial = resolve(root, 'TN-Dashboard-Tutorial.html')
 if (existsSync(tutorial)) cpSync(tutorial, resolve(root, 'dist/tutorial.html'))
+// Handbuch neben die App legen (Knopf in der Lehrer-Ansicht öffnet handbuch.pdf).
+const handbuch = resolve(root, 'docs/Handbuch.pdf')
+if (existsSync(handbuch)) cpSync(handbuch, resolve(root, 'dist/handbuch.pdf'))
 console.log('Backend nach dist/api kopiert. Ordner dist/ kann hochgeladen werden.')

@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         // Die API darf nie aus dem Cache kommen; tutorial.html ist eine eigene Seite (nicht auf die App umleiten).
-        navigateFallbackDenylist: [/\/api\//, /tutorial\.html$/],
+        navigateFallbackDenylist: [/\/api\//, /tutorial\.html$/, /\.pdf$/],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // Sofort zuständig, schon beim ersten Öffnen: dann startet die App auch bei schlechtem WLAN (Offline-Modus)
         clientsClaim: true,

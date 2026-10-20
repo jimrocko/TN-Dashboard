@@ -151,7 +151,7 @@ Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge na
 
 ## Lehrer-Ansicht
 
-Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), das Protokoll aller oder einzelner Teilnehmer ansehen, als CSV exportieren und die Dev-Rolle vergeben. **Lager aus BrickLink übernehmen** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen.
+Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), das Protokoll aller oder einzelner Teilnehmer ansehen, als CSV exportieren und die Dev-Rolle vergeben. **Lager aus BrickLink übernehmen** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen. Oben rechts öffnet **Handbuch (PDF)** das ausführliche Handbuch in einem neuen Tab.
 
 <p align="center"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht mit Teilnehmern und Protokoll" width="720"></p>
 
@@ -240,7 +240,7 @@ Updates kommen automatisch beim nächsten Öffnen. Dafür braucht der Server HTT
 
 ## Handbuch
 
-Das ausführliche **Handbuch** als PDF ([`docs/Handbuch.pdf`](docs/Handbuch.pdf)) beschreibt alle Bereiche Schritt für Schritt mit Bildschirmfotos, dazu Lehrer-Ansicht, Dev-Bereich, die Zusammenarbeit mit BrickLink und den technischen Aufbau (Installation, Konfiguration, Datenbank, Schnittstellen), mit Inhaltsverzeichnis, Glossar, Abbildungsverzeichnis und einer Übersicht, wann was umgesetzt wurde.
+Das ausführliche **Handbuch** als PDF ([`docs/Handbuch.pdf`](docs/Handbuch.pdf)) liegt auch auf dem Server neben der App und öffnet sich in der Lehrer-Ansicht über den Knopf **Handbuch (PDF)**. Es beschreibt alle Bereiche Schritt für Schritt mit Bildschirmfotos, dazu Lehrer-Ansicht, Dev-Bereich, die Zusammenarbeit mit BrickLink und den technischen Aufbau (Installation, Konfiguration, Datenbank, Schnittstellen), mit Inhaltsverzeichnis, Glossar, Abbildungsverzeichnis und einer Übersicht, wann was umgesetzt wurde.
 
 Das **Logbuch der Entwicklung** ([`docs/Logbuch.pdf`](docs/Logbuch.pdf)) beschreibt jeden Arbeitstag auf einer eigenen Seite: Kennzahlen, Zusammenfassung, alle umgesetzten Funktionen und die Liste der Arbeitsschritte mit Uhrzeit.
 
@@ -258,7 +258,7 @@ Die **Demo** ist die komplette App: alle Bereiche, Lehrer-Ansicht, Dev-Bereich u
 
 | Schüler-Tutorial | Lehrer-Tutorial |
 |---|---|
-| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner (über die Suche) mit Teile-Seite, Umlagern mit dem Knopf „Zu BrickLink übertragen“, Analyse, Auftragszentrale (über die Analyse) und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, Schüler anlegen und löschen, Dev-Rolle vergeben, Lager aus BrickLink übernehmen, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit allen fünf Reitern (System, Tests, Daten, API, Einstellungen) und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
+| Wie man die App bedient. **Jeder Bereich wird mindestens einmal geöffnet:** Suche, Minifig-Finder, Pickliste, Inventar mit Lagerplan, Lagerort, Inventur, Teile-Scanner (über die Suche) mit Teile-Seite, Umlagern mit dem Knopf „Zu BrickLink übertragen“, Analyse, Auftragszentrale (über die Analyse) und „Meine Aktivitäten“. | Alles, was nur Lehrer dürfen, **ausführlich:** Lehrer-Ansicht mit Protokoll und CSV, das Handbuch, Schüler anlegen und löschen, Dev-Rolle vergeben, Lager aus BrickLink übernehmen, „Aktivität pro Teilnehmer“ in der Analyse, Dev-Bereich mit allen fünf Reitern (System, Tests, Daten, API, Einstellungen) und die Darstellungs-Einstellungen. Die Listen der Bereiche nur kurz. |
 
 - Man klickt jeden Schritt selbst. Der Hintergrund wird abgedunkelt, nur das Ziel leuchtet, ein hüpfender Pfeil mit „Hier tippen!“ zeigt darauf.
 - Klemmi spricht in Sprechblasen, locker und mit ein paar Witzen; oben stehen Kapitel und Tutorial, darunter ein Fortschrittsbalken als Lego-Stein.

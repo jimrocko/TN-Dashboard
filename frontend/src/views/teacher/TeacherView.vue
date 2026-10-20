@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Download, UserPlus, Code2, Trash2, RefreshCw } from 'lucide-vue-next'
+import { Download, UserPlus, Code2, Trash2, RefreshCw, BookOpen } from 'lucide-vue-next'
 import PageHead from '../../components/PageHead.vue'
 import ActivityTable from '../../components/ActivityTable.vue'
 import ShopDataPanel from './ShopDataPanel.vue'
@@ -8,6 +8,7 @@ import PickSettingsPanel from './PickSettingsPanel.vue'
 import CountSettingsPanel from './CountSettingsPanel.vue'
 import { api, apiUrl, IS_DEMO } from '../../api'
 import { dateTime } from '../../utils/format'
+import { handbuchUrl } from '../../tutorial/help'
 
 const users = ref([])
 const selected = ref(null)
@@ -90,7 +91,9 @@ onMounted(async () => { await loadUsers(); await select(null) })
 
 <template>
   <div class="page stack">
-    <PageHead title="Lehrer-Ansicht" sub="Teilnehmer verwalten und dokumentieren, wer was gemacht hat." />
+    <PageHead title="Lehrer-Ansicht" sub="Teilnehmer verwalten und dokumentieren, wer was gemacht hat.">
+      <a class="btn btn-handbuch" :href="handbuchUrl" target="_blank" rel="noopener"><BookOpen :size="16" /> Handbuch (PDF)</a>
+    </PageHead>
 
     <div class="cols">
       <div class="stack">

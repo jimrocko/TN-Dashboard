@@ -315,6 +315,11 @@ const teacherList = [
     say: 'Damit Umlagerungen auch im BrickLink-Shop landen, holst du hier einmal das Lager aus BrickLink, mit Lot-IDs und dem Lagerort aus den Remarks. Danach bekommen die Schüler nach jeder Umlagerung einen Knopf, der alles für BrickLink kopiert. Im Tutorial gibt es keine BrickLink-Verbindung, also nur anschauen.',
     target: () => panel('BrickLink-Shop'), wait: 'next', go: '/lehrer',
   },
+  {
+    chapter: 'Handbuch',
+    say: 'Hier oben findest du das Handbuch als PDF: alle Bereiche Schritt für Schritt mit Bildern, dazu Technik, Installation und ein Glossar. Es öffnet sich in einem neuen Tab, dort kannst du es auch speichern oder drucken.',
+    target: () => q('.page-head .btn-handbuch'), wait: 'next', go: '/lehrer',
+  },
   // Analyse: Aktivität pro Teilnehmer (nur Lehrer)
   {
     chapter: 'Analyse',

@@ -166,6 +166,12 @@ export const tutorialUrl = import.meta.env.MODE === 'demo'
   ? 'https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/TN-Dashboard-Tutorial.html'
   : 'tutorial.html'
 
+/** Handbuch als PDF (Knopf in der Lehrer-Ansicht): auf dem Server handbuch.pdf neben der App (package-dist.mjs),
+ * in Demo und Tutorial die Datei aus dem Repo. */
+export const handbuchUrl = import.meta.env.MODE === 'production'
+  ? 'handbuch.pdf'
+  : 'https://raw.githack.com/jimrocko/TN-Dashboard/claude/charming-einstein-8qzsen/docs/Handbuch.pdf'
+
 /** Gerade offene Hilfe (App.vue zeigt dann Klemmi). */
 export const help = reactive({ topic: null, run: 0 })
 export function openHelp(topic) { help.topic = topic; help.run++ }

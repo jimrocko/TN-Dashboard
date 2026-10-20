@@ -5,58 +5,142 @@
       "kurz": "Grundgerüst (Web-App, PHP-API, Anmeldung, Protokoll), Beispieldaten, Bereiche Inventar, Umlagern, Inventur, Aufträge, Analyse, Suche; Teile-Scanner, Teile- und Lagerort-Seite, Dev-Bereich, Lagerplan nach Skizze, Tutorial mit Klemmi.",
       "zusammenfassung": "Am ersten Arbeitstag entstand die Anwendung von Grund auf: vom leeren Repository bis zu einer vollständigen Web-App mit allen Lagerbereichen, einer Demo-Version ohne Server und einem geführten Tutorial. Der Tag begann am frühen Abend und reichte bis nach Mitternacht.",
       "themen": [
-        {"titel": "Grundgerüst und Betrieb", "text": "Angelegt wurden das Frontend als installierbare Web-App (Vue 3, Vite) und das Backend in PHP ohne Framework mit einem einzigen Einstieg (api/index.php). Dazu kamen Anmeldung mit Rollen, das Protokoll jeder Aktion und ein Zwischenspeicher für BrickLink-Abfragen in der Datenbank. Damit die App auf dem vorhandenen Webserver läuft, liest sie die bestehende .env-Datei mit den Zugangsdaten nur aus und verändert sie nie; alle Tabellen tragen das Präfix tn_. Startskripte für Mac, Linux und Windows ermöglichen das lokale Testen mit SQLite. App-Icons für iPad und PWA wurden ergänzt."},
-        {"titel": "Demo-Version und README", "text": "Mit npm run build:demo entsteht eine einzige HTML-Datei, die das PHP-Backend im Browser nachbildet und die Daten im Browser-Speicher hält. So lässt sich die App ohne Server ausprobieren. Das README wurde als Produktbeschreibung mit Logo, Bildschirmfotos und einem Knopf „Demo starten“ gestaltet."},
-        {"titel": "Lagerdaten und Bereiche", "text": "Erfundene Beispieldaten (Lagerorte, Lots, Aufträge) bildeten die Grundlage für die neuen Bereiche Inventar, Auftragszentrale, Umlagern, Inventur mit Bestandskorrektur, Analyse und eine Suche über alles. Nach einem kurzen Versuch mit einem schlichteren Firmen-Design wurde das erste Kachel-Design mit großen Kacheln, großer Suche und unterer Leiste wieder zum Standard. Ein Tool (tools/gen-demo-data.py) erzeugt seitdem die Beispieldaten mit rund 125.000 Teilen in über 1.400 Kästchen."},
-        {"titel": "Teile-Scanner, Teile-Seite und Lagerort-Seite", "text": "Der Teile-Scanner erkennt Lego-Teile per Foto über den Dienst Brickognize und verknüpft die Treffer mit dem eigenen Lager. Nach dem Erkennen öffnet sich die neue Teile-Seite mit Bestand nach Farbe und Lagerort, Wert, reservierter Menge und Aufträgen. Die Lagerort-Seite zeigt den Inhalt eines Kästchens. Seitdem ist alles anklickbar: Lagerorte, Teil-Nummern, Kategorien und Balken der Analyse führen zur passenden Seite."},
-        {"titel": "Dev-Bereich", "text": "Ein Bereich für alle, die an der App mitarbeiten, mit Systemdaten, Selbsttests, einer Tabellenansicht (nur lesend, ohne Geheimnisse), einer API-Konsole und Einstellungen. Zugang hatten zunächst Lehrkräfte und Teilnehmer mit Dev-Rolle plus ein zusätzlicher Dev-Code mit automatischer Sperre; beides wurde noch in derselben Nacht wieder vereinfacht (nur noch die Rolle), weil man ohnehin mit dem eigenen Passwort angemeldet ist. Eine automatische Build-Prüfung auf GitHub kam hinzu."},
-        {"titel": "Lagerzimmer, Kästchen-Codes und Umlagern", "text": "Nach einer Skizze des Lagerzimmers entstand der Raumplan: G (gebraucht) an der linken Wand, H und N (neu) rechts, Figuren und Plates unten links. Die Codes heißen seitdem wie die echten Kästchen (G245, N005, FT3), G, H und N immer dreistellig. Ein G-Kästchen mit mehr als drei Lots gilt als Mischkiste und wird rot markiert. Umlagern bekam die ersten drei Vorschlagsarten: falsch einsortiert, Farben zusammenlegen und gleiche Teile-Art, immer nur innerhalb eines Bereichs. PHP und Demo-Backend liefern dabei identische Vorschläge (Vergleichstest). Der Lagerplan wurde kompakt und neutral, die Startseite für iPads mit Homebutton angepasst."},
-        {"titel": "Tutorial mit Klemmi", "text": "Als zweite Demo entstand ein geführtes Tutorial (TN-Dashboard-Tutorial.html). Das Maskottchen Klemmi, eine animierte rote Lego-Figur, erklärt in Sprechblasen jeden Bereich; man tippt jeden Schritt selbst. Ein Lichtkegel, ein hüpfender Pfeil „Hier tippen!“ und ein Fortschrittsbalken als Lego-Stein führen durch die App. Zu Beginn fragt Klemmi „Wer bist du?“ und startet entweder das Schüler- oder das ausführliche Lehrer-Tutorial. Auf Wunsch wurde die Bewegung reduziert und das README auf die beiden Knöpfe „Demo starten“ und „Tutorial starten“ beschränkt."}
+        {
+          "titel": "Grundgerüst und Betrieb",
+          "text": "Angelegt wurden das Frontend als installierbare Web-App (Vue 3, Vite) und das Backend in PHP ohne Framework mit einem einzigen Einstieg (api/index.php). Dazu kamen Anmeldung mit Rollen, das Protokoll jeder Aktion und ein Zwischenspeicher für BrickLink-Abfragen in der Datenbank. Damit die App auf dem vorhandenen Webserver läuft, liest sie die bestehende .env-Datei mit den Zugangsdaten nur aus und verändert sie nie; alle Tabellen tragen das Präfix tn_. Startskripte für Mac, Linux und Windows ermöglichen das lokale Testen mit SQLite. App-Icons für iPad und PWA wurden ergänzt."
+        },
+        {
+          "titel": "Demo-Version und README",
+          "text": "Mit npm run build:demo entsteht eine einzige HTML-Datei, die das PHP-Backend im Browser nachbildet und die Daten im Browser-Speicher hält. So lässt sich die App ohne Server ausprobieren. Das README wurde als Produktbeschreibung mit Logo, Bildschirmfotos und einem Knopf „Demo starten“ gestaltet."
+        },
+        {
+          "titel": "Lagerdaten und Bereiche",
+          "text": "Erfundene Beispieldaten (Lagerorte, Lots, Aufträge) bildeten die Grundlage für die neuen Bereiche Inventar, Auftragszentrale, Umlagern, Inventur mit Bestandskorrektur, Analyse und eine Suche über alles. Nach einem kurzen Versuch mit einem schlichteren Firmen-Design wurde das erste Kachel-Design mit großen Kacheln, großer Suche und unterer Leiste wieder zum Standard. Ein Tool (tools/gen-demo-data.py) erzeugt seitdem die Beispieldaten mit rund 125.000 Teilen in über 1.400 Kästchen."
+        },
+        {
+          "titel": "Teile-Scanner, Teile-Seite und Lagerort-Seite",
+          "text": "Der Teile-Scanner erkennt Lego-Teile per Foto über den Dienst Brickognize und verknüpft die Treffer mit dem eigenen Lager. Nach dem Erkennen öffnet sich die neue Teile-Seite mit Bestand nach Farbe und Lagerort, Wert, reservierter Menge und Aufträgen. Die Lagerort-Seite zeigt den Inhalt eines Kästchens. Seitdem ist alles anklickbar: Lagerorte, Teil-Nummern, Kategorien und Balken der Analyse führen zur passenden Seite."
+        },
+        {
+          "titel": "Dev-Bereich",
+          "text": "Ein Bereich für alle, die an der App mitarbeiten, mit Systemdaten, Selbsttests, einer Tabellenansicht (nur lesend, ohne Geheimnisse), einer API-Konsole und Einstellungen. Zugang hatten zunächst Lehrkräfte und Teilnehmer mit Dev-Rolle plus ein zusätzlicher Dev-Code mit automatischer Sperre; beides wurde noch in derselben Nacht wieder vereinfacht (nur noch die Rolle), weil man ohnehin mit dem eigenen Passwort angemeldet ist. Eine automatische Build-Prüfung auf GitHub kam hinzu."
+        },
+        {
+          "titel": "Lagerzimmer, Kästchen-Codes und Umlagern",
+          "text": "Nach einer Skizze des Lagerzimmers entstand der Raumplan: G (gebraucht) an der linken Wand, H und N (neu) rechts, Figuren und Plates unten links. Die Codes heißen seitdem wie die echten Kästchen (G245, N005, FT3), G, H und N immer dreistellig. Ein G-Kästchen mit mehr als drei Lots gilt als Mischkiste und wird rot markiert. Umlagern bekam die ersten drei Vorschlagsarten: falsch einsortiert, Farben zusammenlegen und gleiche Teile-Art, immer nur innerhalb eines Bereichs. PHP und Demo-Backend liefern dabei identische Vorschläge (Vergleichstest). Der Lagerplan wurde kompakt und neutral, die Startseite für iPads mit Homebutton angepasst."
+        },
+        {
+          "titel": "Tutorial mit Klemmi",
+          "text": "Als zweite Demo entstand ein geführtes Tutorial (TN-Dashboard-Tutorial.html). Das Maskottchen Klemmi, eine animierte rote Lego-Figur, erklärt in Sprechblasen jeden Bereich; man tippt jeden Schritt selbst. Ein Lichtkegel, ein hüpfender Pfeil „Hier tippen!“ und ein Fortschrittsbalken als Lego-Stein führen durch die App. Zu Beginn fragt Klemmi „Wer bist du?“ und startet entweder das Schüler- oder das ausführliche Lehrer-Tutorial. Auf Wunsch wurde die Bewegung reduziert und das README auf die beiden Knöpfe „Demo starten“ und „Tutorial starten“ beschränkt."
+        }
       ]
     },
     "2026-10-16": {
       "kurz": "Konten löschen, Pickliste und Minifig-Finder aus dem Shop-Programm nachgebaut, Teilebilder überall, BrickLink-Übertragung nach dem Umlagern, gleichzeitiges Arbeiten abgesichert, Einstellungen je Bereich, Inventar nach Kategorien, Hilfe-Knopf, Abgleich mit dem Shop-Dashboard.",
       "zusammenfassung": "Der zweite Tag brachte die großen Arbeitswerkzeuge Pickliste und Minifig-Finder und vor allem die Verbindung zu BrickLink: Jede Umlagerung und jede Inventur lässt sich seitdem per Kopieren und Einfügen in den Shop übertragen. Dazu kamen viele Wünsche zur Übersichtlichkeit. Ein Teil der Arbeit lief parallel auf einem zweiten Zweig, der am Folgetag zusammengeführt wurde.",
       "themen": [
-        {"titel": "Lehrer-Ansicht", "text": "Lehrkräfte können Teilnehmerkonten löschen (Papierkorb mit Rückfrage). Das Konto wird nur deaktiviert, das Protokoll bleibt erhalten und der Benutzername wird für ein neues Konto frei. Die Teilnehmerliste wurde so angepasst, dass auf PC und Handy alles ohne seitliches Scrollen sichtbar ist. Das Lehrer-Tutorial erklärt das Löschen in einem neuen Schritt."},
-        {"titel": "Pickliste und Minifig-Finder", "text": "Beide Werkzeuge stammen aus dem bestehenden Python-Programm des Shops und wurden in PHP und im Demo-Backend Regel für Regel nachgebaut, mit dem Design des Dashboards. Die Pickliste zeigt offene Bestellungen nach Laufweg sortiert; man pickt, merkt vor, meldet Probleme und schließt Bestellungen ab. Der Minifig-Finder berechnet, welche Minifiguren sich aus losen Teilen bauen lassen. Bestand und Aufträge werden nur auf Knopfdruck von BrickLink und BrickOwl geholt, jeder Abruf wird gezählt. Ein Vergleich zeigte: Original, PHP und Demo liefern identische Ergebnisse."},
-        {"titel": "Teilebilder", "text": "Überall, wo Teile genannt werden, steht seitdem ein Bild daneben: im Inventar, in der Suche, bei Aufträgen, Inventur, Lagerort, Umlagern, Analyse und im Minifig-Finder. Die Bilder kommen direkt vom BrickLink-Bildserver."},
-        {"titel": "BrickLink-Übertragung", "text": "Die App schreibt nie selbst zu BrickLink. Stattdessen öffnet sich direkt nach jeder Umlagerung ein Fenster „Zu BrickLink übertragen“: Ein Tipp kopiert den ganzen Bestand als XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) und öffnet die Upload-Seite von BrickLink. Nach dem Einfügen bestätigt man mit „Ja, ist eingefügt“. Auf Wunsch geht der Bestand immer in einer einzigen Datei. Lehrkräfte können außerdem das Lager aus BrickLink übernehmen. Später am Tag kamen auch die Korrekturen aus abgeschlossenen Inventuren in dieselbe Übertragung. Der Begriff „Lot“ ersetzte überall das frühere „Los“."},
-        {"titel": "Gleichzeitiges Arbeiten", "text": "Damit mehrere Personen gleichzeitig umlagern können, sperrt der Server ein Lot während der Buchung und prüft, ob Lagerort und Menge noch dem Stand auf dem Bildschirm entsprechen. Wer zu spät kommt, erhält eine Meldung und eine neu geladene Liste. Es gibt immer nur eine gemeinsame offene Übertragung, die jeder abschließen kann. Ein Fehler mit echten Daten wurde behoben: Mehrere Lots desselben Teils im selben Kästchen erzeugten Vorschläge mit gleichem Start und Ziel."},
-        {"titel": "Übersicht und Hilfe", "text": "Im Dev-Bereich lassen sich für jeden Bereich Geräte-Einstellungen setzen (z. B. blind zählen in der Inventur). Teile-Scanner und Auftragszentrale verloren ihre Kachel und sind über Suche und Links erreichbar; die Startseite zeigt sechs Kacheln, auf PC und iPad als 3 + 3. Das Inventar ist nach Kategorien gegliedert. In jedem Bereich gibt es den Knopf „Hilfe“: Klemmi erklärt den Bereich oder startet die Rundführung. Das README zeigt nach jedem Abschnitt ein eigenes Bildschirmfoto."},
-        {"titel": "Abgleich mit dem Shop-Dashboard", "text": "Das bestehende Shop-Dashboard läuft auf demselben Rechner und holt den BrickLink-Bestand alle vier Stunden. Das TN Dashboard liest dessen Datenbank nur und übernimmt den Bestand per Knopf im Dev-Bereich, ohne eigenen BrickLink-Abruf. Eine Sicherheitsbremse verhindert die Übernahme eines leeren Stands."}
+        {
+          "titel": "Lehrer-Ansicht",
+          "text": "Lehrkräfte können Teilnehmerkonten löschen (Papierkorb mit Rückfrage). Das Konto wird nur deaktiviert, das Protokoll bleibt erhalten und der Benutzername wird für ein neues Konto frei. Die Teilnehmerliste wurde so angepasst, dass auf PC und Handy alles ohne seitliches Scrollen sichtbar ist. Das Lehrer-Tutorial erklärt das Löschen in einem neuen Schritt."
+        },
+        {
+          "titel": "Pickliste und Minifig-Finder",
+          "text": "Beide Werkzeuge stammen aus dem bestehenden Python-Programm des Shops und wurden in PHP und im Demo-Backend Regel für Regel nachgebaut, mit dem Design des Dashboards. Die Pickliste zeigt offene Bestellungen nach Laufweg sortiert; man pickt, merkt vor, meldet Probleme und schließt Bestellungen ab. Der Minifig-Finder berechnet, welche Minifiguren sich aus losen Teilen bauen lassen. Bestand und Aufträge werden nur auf Knopfdruck von BrickLink und BrickOwl geholt, jeder Abruf wird gezählt. Ein Vergleich zeigte: Original, PHP und Demo liefern identische Ergebnisse."
+        },
+        {
+          "titel": "Teilebilder",
+          "text": "Überall, wo Teile genannt werden, steht seitdem ein Bild daneben: im Inventar, in der Suche, bei Aufträgen, Inventur, Lagerort, Umlagern, Analyse und im Minifig-Finder. Die Bilder kommen direkt vom BrickLink-Bildserver."
+        },
+        {
+          "titel": "BrickLink-Übertragung",
+          "text": "Die App schreibt nie selbst zu BrickLink. Stattdessen öffnet sich direkt nach jeder Umlagerung ein Fenster „Zu BrickLink übertragen“: Ein Tipp kopiert den ganzen Bestand als XML (alle Lots mit der Menge nach dem Abziehen, Lagerort in den Remarks) und öffnet die Upload-Seite von BrickLink. Nach dem Einfügen bestätigt man mit „Ja, ist eingefügt“. Auf Wunsch geht der Bestand immer in einer einzigen Datei. Lehrkräfte können außerdem das Lager aus BrickLink übernehmen. Später am Tag kamen auch die Korrekturen aus abgeschlossenen Inventuren in dieselbe Übertragung. Der Begriff „Lot“ ersetzte überall das frühere „Los“."
+        },
+        {
+          "titel": "Gleichzeitiges Arbeiten",
+          "text": "Damit mehrere Personen gleichzeitig umlagern können, sperrt der Server ein Lot während der Buchung und prüft, ob Lagerort und Menge noch dem Stand auf dem Bildschirm entsprechen. Wer zu spät kommt, erhält eine Meldung und eine neu geladene Liste. Es gibt immer nur eine gemeinsame offene Übertragung, die jeder abschließen kann. Ein Fehler mit echten Daten wurde behoben: Mehrere Lots desselben Teils im selben Kästchen erzeugten Vorschläge mit gleichem Start und Ziel."
+        },
+        {
+          "titel": "Übersicht und Hilfe",
+          "text": "Im Dev-Bereich lassen sich für jeden Bereich Geräte-Einstellungen setzen (z. B. blind zählen in der Inventur). Teile-Scanner und Auftragszentrale verloren ihre Kachel und sind über Suche und Links erreichbar; die Startseite zeigt sechs Kacheln, auf PC und iPad als 3 + 3. Das Inventar ist nach Kategorien gegliedert. In jedem Bereich gibt es den Knopf „Hilfe“: Klemmi erklärt den Bereich oder startet die Rundführung. Das README zeigt nach jedem Abschnitt ein eigenes Bildschirmfoto."
+        },
+        {
+          "titel": "Abgleich mit dem Shop-Dashboard",
+          "text": "Das bestehende Shop-Dashboard läuft auf demselben Rechner und holt den BrickLink-Bestand alle vier Stunden. Das TN Dashboard liest dessen Datenbank nur und übernimmt den Bestand per Knopf im Dev-Bereich, ohne eigenen BrickLink-Abruf. Eine Sicherheitsbremse verhindert die Übernahme eines leeren Stands."
+        }
       ]
     },
     "2026-10-17": {
       "kurz": "Immer gleicher Bestand wie im Shop-Dashboard, Abzeichen und Bestenliste, Zusammenführung des Zweigs mit Pickliste und Minifig-Finder, Briefvorschau, BSX-Dateien als Teilequelle.",
       "zusammenfassung": "Ein kürzerer Arbeitstag am Samstag: Der Bestand wurde dauerhaft mit dem Shop-Dashboard synchronisiert, die Mitarbeit sichtbar gemacht und die parallel entwickelten Werkzeuge zusammengeführt.",
       "themen": [
-        {"titel": "Immer derselbe Bestand", "text": "Ein Knopf „Bei BrickLink neu laden“ löst im Shop-Dashboard denselben Import aus wie dessen eigener Knopf; danach übernimmt das TN Dashboard den frischen Stand. Lädt das Shop-Dashboard neu, übernimmt das TN Dashboard den Stand automatisch. Solange Umlagerungen oder Inventuren noch nicht bei BrickLink eingefügt sind, wartet die Übernahme, damit nichts verloren geht. Nach „Ja, ist eingefügt“ lädt das Shop-Dashboard sofort neu."},
-        {"titel": "Abzeichen und Bestenliste", "text": "Aus dem Protokoll berechnet die App 17 Abzeichen (z. B. „Erster Pick“, „Lagermeister“, „Frühaufsteher“) mit Fortschrittsanzeige unter „Meine Aktivitäten“. Unten in der Analyse steht abgetrennt eine Bestenliste für Woche, Monat oder gesamt."},
-        {"titel": "Zusammenführung", "text": "Der parallele Zweig mit Pickliste, Minifig-Finder, „Shop-Daten holen“ und Teilebildern wurde in den Hauptstand übernommen. Doppelte Datenbankspalten beider Stände bleiben erhalten und werden bei jedem Import gemeinsam geschrieben. Abgeschlossene Picklisten zählen für Abzeichen und Bestenliste."},
-        {"titel": "Pickliste und Minifig-Finder", "text": "Die Briefvorschau der Pickliste entspricht dem Original (A4 quer), der Empfänger steht unten rechts in der Ecke. Die Pick-Statistik ist nur für Lehrkräfte und Dev-Rolle sichtbar. Im Minifig-Finder lassen sich eigene BrickStore-Dateien (BSX) als Teilequelle hochladen: nur Lager, Lager und Dateien oder nur Dateien. Die Oberfläche wurde vereinfacht, technische Angaben sind eingeklappt."}
+        {
+          "titel": "Immer derselbe Bestand",
+          "text": "Ein Knopf „Bei BrickLink neu laden“ löst im Shop-Dashboard denselben Import aus wie dessen eigener Knopf; danach übernimmt das TN Dashboard den frischen Stand. Lädt das Shop-Dashboard neu, übernimmt das TN Dashboard den Stand automatisch. Solange Umlagerungen oder Inventuren noch nicht bei BrickLink eingefügt sind, wartet die Übernahme, damit nichts verloren geht. Nach „Ja, ist eingefügt“ lädt das Shop-Dashboard sofort neu."
+        },
+        {
+          "titel": "Abzeichen und Bestenliste",
+          "text": "Aus dem Protokoll berechnet die App 17 Abzeichen (z. B. „Erster Pick“, „Lagermeister“, „Frühaufsteher“) mit Fortschrittsanzeige unter „Meine Aktivitäten“. Unten in der Analyse steht abgetrennt eine Bestenliste für Woche, Monat oder gesamt."
+        },
+        {
+          "titel": "Zusammenführung",
+          "text": "Der parallele Zweig mit Pickliste, Minifig-Finder, „Shop-Daten holen“ und Teilebildern wurde in den Hauptstand übernommen. Doppelte Datenbankspalten beider Stände bleiben erhalten und werden bei jedem Import gemeinsam geschrieben. Abgeschlossene Picklisten zählen für Abzeichen und Bestenliste."
+        },
+        {
+          "titel": "Pickliste und Minifig-Finder",
+          "text": "Die Briefvorschau der Pickliste entspricht dem Original (A4 quer), der Empfänger steht unten rechts in der Ecke. Die Pick-Statistik ist nur für Lehrkräfte und Dev-Rolle sichtbar. Im Minifig-Finder lassen sich eigene BrickStore-Dateien (BSX) als Teilequelle hochladen: nur Lager, Lager und Dateien oder nur Dateien. Die Oberfläche wurde vereinfacht, technische Angaben sind eingeklappt."
+        }
       ]
     },
     "2026-10-19": {
       "kurz": "Pickliste: Meldungen für alle, Ladeanzeigen, Vormerkung bleibt; Minifig-Finder ohne API mit mitgeliefertem Figurenkatalog, „Fertig gebaut“, Download-Fenster, eine Liste mit Reitern; Arbeitsregeln „erst planen“.",
       "zusammenfassung": "Der Montag stand im Zeichen von Pickliste und Minifig-Finder. Beide wurden nach Rückmeldungen aus der Praxis angepasst; der Minifig-Finder rechnet seitdem ganz ohne BrickLink-Abfragen.",
       "themen": [
-        {"titel": "Pickliste aus der Praxis", "text": "Meldungen („Problem melden“) sehen alle Picker sofort mit Namen, und jeder darf sie schließen. Beim Laden erscheinen Ladeanzeigen. Auf dem iPad blieb nach dem Ticken eine Markierung stehen; der Hover-Effekt gilt jetzt nur bei Geräten mit Maus. BrickOwl-Positionen zeigen BrickLink-Farbname und -Farbnummer, Minifiguren bekommen ihre Bilder. Eine Vormerkung bleibt nach dem Picken bestehen, bis man sie selbst aufhebt."},
-        {"titel": "Arbeitsregeln", "text": "Festgehalten wurde, dass vor jeder Änderung ein kurzer Plan gezeigt und auf Zustimmung gewartet wird und dass ausschließlich in diesem Repository gearbeitet wird; andere Repositories werden höchstens gelesen. Veraltete Online-Kopien von Demo und Tutorial wurden entfernt, beide laufen nur noch über die README-Knöpfe."},
-        {"titel": "Minifig-Finder ohne API", "text": "Ein Figurenkatalog mit 9.022 Minifiguren samt Stücklisten und Preisen liegt jetzt als Datei im Repository; der Server übernimmt ihn beim ersten Aufruf. Neuere Kataloge lassen sich unter „Technik“ einlesen. Die Rechnung folgt der neueren Standalone-Version des Programms: Alternativteile, baubare Anzahl vom Restbestand und ein gemeinsamer Bauplan in zwei Runden. Python-Original, PHP und Demo-Backend liefern identische Ergebnisse."},
-        {"titel": "Fertige Figuren und Übersicht", "text": "Mit „Fertig gebaut“ landen Figuren aus dem gemeinsamen Bauplan in einer gemeinsamen Sammlung; ihre Teile sind sofort aus der Rechnung heraus. Beim Abschluss entsteht eine BrickLink-Datei mit Minus-Mengen je Lot, erst „Ja, ist hochgeladen“ zieht im Bestand ab. Jede Figur trägt eine Nummer, Teilelisten zeigen die Menge je Figur und insgesamt, ein Download-Fenster erstellt CSV- oder BrickStore-Dateien für beliebige Nummernbereiche. Statt acht einzelner Listen gibt es eine Liste „Figuren“ mit Reitern; die Kennzahl-Kacheln springen direkt zum passenden Reiter. Alle Bereiche zeigen beim Öffnen eine gemeinsame Ladeanzeige."}
+        {
+          "titel": "Pickliste aus der Praxis",
+          "text": "Meldungen („Problem melden“) sehen alle Picker sofort mit Namen, und jeder darf sie schließen. Beim Laden erscheinen Ladeanzeigen. Auf dem iPad blieb nach dem Ticken eine Markierung stehen; der Hover-Effekt gilt jetzt nur bei Geräten mit Maus. BrickOwl-Positionen zeigen BrickLink-Farbname und -Farbnummer, Minifiguren bekommen ihre Bilder. Eine Vormerkung bleibt nach dem Picken bestehen, bis man sie selbst aufhebt."
+        },
+        {
+          "titel": "Arbeitsregeln",
+          "text": "Festgehalten wurde, dass vor jeder Änderung ein kurzer Plan gezeigt und auf Zustimmung gewartet wird und dass ausschließlich in diesem Repository gearbeitet wird; andere Repositories werden höchstens gelesen. Veraltete Online-Kopien von Demo und Tutorial wurden entfernt, beide laufen nur noch über die README-Knöpfe."
+        },
+        {
+          "titel": "Minifig-Finder ohne API",
+          "text": "Ein Figurenkatalog mit 9.022 Minifiguren samt Stücklisten und Preisen liegt jetzt als Datei im Repository; der Server übernimmt ihn beim ersten Aufruf. Neuere Kataloge lassen sich unter „Technik“ einlesen. Die Rechnung folgt der neueren Standalone-Version des Programms: Alternativteile, baubare Anzahl vom Restbestand und ein gemeinsamer Bauplan in zwei Runden. Python-Original, PHP und Demo-Backend liefern identische Ergebnisse."
+        },
+        {
+          "titel": "Fertige Figuren und Übersicht",
+          "text": "Mit „Fertig gebaut“ landen Figuren aus dem gemeinsamen Bauplan in einer gemeinsamen Sammlung; ihre Teile sind sofort aus der Rechnung heraus. Beim Abschluss entsteht eine BrickLink-Datei mit Minus-Mengen je Lot, erst „Ja, ist hochgeladen“ zieht im Bestand ab. Jede Figur trägt eine Nummer, Teilelisten zeigen die Menge je Figur und insgesamt, ein Download-Fenster erstellt CSV- oder BrickStore-Dateien für beliebige Nummernbereiche. Statt acht einzelner Listen gibt es eine Liste „Figuren“ mit Reitern; die Kennzahl-Kacheln springen direkt zum passenden Reiter. Alle Bereiche zeigen beim Öffnen eine gemeinsame Ladeanzeige."
+        }
       ]
     },
     "2026-10-20": {
-      "kurz": "Startanimation, neue Kopfzeile, Home-Bildschirm-Icon, Pickliste nach Bereichen, Zählliste des Tages, Figuren einlagern, Offline-Modus, Umlagern übersichtlich mit sieben Vorschlagsarten und Fortschritt, Kurzhilfe für Minifig-Finder und Pickliste, Handbuch.",
+      "kurz": "Startanimation, neue Kopfzeile, Home-Bildschirm-Icon, Pickliste nach Bereichen, Zählliste des Tages, Figuren einlagern, Offline-Modus, Umlagern übersichtlich mit sieben Vorschlagsarten und Fortschritt, Kurzhilfe für Minifig-Finder und Pickliste, Handbuch und Logbuch, Handbuch-Knopf in der Lehrer-Ansicht.",
       "zusammenfassung": "Am Dienstag wurden eine Reihe von Verbesserungsvorschlägen umgesetzt, die der Inhaber aus einer Liste ausgewählt hatte. Schwerpunkte waren das Zählen und Picken im Alltag, Arbeiten bei schlechtem WLAN und ein deutlich klügeres Umlagern. Zum Abschluss entstand das Handbuch als PDF.",
       "themen": [
-        {"titel": "Erscheinungsbild", "text": "Beim ersten Öffnen des Tages zeigt die App eine kurze Startanimation: Der Logo-Stein setzt sich zusammen, ein Ladebalken aus Noppen läuft, Klemmi winkt. Sie ist pro Gerät abschaltbar und im Dev-Bereich testbar. Oben links steht nur noch der Stein, auf der Startseite in der Mitte der große Titel „TN Dashboard“ mit einem Gruß nach Tageszeit. Das Home-Bildschirm-Icon zeigt bei App und Demo nur den Stein, beim Tutorial winkt zusätzlich Klemmi."},
-        {"titel": "Pickliste und Zählen", "text": "In der Pickliste wählt man einen Bereich (G, H, N, FG …) und übernimmt alle freien Positionen darin auf einmal; so teilen sich mehrere Picker das Lager auf. Meldungen über Fehlteile, falsche Mengen oder falsche Lagerorte setzen das Kästchen auf die Zählliste. Die Inventur zeigt jeden Tag unter „Heute zählen“ einige Kästchen, gleich für alle: zuerst gemeldete, dann lange nicht gezählte, dann wertvolle. Die Anzahl legt die Lehrkraft fest."},
-        {"titel": "Figuren einlagern", "text": "Fertig gebaute Minifiguren lassen sich beim Abschluss der Sammlung gleich einlagern: Zustand (gebraucht in FG, neu in FN), Preis und Kästchen werden vorgeschlagen, eine zweite Datei legt die Figuren bei BrickLink als neue Lots an."},
-        {"titel": "Offline bei schlechtem WLAN", "text": "Pickliste und Inventur arbeiten auch ohne Verbindung weiter. Picken, Markieren, Melden und gezählte Mengen werden auf dem Gerät gespeichert und automatisch nachgeschickt. Hat in der Zwischenzeit jemand anderes dieselbe Position gepickt, zeigt die App das an, statt etwas zu überschreiben. Getestet wurde mit zwei Personen, Neuladen ohne Netz und Konfliktfällen."},
-        {"titel": "Umlagern", "text": "Die Seite wurde übersichtlicher: ein Panel mit Reitern (Vorschläge, Lagerplan, Manuell umbuchen, Verlauf), Vorschläge nach Ziel-Kästchen gruppiert mit „Alle übernehmen“ oder einzeln nach Teil. Vier neue Vorschlagsarten kamen hinzu: falscher Bereich, Mischkiste aufteilen, Kästchen leeren und Verwechselbares trennen. Leicht verwechselbare Teile (ähnliche Farben, Varianten, ähnliche Größen) werden nie zusammengelegt. Oben zeigt ein Balken, zu wie viel Prozent das Lager sortiert ist, mit Veränderung zur Vorwoche; der Lagerplan in Umlagern ist nach Unordnung eingefärbt. PHP und Demo liefern weiterhin identische Vorschläge."},
-        {"titel": "Hilfe, Tutorial und Handbuch", "text": "Die Kurzhilfe gibt es jetzt auch für Minifig-Finder und Pickliste; das Tutorial erklärt „Fertig gebaut“, „Bereich übernehmen“ und den Weg von einer Meldung zur Zählliste. Zum Abschluss des Tages entstand dieses Handbuch als PDF mit Bildschirmfotos, Inhalts- und Abbildungsverzeichnis sowie das vorliegende Logbuch."}
+        {
+          "titel": "Erscheinungsbild",
+          "text": "Beim ersten Öffnen des Tages zeigt die App eine kurze Startanimation: Der Logo-Stein setzt sich zusammen, ein Ladebalken aus Noppen läuft, Klemmi winkt. Sie ist pro Gerät abschaltbar und im Dev-Bereich testbar. Oben links steht nur noch der Stein, auf der Startseite in der Mitte der große Titel „TN Dashboard“ mit einem Gruß nach Tageszeit. Das Home-Bildschirm-Icon zeigt bei App und Demo nur den Stein, beim Tutorial winkt zusätzlich Klemmi."
+        },
+        {
+          "titel": "Pickliste und Zählen",
+          "text": "In der Pickliste wählt man einen Bereich (G, H, N, FG …) und übernimmt alle freien Positionen darin auf einmal; so teilen sich mehrere Picker das Lager auf. Meldungen über Fehlteile, falsche Mengen oder falsche Lagerorte setzen das Kästchen auf die Zählliste. Die Inventur zeigt jeden Tag unter „Heute zählen“ einige Kästchen, gleich für alle: zuerst gemeldete, dann lange nicht gezählte, dann wertvolle. Die Anzahl legt die Lehrkraft fest."
+        },
+        {
+          "titel": "Figuren einlagern",
+          "text": "Fertig gebaute Minifiguren lassen sich beim Abschluss der Sammlung gleich einlagern: Zustand (gebraucht in FG, neu in FN), Preis und Kästchen werden vorgeschlagen, eine zweite Datei legt die Figuren bei BrickLink als neue Lots an."
+        },
+        {
+          "titel": "Offline bei schlechtem WLAN",
+          "text": "Pickliste und Inventur arbeiten auch ohne Verbindung weiter. Picken, Markieren, Melden und gezählte Mengen werden auf dem Gerät gespeichert und automatisch nachgeschickt. Hat in der Zwischenzeit jemand anderes dieselbe Position gepickt, zeigt die App das an, statt etwas zu überschreiben. Getestet wurde mit zwei Personen, Neuladen ohne Netz und Konfliktfällen."
+        },
+        {
+          "titel": "Umlagern",
+          "text": "Die Seite wurde übersichtlicher: ein Panel mit Reitern (Vorschläge, Lagerplan, Manuell umbuchen, Verlauf), Vorschläge nach Ziel-Kästchen gruppiert mit „Alle übernehmen“ oder einzeln nach Teil. Vier neue Vorschlagsarten kamen hinzu: falscher Bereich, Mischkiste aufteilen, Kästchen leeren und Verwechselbares trennen. Leicht verwechselbare Teile (ähnliche Farben, Varianten, ähnliche Größen) werden nie zusammengelegt. Oben zeigt ein Balken, zu wie viel Prozent das Lager sortiert ist, mit Veränderung zur Vorwoche; der Lagerplan in Umlagern ist nach Unordnung eingefärbt. PHP und Demo liefern weiterhin identische Vorschläge."
+        },
+        {
+          "titel": "Hilfe, Tutorial und Handbuch",
+          "text": "Die Kurzhilfe gibt es jetzt auch für Minifig-Finder und Pickliste; das Tutorial erklärt „Fertig gebaut“, „Bereich übernehmen“ und den Weg von einer Meldung zur Zählliste. Zum Abschluss des Tages entstand dieses Handbuch als PDF mit Bildschirmfotos, Inhalts- und Abbildungsverzeichnis sowie das vorliegende Logbuch. Danach kam das Handbuch auch in die App: Es wird beim Bauen als handbuch.pdf neben die App gelegt, und in der Lehrer-Ansicht öffnet der Knopf „Handbuch (PDF)“ es in einem neuen Tab. Teilnehmer sehen den Knopf nicht. Das Lehrer-Tutorial zeigt ihn in einem eigenen Schritt (jetzt 34 Schritte)."
+        }
       ]
     }
   },

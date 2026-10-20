@@ -684,6 +684,7 @@ kapitel('Lehrer-Ansicht und Dev-Bereich')
 abschnitt('Lehrer-Ansicht')
 p('Die Lehrer-Ansicht ist nur für Lehrkräfte sichtbar (Menü am eigenen Namen). Sie enthält:')
 liste([
+    '<b>Handbuch (PDF)</b> oben rechts: öffnet dieses Handbuch in einem neuen Tab, zum Lesen, Speichern oder Drucken.',
     '<b>Teilnehmer</b>: Liste aller Konten mit Rolle, letzter Aktivität und Anzahl Aktionen. Ein Tipp auf einen Namen filtert das Protokoll.',
     '<b>Protokoll</b> aller oder einzelner Teilnehmer mit Zeit, Aktion, Bereich und Details, exportierbar als <b>CSV</b>.',
     '<b>Teilnehmer anlegen</b> (Benutzername, Anzeigename, Startpasswort mit mindestens sechs Zeichen).',
@@ -843,7 +844,7 @@ tabelle(['Route', 'Zweck'], [
 
 abschnitt('Demo, Tutorial und Builds')
 tabelle(['Befehl (im Ordner frontend/)', 'Ergebnis'], [
-    [c('npm run build'), 'Ordner dist/ mit App und PHP-Backend zum Hochladen'],
+    [c('npm run build'), 'Ordner dist/ mit App und PHP-Backend zum Hochladen, dazu tutorial.html und handbuch.pdf (dieses Handbuch) neben der App'],
     [c('npm run build:demo'), 'TN-Dashboard-Demo.html: komplette App als eine Datei mit erfundenen Daten, ohne Server'],
     [c('npm run build:tutorial'), 'TN-Dashboard-Tutorial.html: geführte Tour mit Klemmi'],
 ], [6, 10], 'Builds')
