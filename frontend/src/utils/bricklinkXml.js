@@ -25,6 +25,16 @@ export function buildStockXml(stock) {
   return [{ xml: `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>`, lots: items.length }]
 }
 
+/**
+ * Neue Lots für fertig gebaute Figuren (Minifig-Finder → „Figuren einlagern“), bei BrickLink unter „Upload“ einzufügen.
+ * rows: [{ minifig_no, qty, price, condition: 'U'|'N', location }]
+ */
+export function buildNewFiguresXml(rows) {
+  const items = rows.map((r) => `<ITEM>${tag('ITEMTYPE', 'M')}${tag('ITEMID', r.minifig_no)}${tag('COLOR', 0)}${tag('QTY', r.qty)}`
+    + `${tag('PRICE', (Number(r.price) || 0).toFixed(3))}${tag('CONDITION', r.condition === 'N' ? 'N' : 'U')}${r.location ? tag('REMARKS', r.location) : ''}</ITEM>`)
+  return `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`
+}
+
 /** In die Zwischenablage, ohne vorher zu warten: muss direkt im Tipp passieren (iPad-Safari). */
 export function copyText(text) {
   try {

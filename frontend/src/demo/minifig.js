@@ -907,7 +907,52 @@ function buildExportFiles(db) {
   }
   const b = builds(db)
   return { xml: xml ? `<INVENTORY>\n${xml}</INVENTORY>\n` : '', bricklink_lots: (xml.match(/<ITEM>/g) ?? []).length, without_lot: noLot,
-    bsx_files: [...files.values()], export_by: b.export?.by ?? null, export_at: b.export?.at ?? null, ...b }
+    bsx_files: [...files.values()], export_by: b.export?.by ?? null, export_at: b.export?.at ?? null, store: storeProposals(db), ...b }
+}
+
+// „Figuren einlagern“: Vorschlag je Figur im Abschluss (wie Minifig::storeProposals)
+const natCmp = (a, b) => String(a).localeCompare(String(b), 'de', { numeric: true, sensitivity: 'base' })
+function figureBox(db, no, cond) {
+  const re = cond === 'N' ? /^FN\d+$/i : /^FG\d+$/i
+  const code = (id) => db.locations.find((l) => l.id === id)?.code ?? ''
+  const same = [...new Set(db.inventory.filter((i) => String(i.item_type).toUpperCase() === 'MINIFIG' && i.item_no === no).map((i) => code(i.location_id)))].filter((c) => re.test(c))
+  if (same.length) return same.sort(natCmp)[0]
+  const count = new Map()
+  for (const i of db.inventory) count.set(i.location_id, (count.get(i.location_id) ?? 0) + 1)
+  const rows = db.locations.filter((l) => re.test(l.code)).map((l) => ({ code: l.code, n: count.get(l.id) ?? 0 }))
+  rows.sort((a, b) => a.n - b.n || natCmp(a.code, b.code))
+  return rows[0]?.code ?? null
+}
+function storeProposals(db) {
+  const figs = prices(db).minifigs
+  return (mfOf(db).builds ?? []).filter((b) => b.status === 'export').sort((a, b) => a.id - b.id).map((b) => {
+    const p = figs.get(b.minifig_no)?.price
+    return { build_id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, condition: 'U', price: p === undefined || p === null ? null : Math.round(p * 100) / 100,
+      location: { U: figureBox(db, b.minifig_no, 'U'), N: figureBox(db, b.minifig_no, 'N') } }
+  })
+}
+// Fertige Figuren als neue Lots in den Bestand, Lagerort bei Bedarf anlegen (wie Minifig::storeFigures)
+function storeFigures(db, store) {
+  const builds = new Map((mfOf(db).builds ?? []).filter((b) => b.status === 'export').map((b) => [b.id, b]))
+  const names = { FG: 'Figuren gebraucht', FN: 'Figuren neu' }
+  let n = 0
+  for (const s of store ?? []) {
+    const b = builds.get(Number(s.build_id))
+    const code = String(s.location ?? '').trim().slice(0, 32)
+    if (!b || !code) continue
+    const cond = s.condition === 'N' ? 'N' : 'U'
+    const price = Math.max(0, Math.round((Number(s.price) || 0) * 1000) / 1000)
+    let l = db.locations.find((x) => x.code.toUpperCase() === code.toUpperCase())
+    if (!l) {
+      const area = (/^(FG|FN|FT|Plate|G|H|N)\d+$/i.exec(code)?.[1] ?? code).toUpperCase()
+      l = { id: Math.max(0, ...db.locations.map((x) => x.id)) + 1, code, name: names[area] ? `${names[area]}, Kästchen ${code.slice(area.length)}` : code, kind: 'regal' }
+      db.locations.push(l)
+    }
+    db.inventory.push({ id: db.nextLot++, item_type: 'MINIFIG', item_no: b.minifig_no, color_id: 0, color_name: '', name: b.name, category: 'Minifigur',
+      location_id: l.id, qty: b.qty, price, bl_condition: cond, new_or_used: cond, updated_at: now(), bl_lot_id: null, bl_inventory_id: null })
+    n++
+  }
+  return n
 }
 
 function bsxMinus(db, items, fileId) {
@@ -919,12 +964,13 @@ function bsxMinus(db, items, fileId) {
   return out
 }
 
-function finishBuildExport(db, done, applyBsx) {
+function finishBuildExport(db, done, applyBsx, store) {
   if (!exportActive(db)) throw new DemoError('Dieser Abschluss wurde schon beendet.', 409)
   const mf = mfOf(db)
   const figs = mf.builds.filter((b) => b.status === 'export').reduce((t, b) => t + b.qty, 0)
   let parts = 0
   let lotsChanged = 0
+  let stored = 0
   const files = []
   if (done) {
     for (const l of exportLots(db)) {
@@ -946,11 +992,13 @@ function finishBuildExport(db, done, applyBsx) {
       f.parts = alive.reduce((t, r) => t + r.quantity, 0)
       files.push(fid)
     }
+    stored = storeFigures(db, store)
+    lotsChanged += stored
     for (const b of mf.builds) if (b.status === 'export') { b.status = 'done'; b.done_at = now() }
   } else {
     for (const b of mf.builds) if (b.status === 'export') { b.status = 'open'; b.export_by = null; b.export_at = null }
   }
-  return { done, figures: figs, parts, lots: lotsChanged, bsx_files: files }
+  return { done, figures: figs, parts, lots: lotsChanged, bsx_files: files, stored }
 }
 
 function importTransfer(db, me, log, p) {
@@ -1026,8 +1074,8 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     return file(`${f.name.replace(/\.bsx$/i, '')}-nach-figuren.bsx`, 'application/xml', buildBsx(items))
   }
   if (method === 'POST' && r2 === 'builds/finish') {
-    const r = finishBuildExport(db, !!body.done, body.apply_bsx)
-    log(me.id, r.done ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig', { figuren: r.figures, teile: r.parts, lots: r.lots, bsx: r.bsx_files.length })
+    const r = finishBuildExport(db, !!body.done, body.apply_bsx, body.store)
+    log(me.id, r.done ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig', { figuren: r.figures, teile: r.parts, lots: r.lots, bsx: r.bsx_files.length, eingelagert: r.stored })
     return r
   }
   if (method === 'GET' && r2 === 'bsx') return { files: bsxFiles(db) }

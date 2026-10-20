@@ -10,7 +10,7 @@ import { useAuth } from '../stores/auth'
 import { num, eur, dateTime, htmlText } from '../utils/format'
 import { LIST_FILES, listCsv, listBsx, almostJointCsv, almostJointBsx } from '../utils/minifigExport'
 import { saveBlob, zip } from '../utils/files'
-import { copyText, BRICKLINK_XML_URL } from '../utils/bricklinkXml'
+import { copyText, BRICKLINK_XML_URL, buildNewFiguresXml } from '../utils/bricklinkXml'
 
 // Minifig-Finder: gleiche Auswertung wie das bisherige Programm. Abrufe bei BrickLink (Teile prüfen, Stücklisten laden,
 // neue Figuren) nur mit Dev-Rolle und auf Knopfdruck; alles andere rechnet mit der eigenen Datenbank.
@@ -134,9 +134,26 @@ const removeBuild = (b) => run('Figur wird aus der Sammlung genommen', async () 
 const expo = ref(null)
 const applyBsx = ref([])
 const copied = ref(false)
+// „Figuren einlagern“: fertige Figuren als neue Lots (Vorschlag vom Server: gebraucht → FG, neu → FN, Preis aus den Figurenpreisen)
+const storeRows = ref([])
+const storeCopied = ref(false)
+const storeOn = computed(() => storeRows.value.filter((r) => r.on && String(r.location).trim()))
+const storeXml = computed(() => buildNewFiguresXml(storeOn.value.map((r) => ({ ...r, location: String(r.location).trim() }))))
+function setCond(r, c) {
+  r.condition = c
+  if (!r.locEdited) r.location = r.proposal[c] ?? ''
+}
+function copyStoreXml() {
+  copyText(storeXml.value)
+  window.open(BRICKLINK_XML_URL, '_blank', 'noopener')
+  storeCopied.value = true
+}
+const saveStoreXml = () => saveBlob(new Blob([storeXml.value], { type: 'application/xml' }), 'fertige-figuren-einlagern.xml')
 const startExport = () => run('Sammlung wird abgeschlossen', async () => {
   expo.value = await api.post('minifig/builds/start')
   applyBsx.value = expo.value.bsx_files.map((f) => f.id)
+  storeRows.value = (expo.value.store ?? []).map((p) => ({ ...p, on: true, condition: 'U', price: p.price ?? '', location: p.location.U ?? '', proposal: p.location, locEdited: false }))
+  storeCopied.value = false
   copied.value = false
   await loadBuilds()
   return ''
@@ -149,11 +166,12 @@ function copyXml() {
 }
 const saveXml = () => saveBlob(new Blob([expo.value.xml], { type: 'application/xml' }), 'fertige-figuren-bricklink.xml')
 const finishExport = (done) => run(done ? 'Bestand wird angepasst' : 'Abschluss wird verworfen', async () => {
-  const r = await api.post('minifig/builds/finish', { done, apply_bsx: done ? applyBsx.value : [] })
+  const store = done ? storeOn.value.map((r) => ({ build_id: r.build_id, condition: r.condition, price: Number(r.price) || 0, location: String(r.location).trim() })) : []
+  const r = await api.post('minifig/builds/finish', { done, apply_bsx: done ? applyBsx.value : [], store })
   expo.value = null
   await loadAll()
   if (done && r.lots) api.post('ollie/after-export').catch(() => {})
-  return done ? `Erledigt: ${figs(r.figures)}, ${num(r.parts)} Teile aus dem Bestand abgezogen${r.bsx_files.length ? `, ${r.bsx_files.length} BSX-Datei(en) aktualisiert` : ''}.`
+  return done ? `Erledigt: ${figs(r.figures)}, ${num(r.parts)} Teile aus dem Bestand abgezogen${r.bsx_files.length ? `, ${r.bsx_files.length} BSX-Datei(en) aktualisiert` : ''}${r.stored ? `, ${r.stored} Figuren-Lot(s) eingelagert` : ''}.`
     : 'Verworfen. Die Figuren bleiben in der Sammlung.'
 })
 
@@ -729,7 +747,35 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           </li>
         </ul>
       </section>
-      <p class="small">Erst wenn bei BrickLink alles hochgeladen ist: <strong>„Ja, ist hochgeladen“</strong>. Dann werden die Teile auch im Dashboard-Bestand abgezogen{{ expo.bsx_files.length ? ' und die angehakten BSX-Dateien ersetzt' : '' }}.</p>
+      <section v-if="storeRows.length" class="step">
+        <h3>{{ 1 + (expo.xml ? 1 : 0) + (expo.bsx_files.length ? 1 : 0) }}. Figuren einlagern</h3>
+        <p class="small muted">Die fertigen Figuren als neue Lots. Bei BrickLink auf derselben Seite unter <strong>„Upload“</strong> einfügen (nicht Update). Gebraucht kommt nach FG, neu nach FN.</p>
+        <div class="table-wrap">
+          <table class="table store">
+            <thead><tr><th></th><th>Figur</th><th class="num">Anzahl</th><th>Zustand</th><th class="num">Preis €</th><th>Kästchen</th></tr></thead>
+            <tbody>
+              <tr v-for="r in storeRows" :key="r.build_id" :class="{ off: !r.on }">
+                <td><input v-model="r.on" type="checkbox" :aria-label="`${r.minifig_no} einlagern`" /></td>
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" /><div><strong class="mono">{{ r.minifig_no }}</strong><div class="small">{{ htmlText(r.name) }}</div></div></div></td>
+                <td class="num">{{ r.qty }}×</td>
+                <td><div class="seg" role="radiogroup" :aria-label="`Zustand ${r.minifig_no}`">
+                  <button type="button" :class="{ on: r.condition === 'U' }" role="radio" :aria-checked="r.condition === 'U'" :disabled="!r.on" @click="setCond(r, 'U')">gebraucht</button>
+                  <button type="button" :class="{ on: r.condition === 'N' }" role="radio" :aria-checked="r.condition === 'N'" :disabled="!r.on" @click="setCond(r, 'N')">neu</button>
+                </div></td>
+                <td class="num"><input v-model="r.price" class="input price" type="number" min="0" step="0.01" inputmode="decimal" :disabled="!r.on" :aria-label="`Preis ${r.minifig_no}`" /></td>
+                <td><input v-model="r.location" class="input box" :placeholder="r.condition === 'N' ? 'z. B. FN3' : 'z. B. FG3'" :disabled="!r.on" :aria-label="`Kästchen ${r.minifig_no}`" @input="r.locEdited = true" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-if="storeRows.some((r) => r.on && !String(r.location).trim())" class="small warnc">Ohne Kästchen wird eine Figur nicht eingelagert.</p>
+        <div class="toolbar">
+          <button class="btn btn-primary" :disabled="!storeOn.length" @click="copyStoreXml"><Copy :size="16" /> Kopieren und BrickLink öffnen</button>
+          <button class="btn" :disabled="!storeOn.length" @click="saveStoreXml"><Download :size="16" /> Als Datei speichern</button>
+          <span v-if="storeCopied" class="small ok">Kopiert.</span>
+        </div>
+      </section>
+      <p class="small">Erst wenn bei BrickLink alles hochgeladen ist: <strong>„Ja, ist hochgeladen“</strong>. Dann werden die Teile auch im Dashboard-Bestand abgezogen{{ expo.bsx_files.length ? ' und die angehakten BSX-Dateien ersetzt' : '' }}{{ storeOn.length ? ', und die Figuren kommen als neue Lots in den Bestand' : '' }}.</p>
       <template #actions>
         <button class="btn" :disabled="busy" @click="finishExport(false)"><X :size="16" /> Verwerfen</button>
         <button class="btn" @click="expo = null">Später</button>
@@ -792,6 +838,9 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 .step { margin: 12px 0; }
 .step h3 { margin: 0 0 4px; font-size: 1rem; }
 .chk { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.store .price { width: 90px; text-align: right; }
+.store .box { width: 100px; }
+.store tr.off { opacity: 0.5; }
 .ok { color: var(--ok); }
 .pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px var(--pad); }
 .good-border { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }

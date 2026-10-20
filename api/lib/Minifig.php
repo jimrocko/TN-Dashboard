@@ -1500,7 +1500,64 @@ final class Minifig
         }
         $exp = q("SELECT b.export_at, u.display_name FROM {minifig_builds} b LEFT JOIN {users} u ON u.id = b.export_by WHERE b.status = 'export' LIMIT 1")->fetch() ?: [];
         return ['xml' => $xml === '' ? '' : "<INVENTORY>\n$xml</INVENTORY>\n", 'bricklink_lots' => substr_count($xml, '<ITEM>'), 'without_lot' => $noLot,
-            'bsx_files' => array_values($files), 'export_by' => $exp['display_name'] ?? null, 'export_at' => $exp['export_at'] ?? null] + self::builds();
+            'bsx_files' => array_values($files), 'export_by' => $exp['display_name'] ?? null, 'export_at' => $exp['export_at'] ?? null,
+            'store' => self::storeProposals()] + self::builds();
+    }
+
+    /**
+     * „Figuren einlagern“ (Wunsch des Inhabers): Vorschlag je Figur im Abschluss. Zustand gebraucht (FG = Figuren gebraucht,
+     * FN = Figuren neu, gekaufte Figuren), Preis aus den Figurenpreisen, Kästchen je Zustand: wo dieselbe Figur schon liegt,
+     * sonst das Kästchen des Bereichs mit den wenigsten Lots.
+     */
+    private static function storeProposals(): array
+    {
+        $prices = self::prices()['minifigs'];
+        $out = [];
+        foreach (q("SELECT id, minifig_no, name, qty FROM {minifig_builds} WHERE status = 'export' ORDER BY id")->fetchAll() as $b) {
+            $p = $prices[(string) $b['minifig_no']]['price'] ?? null;
+            $out[] = ['build_id' => (int) $b['id'], 'minifig_no' => $b['minifig_no'], 'name' => $b['name'], 'qty' => (int) $b['qty'], 'condition' => 'U',
+                'price' => $p === null ? null : round((float) $p, 2), 'location' => ['U' => self::figureBox((string) $b['minifig_no'], 'U'), 'N' => self::figureBox((string) $b['minifig_no'], 'N')]];
+        }
+        return $out;
+    }
+
+    private static function figureBox(string $no, string $cond): ?string
+    {
+        $re = '/^' . ($cond === 'N' ? 'FN' : 'FG') . '\d+$/i';
+        $same = array_values(array_filter(q("SELECT DISTINCT l.code FROM {inventory} i JOIN {locations} l ON l.id = i.location_id
+            WHERE UPPER(i.item_type) = 'MINIFIG' AND i.item_no = ?", [$no])->fetchAll(PDO::FETCH_COLUMN), fn ($c) => preg_match($re, (string) $c)));
+        if ($same) { usort($same, 'strnatcasecmp'); return $same[0]; }
+        $rows = array_values(array_filter(q('SELECT l.code, COUNT(i.id) AS n FROM {locations} l LEFT JOIN {inventory} i ON i.location_id = l.id GROUP BY l.id, l.code')->fetchAll(),
+            fn ($r) => preg_match($re, (string) $r['code'])));
+        usort($rows, fn ($a, $b) => (int) $a['n'] <=> (int) $b['n'] ?: strnatcasecmp($a['code'], $b['code']));
+        return $rows[0]['code'] ?? null;
+    }
+
+    /** Fertige Figuren als neue Lots in den Bestand (nach „Ja, ist hochgeladen“). Lagerort wird bei Bedarf angelegt. */
+    private static function storeFigures(array $store): int
+    {
+        $builds = [];
+        foreach (q("SELECT id, minifig_no, name, qty FROM {minifig_builds} WHERE status = 'export'")->fetchAll() as $b) $builds[(int) $b['id']] = $b;
+        $names = ['FG' => 'Figuren gebraucht', 'FN' => 'Figuren neu'];
+        $n = 0;
+        foreach ($store as $s) {
+            $b = $builds[(int) ($s['build_id'] ?? 0)] ?? null;
+            $code = mb_substr(trim((string) ($s['location'] ?? '')), 0, 32);
+            if (!$b || $code === '') continue;
+            $cond = ($s['condition'] ?? 'U') === 'N' ? 'N' : 'U';
+            $price = max(0, round((float) ($s['price'] ?? 0), 3));
+            $loc = q('SELECT id FROM {locations} WHERE UPPER(code) = UPPER(?)', [$code])->fetchColumn();
+            if ($loc === false) {
+                $area = Shop::areaOf($code);
+                q('INSERT INTO {locations} (code, name, kind) VALUES (?, ?, ?)', [$code, isset($names[$area]) ? $names[$area] . ', Kästchen ' . substr($code, strlen($area)) : $code, 'regal']);
+                $loc = db()->lastInsertId();
+            }
+            // BrickLink-Lot-Nr. kommt mit dem nächsten Abgleich (BrickLink vergibt sie beim Upload)
+            q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, new_or_used, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ['MINIFIG', $b['minifig_no'], 0, '', $b['name'], 'Minifigur', (int) $loc, (int) $b['qty'], $price, $cond, $cond, now()]);
+            $n++;
+        }
+        return $n;
     }
 
     /** Neue Fassung einer BSX-Datei (ohne die Teile der Sammlung im Abschluss); Teile mit Menge 0 fallen weg. */
@@ -1534,7 +1591,7 @@ final class Minifig
      * Abschluss beenden. $done = bei BrickLink hochgeladen: Bestand im Dashboard abziehen, BSX-Dateien aus $applyBsx im Finder
      * ersetzen, Figuren gelten als erledigt. Sonst gehen die Figuren zurück in die Sammlung.
      */
-    public static function finishBuildExport(bool $done, array $applyBsx): array
+    public static function finishBuildExport(bool $done, array $applyBsx, array $store = []): array
     {
         self::ensureSchema();
         if (!self::buildExportActive()) json_error('Dieser Abschluss wurde schon beendet.', 409);
@@ -1542,7 +1599,7 @@ final class Minifig
         $pdo->beginTransaction();
         try {
             $figs = (int) q("SELECT COALESCE(SUM(qty), 0) FROM {minifig_builds} WHERE status = 'export'")->fetchColumn();
-            $parts = $lotsChanged = 0;
+            $parts = $lotsChanged = $stored = 0;
             $files = [];
             if ($done) {
                 foreach (self::exportLots() as $l) {
@@ -1565,6 +1622,8 @@ final class Minifig
                         [json_encode($items, JSON_UNESCAPED_UNICODE), count($alive), array_sum(array_column($alive, 'quantity')), $fid]);
                     $files[] = $fid;
                 }
+                $stored = self::storeFigures($store);
+                $lotsChanged += $stored;
                 q("UPDATE {minifig_builds} SET status = 'done', done_at = ? WHERE status = 'export'", [now()]);
             } else {
                 q("UPDATE {minifig_builds} SET status = 'open', export_by = NULL, export_at = NULL WHERE status = 'export'");
@@ -1576,7 +1635,7 @@ final class Minifig
         }
         // Ollies Dashboard kennt den Abzug erst nach seinem nächsten Laden (wie nach „Ja, ist eingefügt“ beim Umlagern)
         if ($done && $lotsChanged) OllieSync::markExported();
-        return ['done' => $done, 'figures' => $figs, 'parts' => $parts, 'lots' => $lotsChanged, 'bsx_files' => $files];
+        return ['done' => $done, 'figures' => $figs, 'parts' => $parts, 'lots' => $lotsChanged, 'bsx_files' => $files, 'stored' => $stored];
     }
 
     // ---------------------------------------------------------------- Figurenkatalog ohne API (wie MinifigFinder Standalone)

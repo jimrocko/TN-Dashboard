@@ -676,9 +676,9 @@ switch (true) {
     case $route === 'minifig/builds/finish' && $method === 'POST':
         $me = require_user();
         $in = request_json();
-        $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []));
+        $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []), (array) ($in['store'] ?? []));
         ActivityLog::log((int) $me['id'], $r['done'] ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig',
-            ['figuren' => $r['figures'], 'teile' => $r['parts'], 'lots' => $r['lots'], 'bsx' => count($r['bsx_files'])]);
+            ['figuren' => $r['figures'], 'teile' => $r['parts'], 'lots' => $r['lots'], 'bsx' => count($r['bsx_files']), 'eingelagert' => $r['stored']]);
         json_response($r);
 
     case $route === 'minifig/bsx' && $method === 'GET':
