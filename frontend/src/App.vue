@@ -7,9 +7,12 @@ import XpShell from './components/XpShell.vue'
 import DebugOverlay from './components/DebugOverlay.vue'
 import PageLoading from './components/PageLoading.vue'
 import BootAnimation from './components/BootAnimation.vue'
+import OfflineBar from './components/OfflineBar.vue'
+import { setOfflineUser } from './utils/offline'
+import { useAuth } from './stores/auth'
 import { boot, bootOnStart, closeBoot } from './utils/boot'
 import { useSettings } from './stores/settings'
-import { IS_TUTORIAL } from './api'
+import { IS_DEMO, IS_TUTORIAL } from './api'
 import { help, helpSteps, closeHelp } from './tutorial/help'
 
 // Klemmi: im Tutorial-Build die große Tour. In App und Demo nur die Kurzhilfe je Bereich (Knopf „?“),
@@ -22,6 +25,9 @@ const chrome = computed(() => !route.meta.public)
 // XP verlassen, während eine Spaß-App offen ist: zurück zur Startseite (die Apps gibt es nur im XP-Stil)
 const router = useRouter()
 watch(() => settings.style, (s) => { if (s !== 'xp' && route.meta.xpOnly) router.replace('/') })
+// Offline-Warteschlange gehört zum angemeldeten Konto; nach dem Abmelden werden gemerkte Daten gelöscht
+const auth = useAuth()
+if (!IS_DEMO) watch(() => auth.user?.id, (id, prev) => { if (id) setOfflineUser(auth.user); else if (prev) setOfflineUser(null) })
 // Startanimation beim ersten Öffnen des Tages (abschaltbar im Dev-Bereich)
 bootOnStart()
 // Hilfe schließen, wenn man den Bereich verlässt
@@ -36,6 +42,7 @@ watch(() => route.path, () => closeHelp())
     <main class="main"><RouterView /></main>
     <BottomNav />
   </div>
+  <OfflineBar v-if="!IS_DEMO" :low="!chrome || settings.style === 'xp'" />
   <DebugOverlay v-if="chrome" />
   <PageLoading v-if="chrome" />
   <Coach v-if="IS_TUTORIAL" />

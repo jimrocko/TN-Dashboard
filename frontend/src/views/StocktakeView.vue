@@ -69,7 +69,7 @@ async function create() {
 async function save(item, value) {
   const counted = value === '' ? null : Number(value)
   try {
-    await api.post(`stocktakes/${current.value.id}/count`, { item_id: item.id, counted })
+    await api.post(`stocktakes/${current.value.id}/count`, { item_id: item.id, counted }, `Gezählt ${item.item_no} ${item.color_name || ''} in ${current.value.location_code}`)
     item.counted = counted
   } catch (e) { error.value = e.message }
 }

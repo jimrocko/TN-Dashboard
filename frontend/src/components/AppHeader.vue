@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { User, ChevronDown, LogOut, GraduationCap, History, Settings } from 'lucide-vue-next'
 import { useAuth } from '../stores/auth'
+import { offline } from '../utils/offline'
 
 const auth = useAuth()
 const router = useRouter()
@@ -48,7 +49,7 @@ async function logout() {
         <span class="who">
           <span class="role">{{ auth.roleLabel }}</span>
           <span class="name">{{ auth.user.display_name }}</span>
-          <span class="online"><i></i>Online</span>
+          <span class="online" :class="{ off: !offline.online }"><i></i>{{ offline.online ? 'Online' : 'Offline' }}</span>
         </span>
         <ChevronDown :size="18" class="chev" />
       </button>
@@ -81,6 +82,8 @@ async function logout() {
 .name { font-size: 16px; }
 .online { font-size: 13px; color: var(--ok); display: flex; align-items: center; gap: 6px; }
 .online i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.online.off { color: var(--warn); }
+.online.off i { background: var(--warn); }
 .chev { color: var(--text-muted); }
 .menu-backdrop { position: fixed; inset: 0; z-index: 19; }
 .menu { position: absolute; right: 0; top: calc(100% + 8px); padding: 6px; min-width: 230px; z-index: 20; box-shadow: var(--shadow); }

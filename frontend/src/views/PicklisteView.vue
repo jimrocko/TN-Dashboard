@@ -105,7 +105,7 @@ async function takeZone(release = false) {
   let skipped = 0
   try {
     for (const x of rows) {
-      try { await api.post(`picking/items/${x.id}/claim`) } catch { skipped++ }
+      try { await api.post(`picking/items/${x.id}/claim`, { claimed: !release }, `${release ? 'Vormerkung aufheben' : 'Markieren'} ${label(x)}`) } catch { skipped++ }
     }
     if (skipped) notice.value = `${skipped} Position(en) wurden gerade von jemand anderem vorgemerkt oder gepickt und sind übersprungen.`
   } finally { busy.value = false; await loadDetail() }
@@ -163,18 +163,21 @@ async function act(fn) {
   busy.value = true
   try { await fn() } catch (e) { notice.value = e.message } finally { busy.value = false; await loadDetail() }
 }
+// Kurze Beschreibung einer Position, falls die Aktion offline warten muss und später abgelehnt wird
+const label = (x) => `${x.item_no} ${x.color_name || ''} · ${x.location || '–'}`.replace(/\s+/g, ' ')
+// Gewünschter Zustand wird mitgeschickt: eine Wiederholung (schlechtes WLAN) ändert nichts doppelt
 const tap = (x) => {
-  if (claimMode.value) return act(() => api.post(`picking/items/${x.id}/claim`))
+  if (claimMode.value) return act(() => api.post(`picking/items/${x.id}/claim`, { claimed: x.claim_picker_id !== auth.user?.id }, `Markieren ${label(x)}`))
   if (detail.value.order.completed) return
   if (x.picked && x.picker_id !== auth.user?.id) {
     notice.value = `Diese Position wurde von ${x.picker_name ?? 'einem anderen Picker'} gepickt und kann nur von diesem Picker zurückgesetzt werden.`
     return
   }
-  return act(() => api.post(`picking/items/${x.id}/toggle`))
+  return act(() => api.post(`picking/items/${x.id}/toggle`, { picked: !x.picked }, `${x.picked ? 'Enticken' : 'Picken'} ${label(x)}`))
 }
 const complete = () => act(() => api.post(`picking/orders/${currentId.value}/complete`))
 const reopen = () => act(() => api.post(`picking/orders/${currentId.value}/reopen`))
-const resolve = (r) => act(() => api.post(`picking/reports/${r.id}/resolve`))
+const resolve = (r) => (r.pending ? null : act(() => api.post(`picking/reports/${r.id}/resolve`, {}, 'Meldung schließen')))
 
 // ---- Melden ----
 const ISSUES = { missing: 'Teil/Teile fehlen', wrong_location: 'Lagerort stimmt nicht', wrong_quantity: 'Restmenge stimmt nicht', wrong_item: 'Falsches Teil' }
@@ -191,12 +194,13 @@ async function sendReport() {
   reportErr.value = ''
   busy.value = true
   try {
-    await api.post(`picking/items/${reportFor.value.id}/reports`, {
+    const x = reportFor.value
+    await api.post(`picking/items/${x.id}/reports`, {
       issue_type: f.issue_type, details: f.details.trim() || null,
       missing_quantity: f.issue_type === 'missing' ? Number(f.missing_quantity) : null,
       found_location: f.issue_type === 'wrong_location' ? f.found_location.trim() || null : null,
       actual_quantity: f.issue_type === 'wrong_quantity' ? Number(f.actual_quantity) : null,
-    })
+    }, `Meldung ${label(x)}`)
     reportFor.value = null
   } catch (e) { reportErr.value = e.message } finally { busy.value = false; await loadDetail() }
 }
@@ -302,7 +306,7 @@ const letter = ref(false)
                 <span v-else-if="x.claim_picker_name" class="faint"> · vorgemerkt: {{ x.claim_picker_name }}</span>
               </div>
               <div v-if="x.reports.length" class="reports">
-                <button v-for="r in x.reports" :key="r.id" class="chip" title="Meldung schließen" @click.stop="resolve(r)">{{ reportLabel(r) }}<span v-if="r.user_name" class="by"> · {{ r.user_name }}</span> <X :size="12" /></button>
+                <button v-for="r in x.reports" :key="r.id" class="chip" :title="r.pending ? 'Wartet auf Verbindung' : 'Meldung schließen'" @click.stop="resolve(r)">{{ reportLabel(r) }}<span v-if="r.user_name" class="by"> · {{ r.user_name }}</span> <X v-if="!r.pending" :size="12" /><span v-else class="by">· wartet</span></button>
               </div>
             </div>
             <div class="loc">{{ x.location || '–' }}</div>

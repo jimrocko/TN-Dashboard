@@ -379,11 +379,19 @@ final class Picking
     }
 
     /** Position gepickt / zurücksetzen. Nur wer gepickt hat, darf zurücksetzen; Vormerkungen anderer sperren. */
-    public static function toggle(int $itemId, array $user): array
+    public static function toggle(int $itemId, array $user, ?bool $want = null): array
     {
-        return self::tx(function () use ($itemId, $user) {
+        return self::tx(function () use ($itemId, $user, $want) {
             $uid = (int) $user['id'];
             $o = self::itemOrder($itemId);
+            // Gewünschter Zustand mitgeschickt (Offline-Warteschlange, Wiederholung bei schlechtem WLAN): ist er schon so, nichts ändern
+            if ($want !== null) {
+                $cur = q('SELECT picked, user_id, picked_at FROM {pick_progress} WHERE order_item_id = ?', [$itemId])->fetch();
+                if ((bool) ($cur['picked'] ?? false) === $want) {
+                    return ['item_id' => $itemId, 'picked' => $want, 'picker_id' => $want ? (int) $cur['user_id'] : null,
+                        'picker_name' => $want ? self::userName((int) $cur['user_id']) : null, 'picked_at' => $want ? $cur['picked_at'] : null, 'order_id' => (int) $o['id'], 'unchanged' => true];
+                }
+            }
             if (self::state((int) $o['id'])['completed']) json_error("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400);
             $claim = q('SELECT user_id FROM {pick_claims} WHERE order_item_id = ?', [$itemId])->fetchColumn();
             if ($claim && (int) $claim !== $uid) {
@@ -411,11 +419,17 @@ final class Picking
     }
 
     /** Position für sich vormerken (Markieren-Modus) oder Vormerkung aufheben (auch an gepickten Positionen). */
-    public static function claim(int $itemId, array $user): array
+    public static function claim(int $itemId, array $user, ?bool $want = null): array
     {
-        return self::tx(function () use ($itemId, $user) {
+        return self::tx(function () use ($itemId, $user, $want) {
             $uid = (int) $user['id'];
             $o = self::itemOrder($itemId);
+            if ($want !== null) {
+                $own = q('SELECT user_id FROM {pick_claims} WHERE order_item_id = ?', [$itemId])->fetchColumn();
+                if (((int) $own === $uid) === $want) {
+                    return ['item_id' => $itemId, 'claimed' => $want, 'picker_id' => $want ? $uid : null, 'picker_name' => $want ? $user['display_name'] : null, 'unchanged' => true];
+                }
+            }
             if (self::state((int) $o['id'])['completed']) json_error("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400);
             $owner = q('SELECT user_id FROM {pick_claims} WHERE order_item_id = ?', [$itemId])->fetchColumn();
             if (!$owner && q('SELECT picked FROM {pick_progress} WHERE order_item_id = ?', [$itemId])->fetchColumn()) json_error('Position ist bereits gepickt', 400);

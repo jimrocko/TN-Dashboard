@@ -227,6 +227,8 @@ Das TN Dashboard lässt sich ohne App Store und ohne Kosten wie eine App install
 
 Updates kommen automatisch beim nächsten Öffnen. Dafür braucht der Server HTTPS.
 
+**Schlechtes WLAN:** Pickliste und Inventur arbeiten auch ohne Verbindung weiter. Die zuletzt geöffnete Bestellung bzw. Inventur bleibt sichtbar, Picken, Markieren, Melden und gezählte Mengen werden auf dem Gerät gespeichert und automatisch nachgeschickt, sobald das WLAN wieder da ist (unten erscheint „Offline · x Änderungen warten“). Hat in der Zwischenzeit jemand anderes dieselbe Position gepickt, zeigt die App das an, statt etwas zu überschreiben.
+
 ### Datenschutz
 - Protokolliert werden Aktionen in der App (z. B. „Umgelagert“, „Teil erkannt“), keine Inhalte außerhalb der App.
 - Fotos des Teile-Scanners gehen nur zur Erkennung an Brickognize und werden auf dem Schulserver nicht gespeichert.

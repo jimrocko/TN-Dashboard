@@ -570,12 +570,14 @@ switch (true) {
         $item = (int) $parts[2];
         $info = q('SELECT x.item_no, x.color_name, x.qty, o.order_no FROM {order_items} x JOIN {orders} o ON o.id = x.order_id WHERE x.id = ?', [$item])->fetch() ?: [];
         $details = ['auftrag' => $info['order_no'] ?? null, 'teil' => trim(($info['item_no'] ?? '') . ' ' . ($info['color_name'] ?? '')), 'menge' => (int) ($info['qty'] ?? 0)];
+        // picked/claimed = gewünschter Zustand (optional): Wiederholungen ändern dann nichts doppelt
+        $want = fn (string $k) => array_key_exists($k, $in = request_json()) && $in[$k] !== null ? (bool) $in[$k] : null;
         if ($parts[3] === 'toggle') {
-            $r = Picking::toggle($item, $me);
-            ActivityLog::log((int) $me['id'], $r['picked'] ? 'pick_item' : 'pick_item_reset', 'pickliste', $details);
+            $r = Picking::toggle($item, $me, $want('picked'));
+            if (empty($r['unchanged'])) ActivityLog::log((int) $me['id'], $r['picked'] ? 'pick_item' : 'pick_item_reset', 'pickliste', $details);
         } elseif ($parts[3] === 'claim') {
-            $r = Picking::claim($item, $me);
-            ActivityLog::log((int) $me['id'], $r['claimed'] ? 'pick_claim' : 'pick_unclaim', 'pickliste', $details);
+            $r = Picking::claim($item, $me, $want('claimed'));
+            if (empty($r['unchanged'])) ActivityLog::log((int) $me['id'], $r['claimed'] ? 'pick_claim' : 'pick_unclaim', 'pickliste', $details);
         } else {
             $in = request_json();
             $r = Picking::report($item, (int) $me['id'], $in);

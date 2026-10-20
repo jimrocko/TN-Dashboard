@@ -234,9 +234,14 @@ export function reopen(db, id) {
   return { completed: false, revision: bump(db, id) }
 }
 
-export function toggle(db, itemId, user) {
+export function toggle(db, itemId, user, want = null) {
   const { order } = itemOrder(db, itemId)
   const p = pk(db)
+  // Gewünschter Zustand mitgeschickt und schon so: nichts ändern (wie Picking::toggle)
+  if (want !== null && !!p.progress[itemId]?.picked === want) {
+    const c = p.progress[itemId]
+    return { item_id: itemId, picked: want, picker_id: want ? c.user_id : null, picker_name: want ? userName(db, c.user_id) : null, picked_at: want ? c.picked_at : null, order_id: order.id, unchanged: true }
+  }
   if (state(db, order.id).completed) throw new DemoError("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400)
   const claim = p.claims[itemId]
   if (claim && claim.user_id !== user.id) throw new DemoError(`Diese Position ist für ${userName(db, claim.user_id) ?? 'einen anderen Picker'} vorgemerkt.`, 403)
@@ -256,9 +261,12 @@ export function toggle(db, itemId, user) {
   return { item_id: itemId, picked: !!neu, picker_id: neu ? user.id : null, picker_name: neu ? user.display_name : null, picked_at: neu ? t : null, order_id: order.id }
 }
 
-export function claim(db, itemId, user) {
+export function claim(db, itemId, user, want = null) {
   const { order } = itemOrder(db, itemId)
   const p = pk(db)
+  if (want !== null && (p.claims[itemId]?.user_id === user.id) === want) {
+    return { item_id: itemId, claimed: want, picker_id: want ? user.id : null, picker_name: want ? user.display_name : null, unchanged: true }
+  }
   if (state(db, order.id).completed) throw new DemoError("Bestellung ist erledigt. Bitte zuerst 'Bestellung ändern' wählen.", 400)
   const owner = p.claims[itemId]
   if (!owner && p.progress[itemId]?.picked) throw new DemoError('Position ist bereits gepickt', 400)
@@ -444,8 +452,9 @@ export function route(db, method, parts, params, body, requireUser, log) {
     const itemId = Number(c)
     const { order, item } = itemOrder(db, itemId)
     const details = { auftrag: order.order_no, teil: `${item.item_no} ${item.color_name}`.trim(), menge: item.qty }
-    if (d === 'toggle') { const r = toggle(db, itemId, me); log(me.id, r.picked ? 'pick_item' : 'pick_item_reset', 'pickliste', details); return r }
-    if (d === 'claim') { const r = claim(db, itemId, me); log(me.id, r.claimed ? 'pick_claim' : 'pick_unclaim', 'pickliste', details); return r }
+    const want = (k) => (body?.[k] === undefined || body?.[k] === null ? null : !!body[k])
+    if (d === 'toggle') { const r = toggle(db, itemId, me, want('picked')); if (!r.unchanged) log(me.id, r.picked ? 'pick_item' : 'pick_item_reset', 'pickliste', details); return r }
+    if (d === 'claim') { const r = claim(db, itemId, me, want('claimed')); if (!r.unchanged) log(me.id, r.claimed ? 'pick_claim' : 'pick_unclaim', 'pickliste', details); return r }
     if (d === 'reports') { const r = report(db, itemId, me.id, body); log(me.id, 'pick_report', 'pickliste', { ...details, grund: r.issue_type }); return r }
   }
   if (method === 'POST' && b === 'reports' && /^\d+$/.test(c ?? '') && d === 'resolve') return resolve(db, Number(c))
