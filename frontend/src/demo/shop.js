@@ -64,7 +64,8 @@ export function seedData(seed) {
       }),
     }
   })
-  const db = { locations, inventory, orders, transfers: [], stocktakes: [], nextLot: inventory.length + 1, nextTransfer: 1, nextStocktake: 1, nextStItem: 1 }
+  // privat: Build mit echtem Bestand (Echtbestand-Artifact), dort keine erfundenen früheren Stände
+  const db = { locations, inventory, orders, transfers: [], stocktakes: [], nextLot: inventory.length + 1, nextTransfer: 1, nextStocktake: 1, nextStItem: 1, privat: !!seed.privat }
   for (const s of seed.stocktakes) createStocktake(db, locId[s.location])
   return db
 }
@@ -460,15 +461,15 @@ export function confusable(a, b) {
   return xa.every((v, i) => Math.abs(Number(v) - Number(xb[i])) <= 2)
 }
 
-// Ordnungsgrad, ein Eintrag pro Tag (wie Shop::sortProgress). Die Demo bekommt beim ersten Mal erfundene frühere Stände,
-// damit die Entwicklung (+/−) zu sehen ist.
+// Ordnungsgrad, ein Eintrag pro Tag (wie Shop::sortProgress). Die öffentliche Demo bekommt beim ersten Mal erfundene frühere
+// Stände, damit die Entwicklung (+/−) zu sehen ist; Tutorial und Echtbestand nicht.
 function sortProgress(db, open) {
   const lots = db.inventory.filter((i) => loc(db, i.location_id)).length
   const day = now().slice(0, 10)
   const back = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
   if (!db.sortProgress) {
     db.sortProgress = {}
-    if (import.meta.env.MODE !== 'tutorial') {
+    if (import.meta.env.MODE !== 'tutorial' && !db.privat) {
       db.sortProgress[back(14)] = { lots, open_count: Math.min(lots, open + 70) }
       db.sortProgress[back(7)] = { lots, open_count: Math.min(lots, open + 32) }
     }
