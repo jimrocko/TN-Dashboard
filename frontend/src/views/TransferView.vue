@@ -12,6 +12,7 @@ import SegControl from '../components/SegControl.vue'
 import { api } from '../api'
 import { num, dateTime } from '../utils/format'
 import { appSettings } from '../utils/appSettings'
+import { REASONS, reasonHint } from '../utils/transferReasons'
 
 const route = useRoute()
 const suggestions = ref([])
@@ -70,7 +71,6 @@ function pick(l) {
 const targets = computed(() => locations.value.filter((l) => l.id !== lot.value?.location_id))
 
 // Vorschläge: Filter nach Grund und seitenweise anzeigen (bei vielen Lots kann die Liste lang werden).
-const REASONS = { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }
 const reason = ref(appSettings.umlagern.reason)
 const PAGE = appSettings.umlagern.page
 const shown = ref(PAGE)
@@ -97,14 +97,14 @@ const groups = computed(() => {
   for (const s of filtered.value) {
     const g = m.get(s.to_location_code) ?? { code: s.to_location_code, id: s.to_location_id, rows: [], already: new Set() }
     g.rows.push(s)
-    for (const x of s.reason === 'falsch' ? [] : s.reason === 'farben' ? s.target_colors ?? [] : s.target_parts ?? []) g.already.add(x)
+    for (const x of s.reason === 'farben' ? s.target_colors ?? [] : s.reason === 'art' ? s.target_parts ?? [] : []) g.already.add(x)
     m.set(s.to_location_code, g)
   }
   return [...m.values()].sort((a, b) => b.rows.length - a.rows.length || nat(a.code, b.code))
 })
 const total = computed(() => (view.value === 'ziel' ? groups.value.length : filtered.value.length))
 // Kurze Zusatzinfo je Vorschlag (früher eigene Spalte „Am Ziel“)
-const hint = (s) => (s.reason === 'falsch' ? `am Ziel schon ${num(s.target_qty)} Stück` : '')
+const hint = reasonHint
 
 // „Alle übernehmen“: Vorschläge eines Kästchens nacheinander buchen, danach einmal das BrickLink-Pop-up
 async function bookMany(rows) {
@@ -158,7 +158,7 @@ onMounted(async () => {
           <SegControl v-model="view" :options="viewOptions" label="Ansicht" />
           <select v-model="reason" class="select" aria-label="Art der Vorschläge">
             <option value="alle">Alle Arten ({{ num(suggestions.length) }})</option>
-            <option v-for="(l, k) in REASONS" :key="k" :value="k">{{ l }} ({{ num(count(k)) }})</option>
+            <template v-for="(l, k) in REASONS" :key="k"><option v-if="count(k) || reason === k" :value="k">{{ l }} ({{ num(count(k)) }})</option></template>
           </select>
         </div>
 
@@ -294,6 +294,10 @@ onMounted(async () => {
 .why.r-falsch i { background: var(--warn); }
 .why.r-farben i { background: var(--accent); }
 .why.r-art i { background: var(--ok); }
+.why.r-bereich i { background: #a855f7; }
+.why.r-mischkiste i { background: var(--danger); }
+.why.r-rest i { background: var(--text-3); }
+.why.r-trennen i { background: #ec4899; }
 .from, .route { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .from :deep(.tag), .route :deep(.tag), .gtitle :deep(.tag) { font-size: 1rem; font-weight: 700; padding: 3px 8px; }
 .qty { font-size: 1.25rem; font-weight: 800; min-width: 3.5ch; text-align: right; font-variant-numeric: tabular-nums; }

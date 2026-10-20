@@ -30,12 +30,14 @@ const MIXED_AREA_PATTERN = '/^G\\d+$/i';
 const MIXED_MAX_LOTS = 3;
 // Beim Zusammenlegen von Farben bekommt ein Kästchen höchstens so viele Lots
 const SLOT_MAX_LOTS = 3;
+// Fast leeres Kästchen: nur ein Lot mit höchstens so vielen Teilen (Vorschlag „Kästchen leeren“)
+const REST_MAX_QTY = 3;
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt'];
 
 final class Shop
 {
     private const LOT_SELECT = 'SELECT i.id, i.item_type, i.item_no, i.color_id, i.color_name, i.name, i.category,
-            i.location_id, i.qty, i.price, i.updated_at, l.code AS location_code, l.kind AS location_kind
+            i.location_id, i.qty, i.price, i.updated_at, i.new_or_used, l.code AS location_code, l.kind AS location_kind
         FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id';
 
     public static function dashboard(): array
@@ -154,13 +156,19 @@ final class Shop
     }
 
     /**
-     * Umlagerungsvorschläge, zwei Arten (immer nur innerhalb eines Bereichs, also gebraucht nie zu neu):
-     *  1. 'falsch'   – gleiches Teil in gleicher Farbe liegt in mehreren Kästchen: alles in das Kästchen mit der größten Menge.
-     *  2. 'farben'   – gleiches Teil in anderen Farben liegt verstreut: in ein Kästchen legen, das nur dieses Teil enthält,
-     *                  damit Slots „reiner“ werden. Ziel bekommt höchstens SLOT_MAX_LOTS Lots,
-     *                  Quelle muss auch andere Teile enthalten.
-     *  3. 'art'      – gleiche Teile-Art (Kategorie, z. B. Brick, Plate) verstreut: in ein Kästchen, das nur diese Art
-     *                  enthält, höchstens SLOT_MAX_LOTS Lots; Quelle enthält auch andere Arten.
+     * Umlagerungsvorschläge (immer kleine Handgriffe am bestehenden Lager, Wunsch des Inhabers):
+     *  1. 'falsch'     – gleiches Teil in gleicher Farbe liegt in mehreren Kästchen: alles in das Kästchen mit der größten Menge.
+     *  2. 'farben'     – gleiches Teil in anderen Farben verstreut: in ein Kästchen, das nur dieses Teil enthält,
+     *                    höchstens SLOT_MAX_LOTS Lots; Quelle muss auch andere Teile enthalten.
+     *  3. 'art'        – gleiche Teile-Art (Kategorie) verstreut: in ein Kästchen, das nur diese Art enthält (gleiche Grenzen).
+     *  4. 'bereich'    – neues Lot im Gebraucht-Bereich (G/FG) oder gebrauchtes im Neu-Bereich (N/FN): dorthin, wo das Teil im
+     *                    richtigen Bereich liegt (gleiche Farbe, sonst gleiches Teil).
+     *  5. 'mischkiste' – G-Kästchen mit mehr als MIXED_MAX_LOTS Lots: die größten bleiben, der Rest zum gleichen Teil,
+     *                    zur gleichen Art oder ins leere Kästchen mit der nächsten Nummer.
+     *  6. 'rest'       – Kästchen mit nur einem kleinen Rest (≤ REST_MAX_QTY Teile): zum gleichen Teil oder zur gleichen Art.
+     *  7. 'trennen'    – leicht Verwechselbares im selben Kästchen (confusable()): das kleinere Lot woandershin.
+     * Nie in ein Kästchen, in dem etwas Verwechselbares liegt. Ziel wie bisher: wo schon am meisten davon liegt.
+     * Schritte 1–3 zuerst, 4–7 rechnen auf dem dann geplanten Stand. Immer innerhalb eines Bereichs (außer 4).
      * Gleiche Regeln und Reihenfolge wie suggestions() in frontend/src/demo/shop.js.
      */
     public static function suggestions(): array
@@ -168,10 +176,21 @@ final class Shop
         $all = typed(q(self::LOT_SELECT . ' WHERE l.code IS NOT NULL ORDER BY i.id')->fetchAll(), LOT_INTS, ['price']);
         $out = [];
         $moved = [];
-        $add = function (array $lot, array $target, string $reason, array $extra = []) use (&$out, &$moved) {
+        // Geplanter Inhalt je Kästchen (nach den bisherigen Vorschlägen): location_id => [Lot-ID => Lot]
+        $in = [];
+        foreach ($all as $l) $in[$l['location_id']][$l['id']] = $l;
+        $add = function (array $lot, array $target, string $reason, array $extra = [], bool $merge = false) use (&$out, &$moved, &$in) {
             $out[] = ['lot' => $lot, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'],
                 'target_qty' => $target['qty'], 'reason' => $reason] + $extra;
             $moved[$lot['id']] = true;
+            foreach ($in as $loc => $lots) if (isset($lots[$lot['id']])) unset($in[$loc][$lot['id']]);
+            // Gleiches Teil + Farbe am Ziel wird zusammengeführt, sonst liegt das Lot danach dort
+            if (!$merge) $in[$target['location_id']][$lot['id']] = $lot;
+        };
+        // Liegt im Kästchen schon etwas, das man mit diesem Lot leicht verwechselt?
+        $clash = function (array $lot, int $loc) use (&$in) {
+            foreach ($in[$loc] ?? [] as $x) if ($x['id'] !== $lot['id'] && self::confusable($lot, $x)) return true;
+            return false;
         };
         $cmpCode = fn ($a, $b) => strnatcasecmp($a['location_code'], $b['location_code']) ?: $a['id'] <=> $b['id'];
 
@@ -184,7 +203,7 @@ final class Shop
             usort($lots, fn ($a, $b) => $b['qty'] <=> $a['qty'] ?: $cmpCode($a, $b));
             $home = $lots[0];
             // Lots im selben Kästchen wie das Ziel bleiben liegen (echter Bestand: gleiches Teil mit anderem Preis/Zustand)
-            foreach (array_slice($lots, 1) as $l) if ($l['location_id'] !== $home['location_id']) $add($l, $home, 'falsch');
+            foreach (array_slice($lots, 1) as $l) if ($l['location_id'] !== $home['location_id']) $add($l, $home, 'falsch', [], true);
         }
 
         // 2. Farben zusammenlegen
@@ -224,6 +243,7 @@ final class Shop
                     if (isset($moved[$src['id']]) || $sid === $tid) continue;
                     $pureSource = ($boxItems[$sid][$item] ?? 0) === ($boxLots[$sid] ?? 0);
                     if ($pureSource || $purity($sid, $item) >= $purity($tid, $item)) continue;
+                    if ($clash($src, $tid)) continue; // z. B. Light Gray zu Light Bluish Gray
                     $colors = [];
                     foreach ($lots as $x) if ($x['location_id'] === $tid && !isset($moved[$x['id']])) $colors[] = $x['color_name'];
                     $add($src, $t, 'farben', ['target_colors' => $colors]);
@@ -268,13 +288,163 @@ final class Shop
                     if (($catLots[$tid] ?? 0) >= SLOT_MAX_LOTS) break;
                     $sid = $src['location_id'];
                     if (isset($moved[$src['id']]) || $sid === $tid || $catPure($sid, $cat)) continue;
+                    if ($clash($src, $tid)) continue; // z. B. Plate 1 x 4 zu Plate 1 x 5
                     $add($src, $t, 'art', ['target_parts' => array_values(array_unique($namesIn[$tid] ?? []))]);
                     $catLots[$tid]++; $catCount[$tid][$cat] = ($catCount[$tid][$cat] ?? 0) + 1; $namesIn[$tid][] = $src['name'];
                     $catLots[$sid]--; $catCount[$sid][$cat]--;
                 }
             }
         }
+
+        // Ab hier rechnen 4–7 auf dem geplanten Inhalt ($in)
+        $codes = [];
+        foreach (q('SELECT id, code FROM {locations} ORDER BY id')->fetchAll() as $r) $codes[(int) $r['id']] = (string) $r['code'];
+        $byArea = [];
+        foreach ($codes as $id => $c) $byArea[self::areaOf($c)][] = $id;
+        foreach ($byArea as &$ids) usort($ids, fn ($a, $b) => strnatcasecmp($codes[$a], $codes[$b]) ?: $a <=> $b);
+        unset($ids);
+        $num = fn (int $loc) => preg_match('/(\d+)$/', $codes[$loc] ?? '', $m) ? (int) $m[1] : 0;
+        $box = fn (int $loc, int $qty = 0) => ['location_id' => $loc, 'location_code' => $codes[$loc] ?? '', 'qty' => $qty];
+        // Ziel für ein Lot im Bereich $area (nicht $from): a) gleiches Teil + Farbe (zusammenführen), b) gleiches Teil mit Platz,
+        // c) Kästchen nur mit dieser Art und Platz, d) leeres Kästchen mit der nächsten Nummer. Je Stufe: wo am meisten davon liegt.
+        $targetFor = function (array $lot, string $area, int $from, string $steps) use (&$in, $byArea, $codes, $clash, $num, $box) {
+            $boxes = $byArea[$area] ?? [];
+            if (str_contains($steps, 'a')) {
+                $best = null;
+                foreach ($boxes as $b) {
+                    if ($b === $from) continue;
+                    foreach ($in[$b] ?? [] as $x) {
+                        if ($x['item_no'] !== $lot['item_no'] || $x['color_id'] !== $lot['color_id']) continue;
+                        if ($best === null || $x['qty'] > $best['qty']) $best = ['loc' => $b, 'qty' => $x['qty']];
+                    }
+                }
+                if ($best) return [$box($best['loc'], $best['qty']), true];
+            }
+            $pickBy = function (callable $score) use ($boxes, $from, &$in, $lot, $clash) {
+                $best = null;
+                foreach ($boxes as $b) {
+                    if ($b === $from || count($in[$b] ?? []) >= SLOT_MAX_LOTS || empty($in[$b])) continue;
+                    $v = $score($in[$b]);
+                    if ($v <= 0 || $clash($lot, $b)) continue;
+                    if ($best === null || $v > $best[1]) $best = [$b, $v];
+                }
+                return $best[0] ?? null;
+            };
+            if (str_contains($steps, 'b')) {
+                $b = $pickBy(function ($lots) use ($lot) { $q = 0; foreach ($lots as $x) if ($x['item_no'] === $lot['item_no']) $q += $x['qty']; return $q; });
+                if ($b !== null) return [$box($b), false];
+            }
+            if (str_contains($steps, 'c')) {
+                $b = $pickBy(function ($lots) use ($lot) { foreach ($lots as $x) if ($x['category'] !== $lot['category']) return 0; return count($lots); });
+                if ($b !== null) return [$box($b), false];
+            }
+            if (str_contains($steps, 'd')) {
+                $best = null;
+                foreach ($boxes as $b) {
+                    if ($b === $from || !empty($in[$b])) continue;
+                    $d = abs($num($b) - $num($from));
+                    if ($best === null || $d < $best[1]) $best = [$b, $d];
+                }
+                if ($best) return [$box($best[0]), false];
+            }
+            return null;
+        };
+        $place = function (array $lot, ?array $hit, string $reason, array $extra = []) use ($add) {
+            if (!$hit) return;
+            [$t, $merge] = $hit;
+            $add($lot, $t, $reason, $extra, $merge);
+        };
+
+        // 4. Falscher Bereich: neu in G/FG, gebraucht in N/FN
+        $other = ['N' => ['G' => 'N', 'FG' => 'FN'], 'U' => ['N' => 'G', 'FN' => 'FG']];
+        foreach ($all as $l) {
+            if (isset($moved[$l['id']])) continue;
+            $area = self::areaOf((string) $l['location_code']);
+            $to = $other[strtoupper((string) ($l['new_or_used'] ?? ''))][$area] ?? null;
+            if ($to === null) continue;
+            $place($l, $targetFor($l, $to, (int) $l['location_id'], 'ab'), 'bereich', ['condition' => strtoupper((string) $l['new_or_used'])]);
+        }
+
+        // 5. Mischkisten aufteilen: die MIXED_MAX_LOTS größten Lots bleiben
+        foreach ($byArea as $area => $boxes) {
+            foreach ($boxes as $b) {
+                if (!preg_match(MIXED_AREA_PATTERN, $codes[$b]) || count($in[$b] ?? []) <= MIXED_MAX_LOTS) continue;
+                $lots = array_values($in[$b]);
+                usort($lots, fn ($x, $y) => $y['qty'] <=> $x['qty'] ?: $x['id'] <=> $y['id']);
+                foreach (array_slice($lots, MIXED_MAX_LOTS) as $l) {
+                    if (isset($moved[$l['id']])) continue;
+                    $place($l, $targetFor($l, $area, $b, 'abcd'), 'mischkiste', ['from_mixed' => $codes[$b]]);
+                }
+            }
+        }
+
+        // 6. Fast leere Kästchen leeren: nur ein Lot mit wenigen Teilen
+        foreach ($byArea as $area => $boxes) {
+            foreach ($boxes as $b) {
+                if (count($in[$b] ?? []) !== 1) continue;
+                $l = reset($in[$b]);
+                if (isset($moved[$l['id']]) || strtoupper((string) $l['item_type']) !== 'PART' || $l['qty'] > REST_MAX_QTY) continue;
+                $place($l, $targetFor($l, $area, $b, 'abc'), 'rest');
+            }
+        }
+
+        // 7. Verwechselbares trennen: das kleinere Lot eines verwechselbaren Paares woandershin
+        foreach ($byArea as $area => $boxes) {
+            foreach ($boxes as $b) {
+                for ($guard = 0; $guard < 50; $guard++) {
+                    $lots = array_values($in[$b] ?? []);
+                    usort($lots, fn ($x, $y) => $x['id'] <=> $y['id']);
+                    $done = true;
+                    foreach ($lots as $i => $x) {
+                        foreach (array_slice($lots, $i + 1) as $y) {
+                            if (!self::confusable($x, $y)) continue;
+                            $mover = $y['qty'] < $x['qty'] || ($y['qty'] === $x['qty']) ? $y : $x;
+                            if (isset($moved[$mover['id']])) $mover = $mover === $y ? $x : $y;
+                            if (isset($moved[$mover['id']])) continue;
+                            $keep = $mover === $y ? $x : $y;
+                            $hit = $targetFor($mover, $area, $b, 'abcd');
+                            if (!$hit) continue;
+                            $place($mover, $hit, 'trennen', ['confused_with' => trim($keep['item_no'] . ' ' . $keep['color_name'])]);
+                            $done = false;
+                            break 2;
+                        }
+                    }
+                    if ($done) break;
+                }
+            }
+        }
         return $out;
+    }
+
+    /** Verwechselbare Farben (BrickLink-Namen, kleingeschrieben). Gleiche Liste in frontend/src/demo/shop.js. */
+    private const CONFUSABLE_COLORS = [['light gray', 'light bluish gray'], ['dark gray', 'dark bluish gray'], ['tan', 'dark tan'],
+        ['white', 'very light gray'], ['black', 'dark bluish gray']];
+
+    /**
+     * Leicht zu verwechseln (nur Teile, keine Figuren): gleiches Teil in ähnlicher Farbe; gleiche Grundnummer in anderer Variante
+     * (3626b/3626c); gleicher Name bis auf einen Zusatz („Tile 1 x 2“ / „… with Groove“); gleiche Form in ähnlicher Größe
+     * (Name gleich bis auf Zahlen, jede höchstens 2 auseinander: Plate 1 x 4 / 1 x 5, Axle 5 / 6).
+     */
+    public static function confusable(array $a, array $b): bool
+    {
+        if (strtoupper((string) ($a['item_type'] ?? 'PART')) !== 'PART' || strtoupper((string) ($b['item_type'] ?? 'PART')) !== 'PART') return false;
+        if ($a['item_no'] === $b['item_no']) {
+            $x = mb_strtolower(trim((string) $a['color_name']));
+            $y = mb_strtolower(trim((string) $b['color_name']));
+            foreach (self::CONFUSABLE_COLORS as [$p, $q]) if (($x === $p && $y === $q) || ($x === $q && $y === $p)) return true;
+            return false;
+        }
+        if (preg_match('/^(\d+)[a-z]?$/i', (string) $a['item_no'], $m1) && preg_match('/^(\d+)[a-z]?$/i', (string) $b['item_no'], $m2) && $m1[1] === $m2[1]) return true;
+        $na = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $a['name'])));
+        $nb = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $b['name'])));
+        if ($na === '' || $nb === '') return false;
+        if (str_starts_with($na, $nb . ' ') || str_starts_with($nb, $na . ' ')) return true;
+        if (preg_replace('/\d+/', '#', $na) !== preg_replace('/\d+/', '#', $nb)) return false;
+        preg_match_all('/\d+/', $na, $xa);
+        preg_match_all('/\d+/', $nb, $xb);
+        if (!$xa[0]) return $na === $nb;
+        foreach ($xa[0] as $i => $v) if (abs((int) $v - (int) $xb[0][$i]) > 2) return false;
+        return true;
     }
 
     /** Menge eines Lots an einen anderen Lagerort buchen. Gleiches Teil am Ziel wird zusammengeführt. */

@@ -7,6 +7,7 @@ import { num, dateTime } from '../../utils/format'
 import { useAuth } from '../../stores/auth'
 import { devFlags, resetDevFlags } from '../../utils/devtools'
 import { appSettings, resetAppSettings, isChanged } from '../../utils/appSettings'
+import { REASONS } from '../../utils/transferReasons'
 import { homeModules } from '../../modules'
 import { resetDemo } from '../../demo/backend'
 import { playBoot } from '../../utils/boot'
@@ -47,7 +48,7 @@ const appOptions = {
   ],
   umlagern: [
     { key: 'page', k: 'Vorschläge pro Seite', h: 'So viele Zeilen zeigt die Liste, bevor „Weitere anzeigen“ kommt.', options: [15, 30, 60, 100].map((v) => ({ value: v, label: String(v) })) },
-    { key: 'reason', k: 'Filter beim Öffnen', h: 'Welche Vorschläge zuerst zu sehen sind.', options: [{ value: 'alle', label: 'Alle' }, { value: 'falsch', label: 'Falsch einsortiert' }, { value: 'farben', label: 'Farben' }, { value: 'art', label: 'Teile-Art' }] },
+    { key: 'reason', k: 'Filter beim Öffnen', h: 'Welche Vorschläge zuerst zu sehen sind.', options: [{ value: 'alle', label: 'Alle' }, ...Object.entries(REASONS).map(([value, label]) => ({ value, label }))] },
     { key: 'history', k: 'Letzte Umlagerungen', h: 'Länge der Liste unten auf der Seite.', options: [15, 30, 50].map((v) => ({ value: v, label: String(v) })) },
     { key: 'plan', k: 'Lagerplan anzeigen', h: 'Raumplan mit roten Mischkisten zwischen Vorschlägen und Umbuchen.', options: onOff },
     { key: 'popup', k: 'BrickLink-Pop-up nach dem Umlagern', h: 'Aus = kein Pop-up, die Übertragung steht nur unten auf der Seite.', options: onOff },

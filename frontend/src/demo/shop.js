@@ -189,15 +189,26 @@ const byteCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
  *  2. 'farben' – gleiches Teil in anderen Farben verstreut → in ein Kästchen, das nur dieses Teil enthält
  *     (Ziel höchstens SLOT_MAX_LOTS Lots; Quelle enthält auch andere Teile)
  *  3. 'art' – gleiche Teile-Art (Kategorie) verstreut → in ein Kästchen, das nur diese Art enthält (gleiche Grenzen)
+ *  4. 'bereich' – neu in G/FG bzw. gebraucht in N/FN → in den richtigen Bereich (gleiche Farbe, sonst gleiches Teil)
+ *  5. 'mischkiste' – G-Kästchen mit mehr als 3 Lots: die größten bleiben, Rest zum Teil, zur Art oder ins nächste leere Kästchen
+ *  6. 'rest' – Kästchen mit nur einem kleinen Rest → zum gleichen Teil oder zur gleichen Art
+ *  7. 'trennen' – Verwechselbares im selben Kästchen → das kleinere Lot woandershin
+ * Nie in ein Kästchen mit etwas Verwechselbarem (confusable).
  */
 function suggestions(db) {
   const all = db.inventory.map((i) => lotRow(db, i)).filter((l) => l.location_code).sort((a, b) => a.id - b.id)
   const out = []
   const moved = new Set()
-  const add = (lot, t, reason, extra = {}) => {
+  // Geplanter Inhalt je Kästchen (wie $in in Shop::suggestions): location_id → Map(Lot-ID → Lot)
+  const inBox = new Map()
+  for (const l of all) { if (!inBox.has(l.location_id)) inBox.set(l.location_id, new Map()); inBox.get(l.location_id).set(l.id, l) }
+  const add = (lot, t, reason, extra = {}, merge = false) => {
     out.push({ lot, to_location_id: t.location_id, to_location_code: t.location_code, target_qty: t.qty, reason, ...extra })
     moved.add(lot.id)
+    for (const m of inBox.values()) m.delete(lot.id)
+    if (!merge) { if (!inBox.has(t.location_id)) inBox.set(t.location_id, new Map()); inBox.get(t.location_id).set(lot.id, lot) }
   }
+  const clash = (lot, loc) => [...(inBox.get(loc)?.values() ?? [])].some((x) => x.id !== lot.id && confusable(lot, x))
   const cmpCode = (a, b) => natural(a.location_code, b.location_code) || a.id - b.id
 
   // 1. Falsch einsortiert
@@ -212,7 +223,7 @@ function suggestions(db) {
     if (lots.length < 2) continue
     lots.sort((a, b) => b.qty - a.qty || cmpCode(a, b))
     // Lots im selben Kästchen wie das Ziel bleiben liegen (echter Bestand: gleiches Teil mit anderem Preis/Zustand)
-    for (const l of lots.slice(1)) if (l.location_id !== lots[0].location_id) add(l, lots[0], 'falsch')
+    for (const l of lots.slice(1)) if (l.location_id !== lots[0].location_id) add(l, lots[0], 'falsch', {}, true)
   }
 
   // 2. Farben zusammenlegen
@@ -253,6 +264,7 @@ function suggestions(db) {
         if (moved.has(src.id) || sid === tid) continue
         const pureSource = cnt(sid, item) === (boxLots.get(sid) ?? 0)
         if (pureSource || purity(sid, item) >= purity(tid, item)) continue
+        if (clash(src, tid)) continue // z. B. Light Gray zu Light Bluish Gray
         const colors = lots.filter((x) => x.location_id === tid && !moved.has(x.id)).map((x) => x.color_name)
         add(src, t, 'farben', { target_colors: colors })
         planned.set(src.id, tid)
@@ -299,13 +311,153 @@ function suggestions(db) {
         if ((catLots.get(tid) ?? 0) >= SLOT_MAX_LOTS) break
         const sid = src.location_id
         if (moved.has(src.id) || sid === tid || catPure(sid, cat)) continue
+        if (clash(src, tid)) continue // z. B. Plate 1 x 4 zu Plate 1 x 5
         add(src, t, 'art', { target_parts: [...new Set(namesIn.get(tid) ?? [])] })
         catLots.set(tid, (catLots.get(tid) ?? 0) + 1); catCount.get(tid).set(cat, ccnt(tid, cat) + 1); namesIn.get(tid).push(src.name)
         catLots.set(sid, catLots.get(sid) - 1); catCount.get(sid).set(cat, ccnt(sid, cat) - 1)
       }
     }
   }
+
+  // Ab hier rechnen 4–7 auf dem geplanten Inhalt (inBox)
+  const codes = new Map([...db.locations].sort((a, b) => a.id - b.id).map((l) => [l.id, l.code]))
+  const byArea = new Map()
+  for (const [id, c] of codes) { const a = areaOf(c); if (!byArea.has(a)) byArea.set(a, []); byArea.get(a).push(id) }
+  for (const ids of byArea.values()) ids.sort((a, b) => natural(codes.get(a), codes.get(b)) || a - b)
+  const areaOrder = [...byArea.keys()] // Reihenfolge wie PHP: Bereiche in der Reihenfolge, in der sie unter den Lagerorten auftauchen
+  const num = (loc) => Number(/(\d+)$/.exec(codes.get(loc) ?? '')?.[1] ?? 0)
+  const box = (loc, qty = 0) => ({ location_id: loc, location_code: codes.get(loc) ?? '', qty })
+  const lotsIn = (b) => [...(inBox.get(b)?.values() ?? [])]
+  const targetFor = (lot, area, from, steps) => {
+    const boxes = byArea.get(area) ?? []
+    if (steps.includes('a')) {
+      let best = null
+      for (const b of boxes) {
+        if (b === from) continue
+        for (const x of lotsIn(b)) {
+          if (x.item_no !== lot.item_no || x.color_id !== lot.color_id) continue
+          if (best === null || x.qty > best.qty) best = { loc: b, qty: x.qty }
+        }
+      }
+      if (best) return [box(best.loc, best.qty), true]
+    }
+    const pickBy = (score) => {
+      let best = null
+      for (const b of boxes) {
+        const lots = lotsIn(b)
+        if (b === from || lots.length >= SLOT_MAX_LOTS || !lots.length) continue
+        const v = score(lots)
+        if (v <= 0 || clash(lot, b)) continue
+        if (best === null || v > best[1]) best = [b, v]
+      }
+      return best?.[0] ?? null
+    }
+    if (steps.includes('b')) {
+      const b = pickBy((lots) => lots.reduce((q, x) => q + (x.item_no === lot.item_no ? x.qty : 0), 0))
+      if (b !== null) return [box(b), false]
+    }
+    if (steps.includes('c')) {
+      const b = pickBy((lots) => (lots.every((x) => x.category === lot.category) ? lots.length : 0))
+      if (b !== null) return [box(b), false]
+    }
+    if (steps.includes('d')) {
+      let best = null
+      for (const b of boxes) {
+        if (b === from || lotsIn(b).length) continue
+        const d = Math.abs(num(b) - num(from))
+        if (best === null || d < best[1]) best = [b, d]
+      }
+      if (best) return [box(best[0]), false]
+    }
+    return null
+  }
+  const place = (lot, hit, reason, extra = {}) => { if (hit) add(lot, hit[0], reason, extra, hit[1]) }
+
+  // 4. Falscher Bereich: neu in G/FG, gebraucht in N/FN
+  const other = { N: { G: 'N', FG: 'FN' }, U: { N: 'G', FN: 'FG' } }
+  for (const l of all) {
+    if (moved.has(l.id)) continue
+    const cond = String(l.new_or_used ?? '').toUpperCase()
+    const to = other[cond]?.[areaOf(l.location_code)]
+    if (!to) continue
+    place(l, targetFor(l, to, l.location_id, 'ab'), 'bereich', { condition: cond })
+  }
+
+  // 5. Mischkisten aufteilen: die 3 größten Lots bleiben
+  for (const area of areaOrder) {
+    for (const b of byArea.get(area)) {
+      if (!/^G\d+$/i.test(codes.get(b)) || lotsIn(b).length <= SLOT_MAX_LOTS) continue
+      const lots = lotsIn(b).sort((x, y) => y.qty - x.qty || x.id - y.id)
+      for (const l of lots.slice(SLOT_MAX_LOTS)) {
+        if (moved.has(l.id)) continue
+        place(l, targetFor(l, area, b, 'abcd'), 'mischkiste', { from_mixed: codes.get(b) })
+      }
+    }
+  }
+
+  // 6. Fast leere Kästchen leeren
+  for (const area of areaOrder) {
+    for (const b of byArea.get(area)) {
+      const lots = lotsIn(b)
+      if (lots.length !== 1) continue
+      const l = lots[0]
+      if (moved.has(l.id) || String(l.item_type).toUpperCase() !== 'PART' || l.qty > REST_MAX_QTY) continue
+      place(l, targetFor(l, area, b, 'abc'), 'rest')
+    }
+  }
+
+  // 7. Verwechselbares trennen
+  for (const area of areaOrder) {
+    for (const b of byArea.get(area)) {
+      for (let guard = 0; guard < 50; guard++) {
+        const lots = lotsIn(b).sort((x, y) => x.id - y.id)
+        let done = true
+        outer: for (let i = 0; i < lots.length; i++) {
+          for (const y of lots.slice(i + 1)) {
+            const x = lots[i]
+            if (!confusable(x, y)) continue
+            let mover = y.qty <= x.qty ? y : x
+            if (moved.has(mover.id)) mover = mover === y ? x : y
+            if (moved.has(mover.id)) continue
+            const keep = mover === y ? x : y
+            const hit = targetFor(mover, area, b, 'abcd')
+            if (!hit) continue
+            place(mover, hit, 'trennen', { confused_with: `${keep.item_no} ${keep.color_name ?? ''}`.trim() })
+            done = false
+            break outer
+          }
+        }
+        if (done) break
+      }
+    }
+  }
   return out
+}
+
+// Verwechselbar (wie Shop::confusable): ähnliche Farbe beim gleichen Teil, gleiche Grundnummer (3626b/3626c),
+// gleicher Name bis auf einen Zusatz, gleiche Form in ähnlicher Größe (jede Zahl höchstens 2 auseinander). Nur Teile.
+const REST_MAX_QTY = 3
+const CONFUSABLE_COLORS = [['light gray', 'light bluish gray'], ['dark gray', 'dark bluish gray'], ['tan', 'dark tan'], ['white', 'very light gray'], ['black', 'dark bluish gray']]
+const normName = (n) => String(n ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+export function confusable(a, b) {
+  if (String(a.item_type ?? 'PART').toUpperCase() !== 'PART' || String(b.item_type ?? 'PART').toUpperCase() !== 'PART') return false
+  if (a.item_no === b.item_no) {
+    const x = String(a.color_name ?? '').trim().toLowerCase()
+    const y = String(b.color_name ?? '').trim().toLowerCase()
+    return CONFUSABLE_COLORS.some(([p, q]) => (x === p && y === q) || (x === q && y === p))
+  }
+  const m1 = /^(\d+)[a-z]?$/i.exec(String(a.item_no))
+  const m2 = /^(\d+)[a-z]?$/i.exec(String(b.item_no))
+  if (m1 && m2 && m1[1] === m2[1]) return true
+  const na = normName(a.name)
+  const nb = normName(b.name)
+  if (!na || !nb) return false
+  if (na.startsWith(nb + ' ') || nb.startsWith(na + ' ')) return true
+  if (na.replace(/\d+/g, '#') !== nb.replace(/\d+/g, '#')) return false
+  const xa = na.match(/\d+/g) ?? []
+  const xb = nb.match(/\d+/g) ?? []
+  if (!xa.length) return na === nb
+  return xa.every((v, i) => Math.abs(Number(v) - Number(xb[i])) <= 2)
 }
 
 const GONE = 'Dieses Lot wurde gerade von jemand anderem umgelagert. Die Liste wird neu geladen.'

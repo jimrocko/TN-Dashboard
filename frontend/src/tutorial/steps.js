@@ -157,7 +157,7 @@ const studentList = [
     target: () => tile('Umlagern'), wait: { route: /^\/umlagern/ }, from: '/',
   },
   {
-    say: 'Die App findet von selbst drei Sorten Unordnung: falsch einsortierte Teile, gleiche Teile in anderen Farben und Teile derselben Art (Bricks zu Bricks, Plates zu Plates). Die Vorschläge sind nach Ziel-Kästchen sortiert: Alles, was in dasselbe Kästchen gehört, steht zusammen. Oben kannst du auf „Nach Teil“ umschalten.',
+    say: 'Die App findet von selbst Unordnung: falsch einsortierte Teile, verstreute Farben und Teile-Arten, Mischkisten, fast leere Kästchen, neue Teile im Gebraucht-Bereich und leicht Verwechselbares im selben Kästchen. Die Vorschläge sind nach Ziel-Kästchen sortiert: Alles, was in dasselbe Kästchen gehört, steht zusammen. Oben kannst du auf „Nach Teil“ umschalten.',
     target: () => q('.umlist .bar') ?? q('.umlist'), wait: 'next', go: '/umlagern',
   },
   {

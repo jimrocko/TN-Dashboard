@@ -102,6 +102,10 @@ Die App findet von selbst, was nicht dort liegt, wo es hingehört, und schlägt 
 - **Falsch einsortiert:** Gleiches Teil in gleicher Farbe liegt in mehreren Kästchen → alles in das Kästchen mit der größten Menge.
 - **Farben zusammenlegen:** Gleiches Teil in anderen Farben → in ein Kästchen, das nur dieses Teil enthält.
 - **Gleiche Teile-Art:** Bricks zu Bricks, Plates zu Plates → in ein Kästchen, das nur diese Art enthält.
+- **Falscher Bereich:** neues Teil im Gebraucht-Bereich (oder umgekehrt) → dorthin, wo das Teil im richtigen Bereich liegt.
+- **Mischkiste aufteilen:** Kästchen mit mehr als 3 Lots → die größten bleiben, der Rest zum gleichen Teil, zur gleichen Art oder ins nächste leere Kästchen.
+- **Kästchen leeren:** nur ein kleiner Rest (bis 3 Teile) im Kästchen → zu den gleichen Teilen, das Kästchen wird frei.
+- **Verwechselbares trennen:** leicht verwechselbare Teile im selben Kästchen (ähnliche Farbe wie Light Gray / Light Bluish Gray, ähnliche Größe wie Plate 1 x 4 / 1 x 5, fast gleiche Teile wie Tile 1 x 2 / mit Rille) → eins davon woandershin. Solche Teile schlägt die App auch nie zusammen vor.
 
 Die Vorschläge stehen beim Öffnen **nach Ziel-Kästchen** (alles, was in dasselbe Kästchen gehört, steht zusammen, mit „Alle übernehmen“); umschalten lässt sich auf **nach Teil** (jeder Vorschlag einzeln mit Weg von → nach). Höchstens 3 Lots pro Kästchen, immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht). Weitere Reiter: freies Umbuchen, Verlauf und der Lagerplan, in dem G-Kästchen mit mehr als 3 verschiedenen Lots **rot** markiert sind: Das sind Mischkisten, die noch aufgeteilt werden müssen.
 

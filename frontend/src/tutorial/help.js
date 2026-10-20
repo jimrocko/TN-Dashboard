@@ -38,7 +38,7 @@ const topics = {
     title: 'Umlagern',
     steps: [
       { say: 'Hier räumen wir das Lager auf. Die App sucht von selbst, was nicht dort liegt, wo es hingehört.', target: head },
-      { say: 'Drei Sorten Vorschläge: falsch einsortierte Teile, gleiche Teile in anderen Farben und Teile derselben Art. Umgelagert wird immer nur im selben Bereich, gebraucht bleibt gebraucht. Oben wählst du die Ansicht und die Sorte.', target: () => q('.umlist .bar') ?? q('.umlist') },
+      { say: 'Die App schlägt kleine Handgriffe vor: falsch einsortierte Teile, Farben und Teile-Arten zusammenlegen, Mischkisten aufteilen, fast leere Kästchen leeren, falschen Bereich (neu/gebraucht) und Verwechselbares trennen, z. B. Light Gray neben Light Bluish Gray oder Plate 1 x 4 neben 1 x 5. Umgelagert wird im selben Bereich, außer ein Teil liegt im falschen Bereich. Oben wählst du die Ansicht und die Art.', target: () => q('.umlist .bar') ?? q('.umlist') },
       { say: '„Nach Ziel-Kästchen“: Alles, was in dasselbe Kästchen gehört, steht zusammen. Hast du umgeräumt, tippst du „Übernehmen“ oder für das ganze Kästchen „Alle übernehmen“. „Nach Teil“ zeigt jeden Vorschlag einzeln mit Weg von → nach.', target: () => q('.umlist .groups') },
       { say: 'Danach öffnet sich „Zu BrickLink übertragen“: Der Knopf kopiert den Bestand und öffnet BrickLink, dort fügst du ihn unten beim Upload ein. Erst dann ist auch der Shop aktuell.', target: () => q('.bl-export') ?? q('.umlist') },
       { say: 'Im Reiter „Lagerplan“ sind Mischkisten rot: G-Kästchen mit mehr als 3 verschiedenen Lots, die noch aufgeteilt werden müssen. „Verlauf“ zeigt, was zuletzt umgelagert wurde.', target: () => q('.umlist .tabs') },

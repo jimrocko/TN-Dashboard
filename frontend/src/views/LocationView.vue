@@ -1,4 +1,5 @@
 <script setup>
+import { REASONS, REASON_CLASS } from '../utils/transferReasons'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, ChevronRight, ArrowRight, ClipboardCheck } from 'lucide-vue-next'
@@ -144,7 +145,7 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
           <table class="table">
             <tbody>
               <tr v-for="s in [...outgoing, ...incoming]" :key="s.lot.id">
-                <td><span class="pill" :class="{ falsch: 'warn', farben: 'accent', art: 'ok' }[s.reason]">{{ { falsch: 'Falsch einsortiert', farben: 'Farben zusammenlegen', art: 'Gleiche Teile-Art' }[s.reason] }}</span></td>
+                <td><span class="pill" :class="REASON_CLASS[s.reason]">{{ REASONS[s.reason] }}</span></td>
                 <td><div class="partcell"><PartImage :no="s.lot.item_no" :color="s.lot.color_id" :type="s.lot.item_type" :size="32" /><div><RouterLink class="mono" :to="`/teil/${s.lot.item_no}`">{{ s.lot.item_no }}</RouterLink> <span class="muted small">{{ s.lot.name }}</span></div></div></td>
                 <td class="nowrap"><ColorSwatch :name="s.lot.color_name" /></td>
                 <td class="nowrap"><LocationTag :code="s.lot.location_code" :kind="s.lot.location_kind" /> <ArrowRight :size="13" class="faint" /> <LocationTag :code="s.to_location_code" /></td>
