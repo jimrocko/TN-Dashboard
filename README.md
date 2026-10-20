@@ -31,7 +31,7 @@ Im Lego-Shop der Schule arbeiten die Teilnehmer mit BrickLink, BrickStore und vi
 
 <img src="frontend/public/apple-touch-icon.png" alt="App-Icon: Lego-Stein mit Klemmi" width="72" align="left">
 
-Auf dem Home-Bildschirm (Safari → Teilen → „Zum Home-Bildschirm“) erscheint das App-Icon: der Lego-Stein des TN Dashboards, unten rechts winkt Klemmi aus der Ecke. Das gilt für die App auf dem Schulserver genauso wie für Demo und Tutorial.
+Auf dem Home-Bildschirm (Safari → Teilen → „Zum Home-Bildschirm“) erscheint das App-Icon: der Lego-Stein des TN Dashboards, für die App auf dem Schulserver genauso wie für die Demo. Beim Tutorial winkt zusätzlich Klemmi unten rechts aus der Ecke.
 <br clear="left">
 
 Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren. Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale.
@@ -197,7 +197,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 ```
 api/        PHP-API, Installationsseite, BrickLink, Teileerkennung, Dev-Bereich
 frontend/   Vue-App (Bereiche, Lehrer-Ansicht, Dev-Bereich, Demo-Backend)
-docs/       Logo und Screenshots
+docs/       Logo, Screenshots und Handbuch (PDF)
 TN-Dashboard-Demo.html  die komplette App als eine Datei mit erfundenen Daten (ohne Server)
 TN-Dashboard-Tutorial.html  geführte Tour mit Klemmi durch die Demo (ohne Server)
 tools/      gen-demo-data.py erzeugt die erfundenen Beispieldaten
@@ -237,6 +237,10 @@ Updates kommen automatisch beim nächsten Öffnen. Dafür braucht der Server HTT
 - Protokolliert werden Aktionen in der App (z. B. „Umgelagert“, „Teil erkannt“), keine Inhalte außerhalb der App.
 - Fotos des Teile-Scanners gehen nur zur Erkennung an Brickognize und werden auf dem Schulserver nicht gespeichert.
 - Passwörter liegen nur gehasht in der Datenbank und erscheinen nirgends in der App, auch nicht im Dev-Bereich.
+
+## Handbuch
+
+Das ausführliche **Handbuch** als PDF ([`docs/Handbuch.pdf`](docs/Handbuch.pdf), 41 Seiten) beschreibt alle Bereiche Schritt für Schritt mit Bildschirmfotos, dazu Lehrer-Ansicht, Dev-Bereich, die Zusammenarbeit mit BrickLink und den technischen Aufbau (Installation, Konfiguration, Datenbank, Schnittstellen), mit Inhaltsverzeichnis, Glossar und Abbildungsverzeichnis.
 
 ## Demo und Tutorial
 Ausprobieren geht ganz oben mit den Knöpfen **Demo starten** und **Tutorial starten**, ohne Installation, direkt im Browser.
