@@ -324,3 +324,11 @@ CREATE TABLE IF NOT EXISTS {p}daily_counts (
   pos INT UNSIGNED NOT NULL,
   PRIMARY KEY (day, location_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Ordnungsgrad fürs Umlagern, ein Eintrag pro Tag (Shop::sortProgress)
+CREATE TABLE IF NOT EXISTS {p}sort_progress (
+  day CHAR(10) NOT NULL PRIMARY KEY,
+  lots INT UNSIGNED NOT NULL,
+  open_count INT UNSIGNED NOT NULL,
+  updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

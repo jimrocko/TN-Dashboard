@@ -169,11 +169,11 @@ const studentList = [
     target: () => q('.bl-export'), wait: 'next', go: '/umlagern',
   },
   {
-    say: 'Oben gibt’s mehr Reiter: Lagerplan, Manuell umbuchen und den Verlauf. Tipp auf „Lagerplan“.',
+    say: 'Ganz oben siehst du, wie weit das Lager schon sortiert ist und ob es seit letzter Woche besser geworden ist. Darunter gibt’s mehr Reiter: Lagerplan, Manuell umbuchen und den Verlauf. Tipp auf „Lagerplan“.',
     target: () => q('.umlist .t-plan'), wait: 'click', go: '/umlagern',
   },
   {
-    say: 'Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen. Antippen zeigt dir, was drin liegt.',
+    say: 'Hier siehst du, wie ordentlich das Lager ist: Je unordentlicher ein Kästchen, desto kräftiger die Farbe, von Gelb über Orange bis Rot. Rot sind auch Mischkisten. Sortierte Kästchen bleiben ohne Farbe. Antippen zeigt dir, was drin liegt.',
     target: () => q('.umlist .roomplan'), wait: 'next', go: '/umlagern',
   },
   // ---------- Inventur-Übersicht ----------

@@ -416,6 +416,30 @@ final class Shop
         return $out;
     }
 
+    /**
+     * Ordnungsgrad fürs Umlagern (Wunsch des Inhabers): Lots mit Lagerort und davon die mit offenem Vorschlag.
+     * Einmal am Tag gemerkt (tn_sort_progress, letzter Stand des Tages), damit die Entwicklung (+/−) sichtbar ist.
+     * Gleich in frontend/src/demo/shop.js (sortProgress).
+     */
+    public static function sortProgress(int $open): array
+    {
+        $sqlite = Dev::isSqlite();
+        db()->exec('CREATE TABLE IF NOT EXISTS ' . t('sort_progress') . ' (
+            day ' . ($sqlite ? 'TEXT' : 'CHAR(10)') . ' NOT NULL PRIMARY KEY,
+            lots ' . ($sqlite ? 'INTEGER' : 'INT UNSIGNED') . ' NOT NULL,
+            open_count ' . ($sqlite ? 'INTEGER' : 'INT UNSIGNED') . ' NOT NULL,
+            updated_at ' . ($sqlite ? 'TEXT' : 'DATETIME') . ' NOT NULL
+        )' . ($sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
+        $lots = (int) q('SELECT COUNT(*) FROM {inventory} i JOIN {locations} l ON l.id = i.location_id')->fetchColumn();
+        $day = date('Y-m-d');
+        try {
+            q('DELETE FROM {sort_progress} WHERE day = ?', [$day]);
+            q('INSERT INTO {sort_progress} (day, lots, open_count, updated_at) VALUES (?, ?, ?, ?)', [$day, $lots, $open, now()]);
+        } catch (PDOException) { /* gleichzeitig gemerkt, egal */ }
+        $history = typed(q('SELECT day, lots, open_count FROM {sort_progress} WHERE day >= ? ORDER BY day', [date('Y-m-d', strtotime('-60 days'))])->fetchAll(), ['lots', 'open_count']);
+        return ['lots' => $lots, 'open' => $open, 'history' => $history];
+    }
+
     /** Verwechselbare Farben (BrickLink-Namen, kleingeschrieben). Gleiche Liste in frontend/src/demo/shop.js. */
     private const CONFUSABLE_COLORS = [['light gray', 'light bluish gray'], ['dark gray', 'dark bluish gray'], ['tan', 'dark tan'],
         ['white', 'very light gray'], ['black', 'dark bluish gray']];

@@ -321,3 +321,11 @@ CREATE TABLE IF NOT EXISTS {p}daily_counts (
   pos INTEGER NOT NULL,
   PRIMARY KEY (day, location_id)
 );
+
+-- Ordnungsgrad fürs Umlagern, ein Eintrag pro Tag (Shop::sortProgress)
+CREATE TABLE IF NOT EXISTS {p}sort_progress (
+  day TEXT NOT NULL PRIMARY KEY,
+  lots INTEGER NOT NULL,
+  open_count INTEGER NOT NULL,
+  updated_at TEXT NOT NULL
+);

@@ -460,6 +460,25 @@ export function confusable(a, b) {
   return xa.every((v, i) => Math.abs(Number(v) - Number(xb[i])) <= 2)
 }
 
+// Ordnungsgrad, ein Eintrag pro Tag (wie Shop::sortProgress). Die Demo bekommt beim ersten Mal erfundene frühere Stände,
+// damit die Entwicklung (+/−) zu sehen ist.
+function sortProgress(db, open) {
+  const lots = db.inventory.filter((i) => loc(db, i.location_id)).length
+  const day = now().slice(0, 10)
+  const back = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
+  if (!db.sortProgress) {
+    db.sortProgress = {}
+    if (import.meta.env.MODE !== 'tutorial') {
+      db.sortProgress[back(14)] = { lots, open_count: Math.min(lots, open + 70) }
+      db.sortProgress[back(7)] = { lots, open_count: Math.min(lots, open + 32) }
+    }
+  }
+  db.sortProgress[day] = { lots, open_count: open }
+  const from = back(60)
+  const history = Object.keys(db.sortProgress).filter((d) => d >= from).sort().map((d) => ({ day: d, ...db.sortProgress[d] }))
+  return { lots, open, history }
+}
+
 const GONE = 'Dieses Lot wurde gerade von jemand anderem umgelagert. Die Liste wird neu geladen.'
 function transfer(db, lotId, toId, qty, userId, expectLoc = null, expectQty = null) {
   const lot = db.inventory.find((i) => i.id === lotId)
@@ -649,7 +668,11 @@ export function route(db, method, parts, params, body, requireUser, log) {
     log(me.id, 'order_status', 'auftraege', { auftrag: o.order_no, status: body.status })
     return { order: order(db, id) }
   }
-  if (method === 'GET' && a === 'transfers' && b === 'suggestions') { requireUser(); return { suggestions: suggestions(db) } }
+  if (method === 'GET' && a === 'transfers' && b === 'suggestions') {
+    requireUser()
+    const sug = suggestions(db)
+    return { suggestions: sug, progress: sortProgress(db, sug.length) }
+  }
   if (method === 'GET' && a === 'transfers' && !b) {
     requireUser()
     return {

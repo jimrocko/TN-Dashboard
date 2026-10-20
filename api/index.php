@@ -202,7 +202,8 @@ switch (true) {
 
     case $route === 'transfers/suggestions' && $method === 'GET':
         require_user();
-        json_response(['suggestions' => Shop::suggestions()]);
+        $sug = Shop::suggestions();
+        json_response(['suggestions' => $sug, 'progress' => Shop::sortProgress(count($sug))]);
 
     case $route === 'transfers' && $method === 'GET':
         require_user();

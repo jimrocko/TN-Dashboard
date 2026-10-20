@@ -6,11 +6,25 @@ import { num } from '../utils/format'
 // Raumplan des Lagerzimmers. Antippen: Bereich → Hunderter-Block → Kästchen → Lagerort-Seite.
 // locations: aus inventory/meta (id, code, name, kind, lots, qty); open: { code: Anzahl offener Umlagerungsvorschläge }
 // markMixed: Mischkisten rot markieren (Umlagern ja, Inventar nein)
+// heat: Farben je nach Unordnung (nur Umlagern, Wunsch des Inhabers): sortiert = ohne Farbe, dann gelb, orange, rot.
+//       Grundlage: Lots mit offenem Vorschlag (open) im Verhältnis zu allen Lots; Mischkiste immer rot.
 const props = defineProps({
   locations: { type: Array, default: () => [] },
   open: { type: Object, default: () => ({}) },
   markMixed: { type: Boolean, default: true },
+  heat: { type: Boolean, default: false },
 })
+// Stufe eines Kästchens (0 = sortiert … 3 = sehr unsortiert) und eines Bereichs/Blocks nach Prozent sortiert
+const boxLevel = (open, lots, mixed) => {
+  if (mixed) return 3
+  if (!open || !lots) return 0
+  const r = open / lots
+  return r >= 0.75 ? 3 : r >= 0.4 || open >= 2 ? 2 : 1
+}
+const pctOf = (lots, open) => (lots ? Math.floor((100 * (lots - Math.min(open, lots))) / lots) : 100)
+const pctLevel = (pct) => (pct >= 97 ? 0 : pct >= 90 ? 1 : pct >= 75 ? 2 : 3)
+const heatClass = (lvl) => (props.heat && lvl ? `h${lvl}` : '')
+const LEGEND = [{ l: 1, t: 'etwas unsortiert' }, { l: 2, t: 'unsortiert' }, { l: 3, t: 'sehr unsortiert / Mischkiste' }]
 
 const selected = ref(null) // 'G' | 'H' | 'N' | 'F'
 const block = ref(null) // Startnummer des Hunderter-Blocks, z. B. 200
@@ -33,6 +47,7 @@ const stats = (ids) => {
     qty: list.reduce((s, l) => s + l.qty, 0),
     open: list.reduce((s, l) => s + (props.open[l.code] ?? 0), 0),
     mixed: props.markMixed ? list.filter((l) => isMixedBox(l.code, l.lots)).length : 0,
+    get pct() { return pctOf(this.lots, this.open) },
   }
 }
 const fIds = AREAS.filter((a) => a.group === 'F').map((a) => a.id)
@@ -62,7 +77,10 @@ const blocks = computed(() => {
       boxes: inBlock.filter((l) => l.lots).length,
       mixed: props.markMixed ? inBlock.filter((l) => isMixedBox(l.code, l.lots)).length : 0,
       open: inBlock.reduce((s, l) => s + (props.open[l.code] ?? 0), 0),
+      lots: inBlock.reduce((s, l) => s + l.lots, 0),
     })
+    const b = out.at(-1)
+    b.pct = pctOf(b.lots, b.open)
   }
   return out
 })
@@ -72,10 +90,12 @@ const cells = computed(() => {
   return Array.from({ length: 100 }, (_, i) => {
     const n = block.value + i
     const loc = byNum[n] ?? null
-    return { n, code: formatCode(area.value.id, n), loc, mixed: props.markMixed && !!loc && isMixedBox(loc.code, loc.lots) }
+    const mixed = props.markMixed && !!loc && isMixedBox(loc.code, loc.lots)
+    return { n, code: formatCode(area.value.id, n), loc, mixed, lvl: loc ? boxLevel(props.open[loc.code] ?? 0, loc.lots, mixed) : 0 }
   })
 })
-const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => ({ ...a, items: byArea.value[a.id] ?? [] })))
+const fGroups = computed(() => AREAS.filter((a) => a.group === 'F').map((a) => ({ ...a,
+  items: (byArea.value[a.id] ?? []).map((l) => ({ ...l, lvl: boxLevel(props.open[l.code] ?? 0, l.lots, props.markMixed && isMixedBox(l.code, l.lots)) })) })))
 // Lagerorte, die zu keinem Bereich im Raumplan passen (z. B. A12, C3, Akte01, Plate-N01, „G484 A003“)
 const others = computed(() => props.locations.filter((l) => !parseCode(l.code) && l.lots)
   .sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true })))
@@ -94,9 +114,10 @@ const others = computed(() => props.locations.filter((l) => !parseCode(l.code) &
       <button type="button" class="wall w-f1" :class="{ on: selected === 'F' }" :style="{ '--c': zones[3].color }" aria-label="Figuren und Plates" @click="pick('F')"></button>
       <button type="button" class="wall w-f2" :class="{ on: selected === 'F' }" :style="{ '--c': zones[3].color }" aria-label="Figuren und Plates" @click="pick('F')"></button>
 
-      <button v-for="z in zones" :key="z.key" type="button" class="zone" :class="[`z-${z.key}`, { on: selected === z.key }]" :style="{ '--c': z.color }" @click="pick(z.key)">
+      <button v-for="z in zones" :key="z.key" type="button" class="zone" :class="[`z-${z.key}`, { on: selected === z.key }, heatClass(pctLevel(z.s.pct))]" :style="{ '--c': z.color }" @click="pick(z.key)">
         <span class="zt">{{ z.title }}</span>
         <span class="zs">{{ z.sub }} · {{ z.s.boxes }} Kästchen belegt</span>
+        <span v-if="heat && z.s.lots" class="zpct">{{ z.s.pct }} % sortiert</span>
         <span v-if="z.s.mixed" class="zmixed">{{ z.s.mixed }} Mischkiste{{ z.s.mixed === 1 ? '' : 'n' }}</span>
         <span v-if="z.s.open" class="badge" :title="`${z.s.open} Umlagerungsvorschläge`">{{ z.s.open }}</span>
       </button>
@@ -109,7 +130,8 @@ const others = computed(() => props.locations.filter((l) => !parseCode(l.code) &
         <div>
           <strong>{{ zone.title }}</strong> <span class="muted">· {{ zone.sub }}</span>
           <div class="faint small">{{ zone.s.boxes }} Kästchen belegt · {{ num(zone.s.lots) }} Lots · {{ num(zone.s.qty) }} Teile</div>
-          <div v-if="markMixed && area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lots, noch aufteilen ({{ zone.s.mixed }})</div>
+          <div v-if="heat" class="legend small"><span class="faint">ohne Farbe = sortiert</span><span v-for="g in LEGEND" :key="g.l" class="lgi"><i class="lg" :class="`h${g.l}`"></i> {{ g.t }}</span></div>
+          <div v-else-if="markMixed && area?.maxLots" class="legend small"><i class="lg mixed"></i> Mischkiste: mehr als {{ area.maxLots }} verschiedene Lots, noch aufteilen ({{ zone.s.mixed }})</div>
         </div>
         <button type="button" class="btn btn-sm" @click="pick(zone.key)">Schließen</button>
       </div>
@@ -117,18 +139,19 @@ const others = computed(() => props.locations.filter((l) => !parseCode(l.code) &
       <!-- G / H / N: erst Hunderter-Block, dann 100 Kästchen -->
       <template v-if="blocks.length">
         <div class="blocks">
-          <button v-for="b in blocks" :key="b.start" type="button" class="blk" :class="{ on: block === b.start, empty: !b.boxes }" @click="block = block === b.start ? null : b.start">
+          <button v-for="b in blocks" :key="b.start" type="button" class="blk" :class="[{ on: block === b.start, empty: !b.boxes }, heatClass(b.lots ? pctLevel(b.pct) : 0)]" @click="block = block === b.start ? null : b.start">
             <span class="mono">{{ formatCode(area.id, b.start) }}–{{ formatCode(area.id, b.end) }}</span>
             <span class="faint small">{{ b.boxes }} belegt</span>
+            <span v-if="heat && b.lots" class="zpct">{{ b.pct }} % sortiert</span>
             <span v-if="b.mixed" class="bmixed small">{{ b.mixed }} Mischkiste{{ b.mixed === 1 ? '' : 'n' }}</span>
             <span v-if="b.open" class="badge">{{ b.open }}</span>
           </button>
         </div>
         <div v-if="block !== null" class="cells" role="grid" :aria-label="`Kästchen ${formatCode(area.id, block)} bis ${formatCode(area.id, block + 99)}`">
           <template v-for="c in cells" :key="c.n">
-            <RouterLink v-if="c.loc" :to="`/lagerort/${encodeURIComponent(c.code)}`" class="cell used" :class="{ empty: !c.loc.lots, mixed: c.mixed }"
-              :title="`${c.code}: ${c.loc.lots} Lots, ${num(c.loc.qty)} Teile${c.mixed ? ' · Mischkiste, aufteilen' : ''}`">
-              {{ c.code.slice(area.id.length) }}<i v-if="open[c.code]" class="dot"></i>
+            <RouterLink v-if="c.loc" :to="`/lagerort/${encodeURIComponent(c.code)}`" class="cell used" :class="[{ empty: !c.loc.lots, mixed: c.mixed && !heat }, heatClass(c.lvl)]"
+              :title="`${c.code}: ${c.loc.lots} Lots, ${num(c.loc.qty)} Teile${c.mixed ? ' · Mischkiste, aufteilen' : ''}${open[c.code] ? ` · ${open[c.code]} Vorschlag/Vorschläge` : ''}`">
+              {{ c.code.slice(area.id.length) }}<i v-if="open[c.code] && !heat" class="dot"></i>
             </RouterLink>
             <span v-else class="cell" :title="`${c.code}: nicht angelegt`">{{ c.code.slice(area.id.length) }}</span>
           </template>
@@ -140,7 +163,7 @@ const others = computed(() => props.locations.filter((l) => !parseCode(l.code) &
         <div v-for="g in fGroups" :key="g.id" class="sub">
           <div class="subname">{{ g.id }} · {{ g.label }}</div>
           <div class="tiles">
-            <RouterLink v-for="l in g.items" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="tile2" :class="{ empty: !l.lots }">
+            <RouterLink v-for="l in g.items" :key="l.id" :to="`/lagerort/${encodeURIComponent(l.code)}`" class="tile2" :class="[{ empty: !l.lots }, heatClass(l.lvl)]">
               <span class="mono code">{{ l.code }}</span><span class="faint small">{{ l.lots }} Lots · {{ num(l.qty) }}</span>
             </RouterLink>
             <span v-if="!g.items.length" class="faint small">Noch keine Kästchen angelegt.</span>
@@ -231,6 +254,17 @@ const others = computed(() => props.locations.filter((l) => !parseCode(l.code) &
 .legend { display: flex; align-items: center; gap: 6px; color: var(--text-2); margin-top: 4px; }
 .lg { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .lg.mixed { background: var(--danger); }
+/* Unordnung (heat): gelb → orange → rot, sortiert bleibt ohne Farbe */
+.h1 { --h: #eab308; }
+.h2 { --h: #f97316; }
+.h3 { --h: var(--danger); }
+.cell.used.h1, .cell.used.h2, .cell.used.h3 { background: color-mix(in srgb, var(--h) 60%, var(--surface)); border-color: var(--h); color: #111; }
+.cell.used.h3 { color: #fff; }
+.blk.h1, .blk.h2, .blk.h3, .zone.h1, .zone.h2, .zone.h3, .tile2.h1, .tile2.h2, .tile2.h3 { border-color: var(--h); background: color-mix(in srgb, var(--h) 18%, var(--surface)); }
+.zpct { font-size: 0.72rem; font-weight: 700; color: var(--h, var(--text-2)); }
+.lg.h1, .lg.h2, .lg.h3 { background: var(--h); }
+.lgi { display: inline-flex; align-items: center; gap: 4px; }
+.legend { flex-wrap: wrap; }
 .dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
 .sub { display: flex; flex-direction: column; gap: 6px; }
 .subname { font-size: 0.85rem; color: var(--text-2); }

@@ -17,6 +17,7 @@ import { REASONS, reasonHint } from '../utils/transferReasons'
 const route = useRoute()
 const suggestions = ref([])
 const history = ref([])
+const progress = ref(null)
 const locations = ref([])
 const msg = ref('')
 const error = ref('')
@@ -34,6 +35,7 @@ async function load() {
   try {
     const [s, h, m] = await Promise.all([api.get('transfers/suggestions'), api.get('transfers', { limit: appSettings.umlagern.history }), api.get('inventory/meta')])
     suggestions.value = s.suggestions
+    progress.value = s.progress ?? null
     history.value = h.transfers
     locations.value = m.locations
   } catch (e) { error.value = e.message }
@@ -124,6 +126,30 @@ async function bookMany(rows) {
   } finally { busy.value = false }
 }
 
+// Fortschritt (Wunsch des Inhabers): Anteil der Lots ohne offenen Vorschlag, je Bereich, und Entwicklung zum Stand vor ca. einer Woche
+const pctOf = (lots, open) => (lots ? (100 * (lots - Math.min(open, lots))) / lots : 100)
+const AREA_ORDER = ['G', 'H', 'N', 'FG', 'FN', 'FT', 'PLATE']
+const areaCode = (code) => (/^(FG|FN|FT|Plate|G|H|N)\d+$/i.exec(code ?? '')?.[1] ?? '').toUpperCase()
+const sorted = computed(() => {
+  const p = progress.value
+  if (!p || !p.lots) return null
+  const lots = {}
+  const open = {}
+  for (const l of locations.value) { const a = areaCode(l.code); if (a) lots[a] = (lots[a] ?? 0) + l.lots }
+  for (const x of suggestions.value) { const a = areaCode(x.lot.location_code); if (a) open[a] = (open[a] ?? 0) + 1 }
+  const areas = AREA_ORDER.filter((a) => lots[a]).map((a) => ({ a: a === 'PLATE' ? 'Plate' : a, pct: Math.floor(pctOf(lots[a], open[a] ?? 0)) }))
+  const today = pctOf(p.lots, p.open)
+  // Vergleich: letzter Stand von vor mindestens 7 Tagen, sonst der älteste vor heute
+  const d = new Date(); d.setDate(d.getDate() - 7)
+  const weekAgo = d.toISOString().slice(0, 10)
+  const past = (p.history ?? []).filter((h) => h.day < (p.history.at(-1)?.day ?? ''))
+  const ref = [...past].reverse().find((h) => h.day <= weekAgo) ?? past[0] ?? null
+  const delta = ref ? today - pctOf(ref.lots, ref.open_count) : null
+  return { pct: Math.floor(today), open: p.open, areas, delta, since: ref?.day ?? null }
+})
+const fmtDelta = (v) => { const r = Math.abs(v) >= 1 ? Math.round(v) : Math.round(v * 10) / 10; return `${r > 0 ? '+' : r < 0 ? '−' : '±'}${String(Math.abs(r)).replace('.', ',')} %` }
+const fmtDay = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`
+
 // Raumplan: Zähler offener Vorschläge je Kästchen.
 const openByCode = computed(() => {
   const m = {}
@@ -147,6 +173,16 @@ onMounted(async () => {
     <p v-if="error" class="error">{{ error }}</p>
 
     <section class="panel umlist">
+      <div v-if="sorted" class="progress-box">
+        <div class="ptop">
+          <strong>Lager zu {{ sorted.pct }} % sortiert</strong>
+          <span v-if="sorted.delta !== null" class="trend" :class="{ up: sorted.delta > 0.05, down: sorted.delta < -0.05 }" :title="`Vergleich mit dem Stand vom ${fmtDay(sorted.since)}`">
+            {{ sorted.delta > 0.05 ? '▲' : sorted.delta < -0.05 ? '▼' : '' }} {{ fmtDelta(sorted.delta) }} seit {{ fmtDay(sorted.since) }}</span>
+          <span class="faint small grow-r">{{ num(sorted.open) }} Vorschläge offen</span>
+        </div>
+        <div class="pbar" role="progressbar" :aria-valuenow="sorted.pct" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: `${sorted.pct}%` }" /></div>
+        <div class="pareas small faint"><span v-for="x in sorted.areas" :key="x.a">{{ x.a }} {{ x.pct }} %</span></div>
+      </div>
       <div class="tabs" role="tablist" aria-label="Umlagern">
         <button v-for="t in tabs" :key="t.value" type="button" role="tab" class="tabbtn" :class="[{ on: tab === t.value }, `t-${t.value}`]" :aria-selected="tab === t.value" @click="tab = t.value">
           {{ t.label }} <span v-if="t.count !== undefined" class="cnt">{{ num(t.count) }}</span></button>
@@ -208,8 +244,8 @@ onMounted(async () => {
 
       <!-- Lagerplan -->
       <div v-else-if="tab === 'plan'" class="panel-body">
-        <p class="faint small top0">Bereich und Kästchen antippen, um den Inhalt zu sehen. Rot = Mischkiste, die noch aufgeteilt werden muss.</p>
-        <RoomPlan :locations="locations" :open="openByCode" />
+        <p class="faint small top0">Je unordentlicher, desto kräftiger die Farbe: gelb, orange, rot (rot auch für Mischkisten). Sortierte Kästchen bleiben ohne Farbe. Bereich und Kästchen antippen, um den Inhalt zu sehen.</p>
+        <RoomPlan :locations="locations" :open="openByCode" heat />
       </div>
 
       <!-- Manuell umbuchen -->
@@ -271,6 +307,16 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.progress-box { padding: 14px var(--pad) 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.ptop { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ptop strong { font-size: 1.05rem; }
+.grow-r { margin-left: auto; }
+.trend { font-size: 0.85rem; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.trend.up { color: var(--ok); }
+.trend.down { color: var(--danger); }
+.pbar { height: 10px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.pbar i { display: block; height: 100%; background: var(--ok); border-radius: 5px; transition: width 0.4s ease; }
+.pareas { display: flex; gap: 6px 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
 .tabs { display: flex; gap: 4px; padding: 8px var(--pad) 0; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
 .tabbtn { flex: none; display: inline-flex; gap: 6px; align-items: center; padding: 9px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: none; color: var(--text-2); font: inherit; font-size: 0.92rem; cursor: pointer; margin-bottom: -1px; }
