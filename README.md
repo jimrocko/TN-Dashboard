@@ -217,6 +217,14 @@ Erkannte Variablennamen: `DB_HOST`, `DB_PORT`, `DB_DATABASE`/`DB_NAME`, `DB_USER
 
 Voraussetzungen: PHP 8.1+ mit PDO (MySQL) und cURL, MySQL/MariaDB, HTTPS für die Kamera.
 
+### Als App auf iPad, Handy und PC
+Das TN Dashboard lässt sich ohne App Store und ohne Kosten wie eine App installieren. Es läuft weiter auf dem Schulserver, öffnet sich aber im Vollbild mit eigenem Symbol (der Logo-Stein).
+- **iPad/iPhone (Safari):** Adresse öffnen → Teilen-Symbol (Viereck mit Pfeil) → **„Zum Home-Bildschirm“** → „Hinzufügen“.
+- **Android (Chrome):** Adresse öffnen → Menü ⋮ → **„App installieren“**.
+- **PC (Chrome/Edge):** Adresse öffnen → Symbol **„Installieren“** rechts in der Adressleiste.
+
+Updates kommen automatisch beim nächsten Öffnen. Dafür braucht der Server HTTPS.
+
 ### Datenschutz
 - Protokolliert werden Aktionen in der App (z. B. „Umgelagert“, „Teil erkannt“), keine Inhalte außerhalb der App.
 - Fotos des Teile-Scanners gehen nur zur Erkennung an Brickognize und werden auf dem Schulserver nicht gespeichert.

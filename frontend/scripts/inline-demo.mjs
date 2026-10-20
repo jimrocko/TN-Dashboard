@@ -17,8 +17,9 @@ const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(resolv
 const css = files.filter((f) => f.endsWith('.css')).map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')
 
 // Icon für „Zum Home-Bildschirm“ (Safari auf iPad/iPhone) und Browser-Tab, direkt eingebettet.
-const touchIcon = readFileSync(resolve(here, '../public/apple-touch-icon.png')).toString('base64')
-const favicon = readFileSync(resolve(here, '../public/icon-192.png')).toString('base64')
+// Demo wie die App nur der Stein, das Tutorial mit Klemmi (tools/render-icons.cjs).
+const touchIcon = readFileSync(tutorial ? resolve(here, '../../tools/tutorial-icon-180.png') : resolve(here, '../public/apple-touch-icon.png')).toString('base64')
+const favicon = readFileSync(tutorial ? resolve(here, '../../tools/tutorial-icon-192.png') : resolve(here, '../public/icon-192.png')).toString('base64')
 
 const html = `<title>${cfg.title}</title>
 <meta name="theme-color" content="#0a0f17">

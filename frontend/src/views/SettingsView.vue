@@ -62,6 +62,12 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
         <div class="row">
           <div><div class="k">Hilfe in jedem Bereich</div><div class="h">„<CircleHelp :size="14" class="inl" /> Hilfe“ oben rechts in jedem Bereich (und unten auf der Startseite): Klemmi erklärt kurz nur diesen Bereich oder startet die Rundführung.</div></div>
         </div>
+        <div class="row">
+          <div><div class="k">Als App installieren</div><div class="h">
+            <strong>iPad/iPhone:</strong> in Safari unten auf Teilen (Viereck mit Pfeil) → „Zum Home-Bildschirm“ → „Hinzufügen“.
+            <strong>Android:</strong> Chrome-Menü ⋮ → „App installieren“. <strong>PC:</strong> in Chrome oder Edge rechts in der Adressleiste „Installieren“.
+            Danach öffnet sich das Dashboard im Vollbild mit eigenem Symbol, ganz ohne App Store.</div></div>
+        </div>
       </div>
     </section>
 
