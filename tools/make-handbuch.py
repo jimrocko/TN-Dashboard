@@ -24,6 +24,9 @@ from reportlab.platypus import (BaseDocTemplate, CondPageBreak, Frame, Image, Ke
                                 PageBreak, PageTemplate, Paragraph, Spacer, Table, TableStyle)
 from reportlab.platypus.tableofcontents import TableOfContents
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import logbuch_daten  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BILDER = sys.argv[1] if len(sys.argv) > 1 else '/tmp/handbuch-bilder'
 AUSGABE = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'docs', 'Handbuch.pdf')
@@ -299,7 +302,7 @@ story.append(Paragraph('Vorbemerkung', S['h1']))
 p('Dieses Handbuch beschreibt das <b>TN Dashboard</b> vollständig: die Bedienung aller Bereiche für die tägliche Arbeit im '
   'Lego-Shop, die Aufgaben der Lehrkraft und den technischen Aufbau der Anwendung bis hin zu Installation, Konfiguration und '
   'Datenbank. Die Kapitel 1 bis 6 richten sich an alle, die mit der App arbeiten; Kapitel 7 an die Personen, die sie betreiben '
-  'oder weiterentwickeln. Der Anhang enthält ein Glossar, Antworten auf häufige Fragen und das Abbildungsverzeichnis.')
+  'oder weiterentwickeln. Der Anhang enthält ein Glossar, Antworten auf häufige Fragen, eine Übersicht des Entwicklungsverlaufs und das Abbildungsverzeichnis.')
 p('Alle Abbildungen zeigen die Anwendung mit <b>erfundenen Beispieldaten</b> (rund 125.000 Teile in über 1.400 Kästchen, '
   'erfundene Aufträge und Namen wie „Max Mustermann“). Echte Kunden-, Auftrags- oder Bestandsdaten enthält dieses Dokument nicht. '
   'Die Bildschirmfotos entstehen im iPad-Format, dem Hauptgerät im Shop; auf PC und Handy sieht die App bis auf die Anordnung gleich aus.')
@@ -910,6 +913,16 @@ fragen = [
 for f, a in fragen:
     story.append(KeepTogether([Paragraph(f'<b>{f}</b>', ParagraphStyle('q', parent=S['body'], spaceAfter=1)),
                                Paragraph(a, ParagraphStyle('a', parent=S['body'], leftIndent=12))]))
+
+story.append(PageBreak())
+abschnitt('Entwicklungsverlauf')
+p('Die folgende Übersicht zeigt, an welchem Tag was umgesetzt wurde. Ausführlich, mit einer Seite je Arbeitstag und allen '
+  f'Arbeitsschritten (Commits), beschreibt es das <b>Logbuch der Entwicklung</b> ({c("docs/Logbuch.pdf")}).')
+_tage = logbuch_daten.tage()
+tabelle(['Datum', 'Commits', 'Umgesetzt'],
+        [[f'<b>{t["kurz_datum"]}</b><br/>{t["titel_datum"].split(",")[0]}', str(t['commits']), (t['text'] or {}).get('kurz', '')] for t in _tage]
+        + [['<b>Gesamt</b>', f'<b>{sum(t["commits"] for t in _tage)}</b>', f'{len(_tage)} Arbeitstage']],
+        [2.6, 1.7, 11.7], 'Entwicklungsverlauf nach Arbeitstagen')
 
 story.append(PageBreak())
 abschnitt('Abbildungsverzeichnis')

@@ -240,7 +240,9 @@ Updates kommen automatisch beim nächsten Öffnen. Dafür braucht der Server HTT
 
 ## Handbuch
 
-Das ausführliche **Handbuch** als PDF ([`docs/Handbuch.pdf`](docs/Handbuch.pdf), 41 Seiten) beschreibt alle Bereiche Schritt für Schritt mit Bildschirmfotos, dazu Lehrer-Ansicht, Dev-Bereich, die Zusammenarbeit mit BrickLink und den technischen Aufbau (Installation, Konfiguration, Datenbank, Schnittstellen), mit Inhaltsverzeichnis, Glossar und Abbildungsverzeichnis.
+Das ausführliche **Handbuch** als PDF ([`docs/Handbuch.pdf`](docs/Handbuch.pdf)) beschreibt alle Bereiche Schritt für Schritt mit Bildschirmfotos, dazu Lehrer-Ansicht, Dev-Bereich, die Zusammenarbeit mit BrickLink und den technischen Aufbau (Installation, Konfiguration, Datenbank, Schnittstellen), mit Inhaltsverzeichnis, Glossar, Abbildungsverzeichnis und einer Übersicht, wann was umgesetzt wurde.
+
+Das **Logbuch der Entwicklung** ([`docs/Logbuch.pdf`](docs/Logbuch.pdf)) beschreibt jeden Arbeitstag auf einer eigenen Seite: Kennzahlen, Zusammenfassung, alle umgesetzten Funktionen und die Liste der Arbeitsschritte mit Uhrzeit.
 
 ## Demo und Tutorial
 Ausprobieren geht ganz oben mit den Knöpfen **Demo starten** und **Tutorial starten**, ohne Installation, direkt im Browser.
