@@ -1,6 +1,7 @@
 // Pickliste für die Demo, gleiche Regeln wie api/lib/Picking.php (Nachbau des Python-Originals).
 import { DemoError, now } from './backend.js'
 import { naturalCmp } from './rules.js'
+import { requestFromReport } from './counting.js'
 
 export const OPEN = ['Bezahlt', 'Verpackt']
 const ISSUES = ['missing', 'wrong_location', 'wrong_quantity', 'wrong_item', 'other']
@@ -288,6 +289,8 @@ export function report(db, itemId, userId, input) {
     actual_quantity: actual, status: 'OPEN', created_at: t,
   }
   p.reports.push(r)
+  // Fehlteil, falsche Restmenge oder falscher Lagerort → Kästchen zum Zählen vormerken (wie Counting::requestFromReport)
+  requestFromReport(db, itemId, type, r.id, userId)
   bump(db, order.id)
   const count = p.reports.filter((x) => x.order_item_id === itemId && x.status === 'OPEN').length
   return { id: r.id, item_id: itemId, issue_type: type, report_count: count, created_at: t, order_id: order.id }

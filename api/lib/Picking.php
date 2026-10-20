@@ -443,12 +443,15 @@ final class Picking
         $missing = max(1, (int) ($in['missing_quantity'] ?? 1) ?: 1);
         $found = trim((string) ($in['found_location'] ?? '')) ?: null;
         $actual = isset($in['actual_quantity']) && is_numeric($in['actual_quantity']) ? max(0, (int) $in['actual_quantity']) : null;
+        Counting::ensureSchema(); // vor der Transaktion: CREATE TABLE beendet in MySQL jede Transaktion
         return self::tx(function () use ($itemId, $userId, $type, $details, $missing, $found, $actual) {
             $o = self::itemOrder($itemId);
             $t = now();
             q('INSERT INTO {pick_reports} (order_id, order_item_id, user_id, issue_type, details, missing_quantity, found_location, actual_quantity, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$o['id'], $itemId, $userId, $type, $details, $missing, $found ? mb_substr($found, 0, 64) : null, $actual, 'OPEN', $t]);
             $rid = (int) db()->lastInsertId();
+            // Fehlteil, falsche Restmenge oder falscher Lagerort → Kästchen zum Zählen vormerken (Wunsch des Inhabers)
+            Counting::requestFromReport($itemId, $type, $rid, $userId);
             self::bump((int) $o['id']);
             $count = (int) q("SELECT COUNT(*) FROM {pick_reports} WHERE order_item_id = ? AND status = 'OPEN'", [$itemId])->fetchColumn();
             return ['id' => $rid, 'item_id' => $itemId, 'issue_type' => $type, 'report_count' => $count, 'created_at' => $t, 'order_id' => (int) $o['id']];

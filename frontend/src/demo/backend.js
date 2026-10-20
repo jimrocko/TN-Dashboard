@@ -7,6 +7,7 @@ import { predict } from '../utils/brickognize.js'
 import * as devRoutes from './dev.js'
 import * as picking from './picking.js'
 import * as minifig from './minifig.js'
+import * as counting from './counting.js'
 
 // Version erhöhen, wenn sich die Beispieldaten ändern: alte Browser-Daten werden dann verworfen.
 // Das Tutorial hat eigene Daten, damit es die normale Demo nicht verändert.
@@ -272,6 +273,8 @@ function dispatch(db, method, route, params, body) {
     return minifig.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a), (u) => devRoutes.devAllowed(db, u))
       .then((r) => { if (parts[1] === 'results') db.minifigCounts = { buildable: r.individual_buildable_count, almost: r.almost_count }; return r })
   }
+  const countResult = counting.route(db, method, parts, body, () => requireUser(db), (...a) => log(db, ...a))
+  if (countResult !== undefined) return countResult
   const result = shop.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (result !== undefined) return result
   if (method === 'GET' && parts[0] === 'bl' && parts[1] === 'item') {

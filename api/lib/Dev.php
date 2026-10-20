@@ -89,7 +89,7 @@ final class Dev
     // ---- Daten ----
 
     public const TABLES = ['users', 'activity_log', 'locations', 'inventory', 'inventory_history', 'orders', 'order_items', 'transfers',
-        'stocktakes', 'stocktake_items', 'pick_progress', 'pick_events', 'pick_claims', 'pick_reports', 'pick_location_order', 'pick_order_state',
+        'stocktakes', 'stocktake_items', 'count_requests', 'daily_counts', 'pick_progress', 'pick_events', 'pick_claims', 'pick_reports', 'pick_location_order', 'pick_order_state',
         'minifig_catalog', 'minifig_superset_cache', 'minifig_subset_state', 'minifig_decisions', 'price_guide', 'api_calls',
         'bl_cache', 'settings', 'dev_access'];
     /** Spalten, die nie angezeigt werden. */

@@ -391,6 +391,7 @@ final class Shop
         if ($s['status'] !== 'offen') json_error('Prüfung ist bereits abgeschlossen', 409);
         $corrections = [];
         BrickLinkSync::ensureSchema(); // Spalten vorher anlegen: ALTER TABLE beendet in MySQL jede Transaktion
+        Counting::ensureSchema();
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -407,6 +408,8 @@ final class Shop
             // Korrekturen müssen noch zu BrickLink (gleiches Pop-up wie nach dem Umlagern, siehe BrickLinkSync)
             q("UPDATE {stocktakes} SET status = 'abgeschlossen', closed_at = ?, closed_by = ?, bl_changes = ? WHERE id = ?",
                 [$t, $userId, $corrections ? json_encode($corrections, JSON_UNESCAPED_UNICODE) : null, $id]);
+            // Vormerkungen zum Zählen für dieses Kästchen sind damit erledigt
+            Counting::markDone((int) q('SELECT location_id FROM {stocktakes} WHERE id = ?', [$id])->fetchColumn());
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
@@ -445,6 +448,7 @@ final class Shop
         return $loc + [
             'lots'        => $lots,
             'stocktake'   => $st ? typed([$st], ['id'])[0] : null,
+            'count_requests' => (function () use ($id) { Counting::ensureSchema(); return Counting::openRequests($id)[$id] ?? []; })(),
             'picks'       => $picks,
             'transfers'   => $transfers,
             'suggestions' => $suggestions,

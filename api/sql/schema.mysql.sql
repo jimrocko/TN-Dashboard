@@ -306,3 +306,21 @@ CREATE TABLE IF NOT EXISTS {p}minifig_builds (
   export_at DATETIME NULL,
   done_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Zählen: Vormerkungen aus Meldungen der Pickliste und Zählliste des Tages (api/lib/Counting.php)
+CREATE TABLE IF NOT EXISTS {p}count_requests (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  location_id INT UNSIGNED NOT NULL,
+  reason VARCHAR(32) NOT NULL,
+  report_id INT UNSIGNED NULL,
+  user_id INT UNSIGNED NULL,
+  created_at DATETIME NOT NULL,
+  done_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS {p}daily_counts (
+  day CHAR(10) NOT NULL,
+  location_id INT UNSIGNED NOT NULL,
+  pos INT UNSIGNED NOT NULL,
+  PRIMARY KEY (day, location_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

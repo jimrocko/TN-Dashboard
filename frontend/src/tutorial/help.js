@@ -51,7 +51,8 @@ const topics = {
     steps: [
       { say: 'Bei der Inventur zählst du nach, ob im Kästchen wirklich so viel liegt, wie die App glaubt.', target: head },
       { say: 'Oben rechts wählst du einen Lagerort und startest eine neue Inventur.', target: () => q('main .page-head .toolbar') },
-      { say: 'Hier stehen alle Inventuren: offene zum Weiterzählen und fertige zum Nachschauen. Antippen öffnet sie.', target: () => q('main section.panel') },
+      { say: '„Heute zählen“: die Kästchen des Tages, gleich für alle. Zuerst die, bei denen in der Pickliste ein Problem gemeldet wurde, dann nie oder lange nicht gezählte.', target: () => q('main section.today') },
+      { say: 'Hier stehen alle Inventuren: offene zum Weiterzählen und fertige zum Nachschauen. Antippen öffnet sie.', target: () => q('main .split section.panel') },
       { say: 'In einer offenen Inventur trägst du bei jedem Teil die gezählte Menge ein. „Soll“ ist, was laut App da sein müsste, „Diff.“ die Abweichung.', target: () => panel('Inventur') },
       end('Mit „Abschließen“ wird der Bestand auf deine gezählten Mengen korrigiert. Danach öffnet sich „Zu BrickLink übertragen“, damit die Mengen auch im Shop stimmen. Zähl lieber zweimal!'),
     ],

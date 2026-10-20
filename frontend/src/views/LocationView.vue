@@ -87,6 +87,11 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
     </div>
 
     <template v-if="loc">
+      <div v-if="loc.count_requests?.length" class="count-note" role="status">
+        <strong>Zum Zählen vorgemerkt:</strong>
+        {{ loc.count_requests.map((r) => `${r.label}${r.by ? ` (${r.by})` : ''}`).join(' · ') }}.
+        Nach der nächsten abgeschlossenen Inventur hier ist die Vormerkung erledigt.
+      </div>
       <div class="stats">
         <div class="stat"><div class="label">Teile</div><div class="value">{{ num(stats.qty) }}</div><div class="faint small">in {{ num(loc.lots.length) }} Lots</div></div>
         <div class="stat"><div class="label">Verschiedene Teile</div><div class="value">{{ num(stats.parts) }}</div><div class="faint small">Teil-Nummern</div></div>
@@ -194,6 +199,8 @@ const mixed = computed(() => !!loc.value && isMixedBox(loc.value.code, loc.value
 <style scoped>
 .mixed-note { padding: 12px 16px; border-radius: var(--radius-sm); border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--text); }
 .mixed-note strong { color: var(--danger); }
+.count-note { padding: 12px 16px; border-radius: var(--radius-sm); border: 2px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--surface)); color: var(--text); }
+.count-note strong { color: var(--warn); }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }

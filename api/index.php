@@ -25,6 +25,7 @@ require __DIR__ . '/lib/Bsx.php';
 require __DIR__ . '/lib/Sync.php';
 require __DIR__ . '/lib/Picking.php';
 require __DIR__ . '/lib/Minifig.php';
+require __DIR__ . '/lib/Counting.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[tn-dashboard] ' . $e);
@@ -272,6 +273,17 @@ switch (true) {
     case $route === 'stocktakes' && $method === 'GET':
         require_user();
         json_response(['stocktakes' => Shop::stocktakes()]);
+
+    // Zählliste des Tages (gleich für alle) und Vormerkungen aus Meldungen
+    case $route === 'stocktakes/today' && $method === 'GET':
+        require_user();
+        json_response(Counting::today());
+
+    case $route === 'stocktakes/daily-size' && $method === 'POST':
+        $staff = require_staff();
+        $n = Counting::setSize((int) (request_json()['size'] ?? Counting::DEFAULT_SIZE));
+        ActivityLog::log((int) $staff['id'], 'count_daily_size', 'inventur', ['anzahl' => $n]);
+        json_response(['size' => $n]);
 
     case $route === 'stocktakes' && $method === 'POST':
         $me = require_user();

@@ -1,4 +1,5 @@
 // Lager, Aufträge, Umlagern, Inventur und Analyse für die Demo, entspricht api/lib/Shop.php.
+import { markDone, openRequests } from './counting.js'
 import { DemoError, now } from './backend.js'
 import { isMixedBox } from '../utils/areas.js'
 
@@ -388,6 +389,7 @@ function location(db, code) {
   return {
     ...l, lots,
     stocktake: st ? { id: st.id, status: st.status, created_at: st.created_at, closed_at: st.closed_at } : null,
+    count_requests: openRequests(db, l.id)[l.id] ?? [],
     picks, transfers,
     suggestions: suggestions(db).filter((s) => s.lot.location_id === l.id || s.to_location_id === l.id),
     prev: pos > 0 ? same[pos - 1] : null,
@@ -627,6 +629,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
     }
     // Korrekturen müssen noch zu BrickLink (wie Shop::closeStocktake)
     Object.assign(st, { status: 'abgeschlossen', closed_at: t, closed_by_name: me.display_name, bl_changes: corrections.length ? corrections : null, bl_done_at: null })
+    markDone(db, st.location_id) // Vormerkungen zum Zählen erledigt (wie Counting::markDone)
     const code = loc(db, st.location_id).code
     log(me.id, 'stocktake_closed', 'inventur', { lagerort: code, korrekturen: corrections.length })
     return { location: code, corrections }

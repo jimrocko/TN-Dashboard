@@ -5,6 +5,7 @@ import PageHead from '../../components/PageHead.vue'
 import ActivityTable from '../../components/ActivityTable.vue'
 import ShopDataPanel from './ShopDataPanel.vue'
 import PickSettingsPanel from './PickSettingsPanel.vue'
+import CountSettingsPanel from './CountSettingsPanel.vue'
 import { api, apiUrl, IS_DEMO } from '../../api'
 import { dateTime } from '../../utils/format'
 
@@ -173,6 +174,9 @@ onMounted(async () => { await loadUsers(); await select(null) })
     <div class="grid-2">
       <ShopDataPanel />
       <PickSettingsPanel />
+    </div>
+    <div class="grid-2">
+      <CountSettingsPanel />
     </div>
   </div>
 </template>

@@ -22,7 +22,25 @@ const busy = ref(false)
 const blExport = ref(null)
 
 async function loadList() {
-  try { list.value = (await api.get('stocktakes')).stocktakes } catch (e) { error.value = e.message }
+  try {
+    const [l, t] = await Promise.all([api.get('stocktakes'), api.get('stocktakes/today')])
+    list.value = l.stocktakes
+    today.value = t
+  } catch (e) { error.value = e.message }
+}
+// ---- Zählliste des Tages (gleich für alle) und Vormerkungen aus Meldungen der Pickliste ----
+const today = ref(null)
+const todayDone = computed(() => (today.value?.items ?? []).filter((x) => x.done).length)
+const WHY = { vorgemerkt: 'warn', 'nie gezählt': '', 'lange nicht gezählt': '' }
+async function startToday(x) {
+  if (x.open_stocktake) return select(x.open_stocktake)
+  busy.value = true
+  msg.value = error.value = ''
+  try {
+    const s = (await api.post('stocktakes', { location_id: x.location_id })).stocktake
+    await loadList()
+    select(s.id)
+  } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 async function open(id) {
   if (!id) { current.value = null; return }
@@ -88,6 +106,29 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
     <p v-if="msg" class="success">{{ msg }}</p>
     <p v-if="error" class="error">{{ error }}</p>
 
+    <section v-if="today" class="panel today">
+      <div class="panel-head">
+        <h2>Heute zählen</h2>
+        <span class="faint small">{{ todayDone }} von {{ today.items.length }} erledigt · gleich für alle, jeden Tag neu</span>
+      </div>
+      <div class="cards">
+        <div v-for="x in [...today.items, ...today.extra]" :key="x.location_id" class="card" :class="{ done: x.done }">
+          <div class="card-top">
+            <LocationTag :code="x.code" />
+            <span v-if="x.done" class="pill ok">erledigt</span>
+            <span v-else class="pill" :class="WHY[x.why]">{{ x.why }}</span>
+          </div>
+          <div class="faint small">{{ num(x.lots) }} Lots · {{ num(x.parts) }} Teile<template v-if="x.last_counted"> · zuletzt {{ dateTime(x.last_counted) }}</template></div>
+          <ul v-if="x.requests.length" class="reqs small">
+            <li v-for="(r, k) in x.requests" :key="k">{{ r.label }}<template v-if="r.by"> · {{ r.by }}</template> · {{ dateTime(r.at) }}</li>
+          </ul>
+          <button v-if="!x.done" class="btn btn-sm" :class="{ 'btn-primary': !x.open_stocktake }" :disabled="busy" @click="startToday(x)">
+            {{ x.open_stocktake ? 'Weiterzählen' : 'Starten' }}</button>
+        </div>
+      </div>
+      <p v-if="today.extra.length" class="faint small pad">Zusätzlich vorgemerkt, nachdem die Liste heute festgelegt wurde: {{ today.extra.map((x) => x.code).join(', ') }}.</p>
+    </section>
+
     <div class="split" :class="{ detail: current }">
       <section class="panel">
         <div class="table-wrap">
@@ -150,4 +191,11 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
 .nowrap { white-space: nowrap; }
 .count { width: 90px; height: 30px; text-align: right; }
 .dev { color: var(--warn); font-weight: 500; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; padding: 12px var(--pad) 14px; }
+.card { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.card.done { opacity: 0.6; }
+.card .btn { align-self: flex-start; margin-top: auto; }
+.card-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.reqs { margin: 0; padding-left: 16px; color: var(--warn); }
+.pad { margin: 0; padding: 0 var(--pad) 12px; }
 </style>

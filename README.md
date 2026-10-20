@@ -128,6 +128,8 @@ Direkt nach dem Umlagern öffnet sich **Zu BrickLink übertragen**. Der Knopf ko
 
 ## Inventur und Aufträge
 
+**Heute zählen:** Oben in der Inventur stehen jeden Tag ein paar Kästchen (Standard 5, einstellbar in der Lehrer-Ansicht), gleich für alle. Zuerst Kästchen, bei denen in der Pickliste ein Fehlteil, eine falsche Restmenge oder ein falscher Lagerort gemeldet wurde, dann nie oder lange nicht gezählte, bei Gleichstand die wertvolleren. So wird das Lager nach und nach komplett durchgezählt, und gemeldete Fehler landen direkt bei der Inventur. Vorgemerkte Kästchen stehen auch auf der Lagerort-Seite.
+
 <table>
   <tr>
     <td width="50%" valign="top"><img src="docs/images/inventur.png" alt="Inventur"><br><b>Inventur & Bestandsprüfung</b><br>Einen Lagerort zählen, Abweichungen erfassen und beim Abschluss den Bestand korrigieren. Danach öffnet sich wie beim Umlagern <b>Zu BrickLink übertragen</b>, damit die gezählten Mengen auch im Shop stehen (ohne API-Abruf, per Kopieren und Einfügen).</td>

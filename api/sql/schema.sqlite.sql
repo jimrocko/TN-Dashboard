@@ -303,3 +303,21 @@ CREATE TABLE IF NOT EXISTS {p}minifig_builds (
   export_at TEXT NULL,
   done_at TEXT NULL
 );
+
+-- Zählen: Vormerkungen aus Meldungen der Pickliste und Zählliste des Tages (api/lib/Counting.php)
+CREATE TABLE IF NOT EXISTS {p}count_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  location_id INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  report_id INTEGER NULL,
+  user_id INTEGER NULL,
+  created_at TEXT NOT NULL,
+  done_at TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS {p}daily_counts (
+  day TEXT NOT NULL,
+  location_id INTEGER NOT NULL,
+  pos INTEGER NOT NULL,
+  PRIMARY KEY (day, location_id)
+);

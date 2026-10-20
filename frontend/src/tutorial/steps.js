@@ -179,8 +179,12 @@ const studentList = [
     target: () => tile('Inventur & Bestandsprüfung'), wait: { route: /^\/inventur/ }, from: '/',
   },
   {
-    say: 'Hier stehen alle Inventuren: offene zum Weiterzählen und fertige zum Nachschauen. Oben rechts startest du eine neue für jedes Kästchen.',
-    target: () => q('main section.panel'), wait: 'next', go: '/inventur',
+    say: 'Oben steht „Heute zählen“: ein paar Kästchen, die heute alle gemeinsam zählen. Zuerst kommen Kästchen, bei denen in der Pickliste ein Problem gemeldet wurde. „Starten“ legt die Inventur gleich an.',
+    target: () => q('main section.today'), wait: 'next', go: '/inventur',
+  },
+  {
+    say: 'Darunter stehen alle Inventuren: offene zum Weiterzählen und fertige zum Nachschauen. Oben rechts startest du eine neue für jedes Kästchen.',
+    target: () => q('main .split section.panel'), wait: 'next', go: '/inventur',
   },
   // ---------- Analyse ----------
   {
