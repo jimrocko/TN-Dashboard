@@ -85,10 +85,10 @@ const tabs = computed(() => [
   { value: 'manuell', label: 'Manuell umbuchen' },
   { value: 'verlauf', label: 'Verlauf' },
 ])
-// Zwei Ansichten: je Teil (Liste) oder je Ziel-Kästchen (alles, was in dasselbe Kästchen gehört, zusammen). Gemerkt pro Gerät.
-const VIEW_KEY = 'tn-umlagern-ansicht'
-const view = ref((() => { try { return localStorage.getItem(VIEW_KEY) || 'ziel' } catch { return 'ziel' } })())
-watch(view, (v) => { shown.value = PAGE; try { localStorage.setItem(VIEW_KEY, v) } catch { /* egal */ } })
+// Zwei Ansichten: je Ziel-Kästchen (alles, was in dasselbe Kästchen gehört, zusammen) oder je Teil.
+// Beim Öffnen immer „Nach Ziel-Kästchen“ (Wunsch des Inhabers), danach umschaltbar.
+const view = ref('ziel')
+watch(view, () => { shown.value = PAGE })
 watch(reason, () => { shown.value = PAGE })
 const viewOptions = [{ value: 'ziel', label: 'Nach Ziel-Kästchen' }, { value: 'teil', label: 'Nach Teil' }]
 const nat = (a, b) => String(a).localeCompare(String(b), 'de', { numeric: true })
