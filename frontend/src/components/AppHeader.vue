@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, ChevronDown, LogOut, GraduationCap, History, Settings } from 'lucide-vue-next'
 import { useAuth } from '../stores/auth'
-import logo from '../assets/icon.svg'
 
 const auth = useAuth()
 const router = useRouter()
@@ -18,10 +17,8 @@ async function logout() {
 
 <template>
   <header class="page header">
-    <RouterLink to="/" class="brand">
-      <img :src="logo" alt="" class="logo" />
-      <div><div class="brand-tn">TN</div><div class="brand-sub">Dashboard</div></div>
-    </RouterLink>
+    <!-- Schriftzug statt Logo-Bild (Wunsch des Inhabers), gleicher Stil wie die Startanimation -->
+    <RouterLink to="/" class="brand" aria-label="TN Dashboard, Startseite"><span class="brand-tn">TN</span><span class="brand-sub">Dashboard</span></RouterLink>
 
     <div class="user" v-if="auth.user">
       <button class="chip" @click="open = !open" :aria-expanded="open">
@@ -46,10 +43,10 @@ async function logout() {
 
 <style scoped>
 .header { display: flex; align-items: center; justify-content: space-between; padding-top: calc(20px + env(safe-area-inset-top, 0px)); padding-bottom: 20px; }
-.brand { display: flex; align-items: center; gap: 12px; }
-.logo { width: 52px; height: 52px; border-radius: 12px; }
-.brand-tn { font-weight: 800; font-style: italic; font-size: 24px; line-height: 1; }
-.brand-sub { color: var(--text-muted); font-size: 18px; }
+.brand { position: relative; display: flex; align-items: baseline; gap: 7px; padding-bottom: 6px; font-size: 22px; line-height: 1; letter-spacing: 0.01em; }
+.brand::after { content: ''; position: absolute; left: 1px; bottom: 0; width: 26px; height: 3px; border-radius: 2px; background: var(--brand); }
+.brand-tn { font-weight: 800; font-style: italic; color: var(--brand); }
+.brand-sub { font-weight: 700; color: var(--text); }
 .user { position: relative; }
 .chip { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 4px; text-align: left; }
 .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--surface-hover); border: 1px solid var(--border); display: grid; place-items: center; }
@@ -63,5 +60,5 @@ async function logout() {
 .menu { position: absolute; right: 0; top: calc(100% + 8px); padding: 6px; min-width: 230px; z-index: 20; box-shadow: var(--shadow); }
 .item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 8px; background: none; border: 0; text-align: left; }
 .item:hover { background: var(--surface-hover); }
-@media (max-width: 560px) { .who { display: none; } .logo { width: 42px; height: 42px; } }
+@media (max-width: 560px) { .who { display: none; } .brand { font-size: 20px; } }
 </style>

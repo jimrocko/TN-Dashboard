@@ -17,7 +17,7 @@ const topics = {
   start: {
     title: 'Startseite',
     steps: [
-      { say: 'Willkommen auf der Startseite! Ganz oben ist die Suche: Teil-Nummer, Name, Farbe, Lagerort oder Auftrag eintippen und Enter.', target: () => q('main form.search') },
+      { say: 'Willkommen auf der Startseite! Unter dem Titel ist die Suche: Teil-Nummer, Name, Farbe, Lagerort oder Auftrag eintippen und Enter.', target: () => q('main form.search') },
       { say: 'Rechts im Suchfeld sitzt das Scan-Symbol. Damit fotografierst du ein Teil, und die App erkennt es.', target: () => q('main form.search .scan') },
       { say: 'Jede Kachel ist ein Bereich. Die kleine Zeile unten verrät, was dort gerade los ist, zum Beispiel wie viele Vorschläge in Umlagern warten.', target: () => q('main .grid') },
       { say: 'Unten geht es immer zurück nach Hause und zu den Einstellungen. Oben rechts auf deinen Namen tippen zeigt deine Aktivitäten.', target: () => q('.bottom') },
