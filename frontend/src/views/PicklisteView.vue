@@ -54,7 +54,7 @@ async function reload() {
   try { currentId.value ? await loadDetail() : await loadOrders() } catch (e) { notice.value = e.message } finally { loading.value = false }
 }
 
-watch(currentId, () => { filter.value = 'all'; claimMode.value = false; detail.value = null; orderRev = -1; reload() })
+watch(currentId, () => { filter.value = 'all'; zone.value = ''; claimMode.value = false; detail.value = null; orderRev = -1; reload() })
 
 // Alle 1 s nachsehen, ob jemand anderes gepickt hat (nur wenn die Seite sichtbar ist)
 let timer = null
@@ -77,9 +77,44 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => clearInterval(timer))
 
+// ---- Bereiche (Wunsch des Inhabers): Lager unter mehreren Pickern aufteilen ----
+// Bereich = Buchstaben am Anfang des Lagerorts (G245 → G, FT3 → FT, Plate2 → PLATE), ohne Lagerort → „–“
+const zone = ref('')
+const zoneOf = (x) => (String(x.location || '').trim().match(/^[A-Za-zÄÖÜäöü]+/)?.[0] ?? '–').toUpperCase()
+const zones = computed(() => {
+  const m = new Map()
+  for (const x of detail.value?.items ?? []) {
+    const z = zoneOf(x)
+    const e = m.get(z) ?? { zone: z, total: 0, picked: 0, mine: 0, free: 0 }
+    e.total++
+    if (x.picked) e.picked++
+    else if (!x.claim_picker_id) e.free++
+    if (x.claim_picker_id === auth.user?.id) e.mine++
+    m.set(z, e)
+  }
+  return [...m.values()].sort((a, b) => a.zone.localeCompare(b.zone, 'de-DE', { numeric: true }))
+})
+const zoneInfo = computed(() => zones.value.find((z) => z.zone === zone.value) ?? null)
+// Alle freien (nicht gepickten, nicht vorgemerkten) Positionen des Bereichs für mich vormerken, bzw. meine Vormerkungen dort aufheben.
+// Nutzt die gleiche Vormerkung wie „Markieren“; hat jemand anderes inzwischen vorgemerkt, wird die Position übersprungen.
+async function takeZone(release = false) {
+  const rows = (detail.value?.items ?? []).filter((x) => zoneOf(x) === zone.value
+    && (release ? x.claim_picker_id === auth.user?.id : !x.picked && !x.claim_picker_id))
+  if (!rows.length) return
+  busy.value = true
+  let skipped = 0
+  try {
+    for (const x of rows) {
+      try { await api.post(`picking/items/${x.id}/claim`) } catch { skipped++ }
+    }
+    if (skipped) notice.value = `${skipped} Position(en) wurden gerade von jemand anderem vorgemerkt oder gepickt und sind übersprungen.`
+  } finally { busy.value = false; await loadDetail() }
+}
+
 // ---- Detail ----
 const items = computed(() => {
   let rows = [...(detail.value?.items ?? [])]
+  if (zone.value) rows = rows.filter((x) => zoneOf(x) === zone.value)
   const f = filter.value
   if (f === 'open') rows = rows.filter((x) => !x.picked)
   else if (f.startsWith('picker:')) { const id = Number(f.split(':')[1]); rows = rows.filter((x) => x.claim_picker_id === id || x.picker_id === id) }
@@ -235,6 +270,19 @@ const letter = ref(false)
           </select>
           <span v-if="claimMode" class="small accent-note">Markieren: Tippe Positionen an, um sie für dich vorzumerken.</span>
         </div>
+        <div v-if="zones.length > 1" class="zones">
+          <span class="small muted">Bereich</span>
+          <div class="zchips" role="radiogroup" aria-label="Bereich">
+            <button type="button" class="zchip" :class="{ on: !zone }" role="radio" :aria-checked="!zone" @click="zone = ''">Alle</button>
+            <button v-for="z in zones" :key="z.zone" type="button" class="zchip" :class="{ on: zone === z.zone, fertig: z.picked === z.total }" role="radio" :aria-checked="zone === z.zone" @click="zone = z.zone">
+              {{ z.zone }} <span class="zcount">{{ z.picked === z.total ? 'fertig' : `${z.picked}/${z.total}` }}</span>
+            </button>
+          </div>
+          <template v-if="zoneInfo && !detail.order.completed">
+            <button v-if="zoneInfo.free" class="btn btn-sm btn-primary" :disabled="busy" @click="takeZone()">Bereich {{ zone }} übernehmen ({{ zoneInfo.free }})</button>
+            <button v-else-if="zoneInfo.mine" class="btn btn-sm" :disabled="busy" @click="takeZone(true)">Meine Vormerkungen in {{ zone }} aufheben</button>
+          </template>
+        </div>
       </section>
 
       <div v-if="!items.length" class="panel empty">Keine Positionen für diesen Filter.</div>
@@ -329,6 +377,12 @@ const letter = ref(false)
 .linkish { display: inline-flex; gap: 6px; align-items: center; padding: 0; border: 0; background: none; color: var(--accent-text); text-decoration: underline; cursor: pointer; text-align: left; }
 .filters { display: flex; gap: 10px; align-items: center; padding: 10px var(--pad); flex-wrap: wrap; }
 .accent-note { color: var(--accent-text); }
+.zones { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; padding: 0 var(--pad) 12px; }
+.zchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.zchip { display: inline-flex; gap: 6px; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.zchip.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.zchip.fertig .zcount { color: var(--ok); }
+.zcount { font-weight: 400; font-size: 0.8rem; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px 16px; color: var(--text-2); }
 .spin { animation: spin 0.9s linear infinite; }
