@@ -3,7 +3,7 @@
   <defs><clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath></defs>
   <g clip-path="url(#c)">
   <rect width="512" height="512" fill="#0a0f17"/>
-  <g transform="translate(-52 -44)">
+  <g transform="translate(256 262) scale(1.12) translate(-256 -260)">
     <g fill="none" stroke="#e8edf3" stroke-width="22" stroke-linejoin="round">
       <path d="M256 120 L400 190 L256 260 L112 190 Z" fill="#e8edf3" fill-opacity=".95"/>
       <path d="M112 190 V330 L256 400 V260 Z" fill="#c5ced9"/>
@@ -14,7 +14,7 @@
       <ellipse cx="216" cy="210" rx="26" ry="13"/><ellipse cx="296" cy="210" rx="26" ry="13"/>
     </g>
   </g>
-  <g transform="translate(560 262) rotate(-8) scale(-2.55 2.55)">
+  <g transform="translate(548 318) rotate(-8) scale(-2.05 2.05)">
     <g class="body">
       
       <rect x="22" y="94" width="56" height="9" rx="2" fill="#0a4fb0" />

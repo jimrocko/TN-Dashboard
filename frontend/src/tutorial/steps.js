@@ -157,20 +157,24 @@ const studentList = [
     target: () => tile('Umlagern'), wait: { route: /^\/umlagern/ }, from: '/',
   },
   {
-    say: 'Die App findet von selbst drei Sorten Unordnung: falsch einsortierte Teile, gleiche Teile in anderen Farben und Teile derselben Art (Bricks zu Bricks, Plates zu Plates). Umgelagert wird immer nur im selben Bereich, gebraucht bleibt gebraucht.',
-    target: () => panel('Vorschläge')?.querySelector('.panel-head') ?? null, wait: 'next', go: '/umlagern',
+    say: 'Die App findet von selbst drei Sorten Unordnung: falsch einsortierte Teile, gleiche Teile in anderen Farben und Teile derselben Art (Bricks zu Bricks, Plates zu Plates). Die Vorschläge sind nach Ziel-Kästchen sortiert: Alles, was in dasselbe Kästchen gehört, steht zusammen. Oben kannst du auf „Nach Teil“ umschalten.',
+    target: () => q('.umlist .bar') ?? q('.umlist'), wait: 'next', go: '/umlagern',
   },
   {
-    say: 'Nimm gleich den ersten Vorschlag und tipp auf „Übernehmen“. In echt holst du dann die Teile aus dem einen Kästchen und legst sie ins andere.',
-    target: () => panel('Vorschläge')?.querySelector('tbody .btn') ?? null, wait: { api: /^POST transfers$/ }, go: '/umlagern',
+    say: 'Nimm gleich den ersten Vorschlag und tipp auf „Übernehmen“. In echt holst du dann die Teile aus dem einen Kästchen und legst sie ins andere. Gehören mehrere Lots ins selbe Kästchen, geht auch „Alle übernehmen“.',
+    target: () => q('.umlist .btn-take'), wait: { api: /^POST transfers$/ }, go: '/umlagern',
   },
   {
     say: 'Gebucht! Jetzt muss es noch in den BrickLink-Shop. Dafür taucht unten dieser große Knopf auf: Er kopiert den ganzen Bestand mit den neuen Mengen und öffnet BrickLink. Dort fügst du ihn unten beim Upload ein und bestätigst. Hier im Tutorial lassen wir BrickLink in Ruhe.',
     target: () => q('.bl-export'), wait: 'next', go: '/umlagern',
   },
   {
-    say: 'Unter den Vorschlägen gibt’s den Lagerplan auch hier. Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen.',
-    target: () => panel('Lagerplan'), wait: 'next', go: '/umlagern',
+    say: 'Oben gibt’s mehr Reiter: Lagerplan, Manuell umbuchen und den Verlauf. Tipp auf „Lagerplan“.',
+    target: () => q('.umlist .t-plan'), wait: 'click', go: '/umlagern',
+  },
+  {
+    say: 'Rot markierte Kästchen sind Mischkisten, die noch aufgeteilt werden müssen. Antippen zeigt dir, was drin liegt.',
+    target: () => q('.umlist .roomplan'), wait: 'next', go: '/umlagern',
   },
   // ---------- Inventur-Übersicht ----------
   {

@@ -103,7 +103,7 @@ Die App findet von selbst, was nicht dort liegt, wo es hingehört, und schlägt 
 - **Farben zusammenlegen:** Gleiches Teil in anderen Farben → in ein Kästchen, das nur dieses Teil enthält.
 - **Gleiche Teile-Art:** Bricks zu Bricks, Plates zu Plates → in ein Kästchen, das nur diese Art enthält.
 
-Höchstens 3 Lots pro Kästchen, immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht). Dazu gibt es freies Umbuchen und den Lagerplan, in dem G-Kästchen mit mehr als 3 verschiedenen Lots **rot** markiert sind: Das sind Mischkisten, die noch aufgeteilt werden müssen.
+Die Vorschläge lassen sich **nach Ziel-Kästchen** anzeigen (alles, was in dasselbe Kästchen gehört, steht zusammen, mit „Alle übernehmen“) oder **nach Teil** (jeder Vorschlag einzeln mit Weg von → nach). Höchstens 3 Lots pro Kästchen, immer nur innerhalb eines Bereichs (gebraucht bleibt gebraucht). Weitere Reiter: freies Umbuchen, Verlauf und der Lagerplan, in dem G-Kästchen mit mehr als 3 verschiedenen Lots **rot** markiert sind: Das sind Mischkisten, die noch aufgeteilt werden müssen.
 
 <p align="center"><img src="docs/images/umlagern.png" alt="Umlagern mit Vorschlägen" width="720"></p>
 

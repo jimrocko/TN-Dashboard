@@ -18,9 +18,9 @@ body = body.replace('<g class="arm arm-r">', '<g class="arm arm-r" transform="ro
 
 
 def icon(rounded: bool, klemmi: bool) -> str:
-    # Ohne Klemmi steht der Stein etwas größer in der Mitte
-    brick = 'translate(-52 -44)' if klemmi else 'translate(256 262) scale(1.12) translate(-256 -260)'
-    fig = f'''<g transform="translate(560 262) rotate(-8) scale(-2.55 2.55)">
+    # Stein immer mittig (Wunsch des Inhabers); im Tutorial winkt Klemmi etwas kleiner unten rechts aus der Ecke
+    brick = 'translate(256 262) scale(1.12) translate(-256 -260)'
+    fig = f'''<g transform="translate(548 318) rotate(-8) scale(-2.05 2.05)">
     {body}
   </g>''' if klemmi else ''
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
