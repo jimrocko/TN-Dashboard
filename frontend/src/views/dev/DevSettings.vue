@@ -9,6 +9,7 @@ import { devFlags, resetDevFlags } from '../../utils/devtools'
 import { appSettings, resetAppSettings, isChanged } from '../../utils/appSettings'
 import { homeModules } from '../../modules'
 import { resetDemo } from '../../demo/backend'
+import { playBoot } from '../../utils/boot'
 
 // Einstellungen für Entwickler: Debug-Hilfen und lokale Daten. Der Stil ist hier bewusst nicht umschaltbar.
 const router = useRouter()
@@ -127,6 +128,20 @@ async function resetDemoData() {
     </section>
 
     <section class="panel">
+      <div class="panel-head"><h2>Startanimation</h2><span class="faint small">nur dieses Gerät</span></div>
+      <div class="rows">
+        <div class="row">
+          <div><div class="k">Beim ersten Start des Tages zeigen</div><div class="h">Logo mit Ladebalken, bevor die Anmeldung erscheint. Einmal pro Tag auf diesem Gerät, Antippen überspringt sie.</div></div>
+          <SegControl v-model="appSettings.start.boot" :options="onOff" label="Startanimation" />
+        </div>
+        <div class="row">
+          <div><div class="k">Testen</div><div class="h">Spielt die Animation sofort ab, auch wenn sie heute schon lief oder ausgeschaltet ist.</div></div>
+          <button class="btn btn-sm" type="button" @click="playBoot">Jetzt abspielen</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
       <div class="panel-head">
         <h2>Bereiche</h2>
         <span class="faint small">nur dieses Gerät · gilt beim nächsten Öffnen des Bereichs</span>
@@ -190,7 +205,7 @@ async function resetDemoData() {
           <button class="btn btn-sm" @click="clearLocal('settings')">Zurücksetzen</button>
         </div>
         <div class="row">
-          <div><div class="k">Einstellungen der Bereiche</div><div class="h">Alle Einstellungen unter „Bereiche“ auf Standard.</div></div>
+          <div><div class="k">Einstellungen der Bereiche</div><div class="h">Alle Einstellungen unter „Bereiche“ und die Startanimation auf Standard.</div></div>
           <button class="btn btn-sm" @click="resetAppSettings(); say('Einstellungen der Bereiche zurückgesetzt.')">Zurücksetzen</button>
         </div>
         <div class="row">

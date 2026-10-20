@@ -10,6 +10,7 @@ export const appDefaults = {
   umlagern: { page: 30, reason: 'alle', history: 15, popup: true, plan: true },
   inventur: { blind: false },
   analyse: { metric: 'qty' },
+  start: { boot: true }, // Startanimation beim ersten Öffnen des Tages
 }
 
 const clone = (o) => JSON.parse(JSON.stringify(o))

@@ -6,6 +6,8 @@ import BottomNav from './components/BottomNav.vue'
 import XpShell from './components/XpShell.vue'
 import DebugOverlay from './components/DebugOverlay.vue'
 import PageLoading from './components/PageLoading.vue'
+import BootAnimation from './components/BootAnimation.vue'
+import { boot, bootOnStart, closeBoot } from './utils/boot'
 import { useSettings } from './stores/settings'
 import { IS_TUTORIAL } from './api'
 import { help, helpSteps, closeHelp } from './tutorial/help'
@@ -20,6 +22,8 @@ const chrome = computed(() => !route.meta.public)
 // XP verlassen, während eine Spaß-App offen ist: zurück zur Startseite (die Apps gibt es nur im XP-Stil)
 const router = useRouter()
 watch(() => settings.style, (s) => { if (s !== 'xp' && route.meta.xpOnly) router.replace('/') })
+// Startanimation beim ersten Öffnen des Tages (abschaltbar im Dev-Bereich)
+bootOnStart()
 // Hilfe schließen, wenn man den Bereich verlässt
 watch(() => route.path, () => closeHelp())
 </script>
@@ -36,6 +40,7 @@ watch(() => route.path, () => closeHelp())
   <PageLoading v-if="chrome" />
   <Coach v-if="IS_TUTORIAL" />
   <Coach v-else-if="help.topic" :key="help.run" :help="helpSteps(help.topic)" @close="closeHelp" />
+  <BootAnimation v-if="boot.show" :key="boot.run" @done="closeBoot" />
 </template>
 
 <style scoped>

@@ -159,7 +159,7 @@ Der Dev-Bereich ist für alle gedacht, die an der App mitarbeiten. Zugang haben 
 | **Tests** | Selbsttests mit einem Tipp: Datenbank lesen und schreiben, Sitzung, Temp-Ordner, BrickLink, Teileerkennung, alle API-Endpunkte (nur lesend) und Gerätefunktionen wie Speicher, Kamera und Offline-Modus. |
 | **Daten** | Alle Tabellen der App ansehen, blättern, filtern und als JSON kopieren. Nur lesen; Passwörter und gespeicherte Geheimnisse werden nie angezeigt. |
 | **API** | API-Konsole für lesende Aufrufe, Liste der letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen. |
-| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen. Dazu **Ollies Dashboard**: Bestand aus dem Shop-Dashboard auf demselben Rechner übernehmen (siehe unten) und Einstellungen für jeden Bereich, pro Gerät: Inventar (Lots pro Abruf, Sortierung, Lagerplan), Umlagern (Vorschläge pro Seite, Filter, Lagerplan, BrickLink-Pop-up), Inventur (blind zählen) und Analyse (Kennzahl). |
+| **Einstellungen** | Debug-Anzeige, langsames Netz simulieren, API-Aufrufe mitschreiben, lokale Daten und App-Cache leeren, Demo-Daten zurücksetzen, **Startanimation** (Logo mit Ladebalken beim ersten Öffnen des Tages) ein- und ausschalten oder mit „Jetzt abspielen“ testen. Dazu **Ollies Dashboard**: Bestand aus dem Shop-Dashboard auf demselben Rechner übernehmen (siehe unten) und Einstellungen für jeden Bereich, pro Gerät: Inventar (Lots pro Abruf, Sortierung, Lagerplan), Umlagern (Vorschläge pro Seite, Filter, Lagerplan, BrickLink-Pop-up), Inventur (blind zählen) und Analyse (Kennzahl). |
 
 <table>
   <tr>
