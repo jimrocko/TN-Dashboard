@@ -34,6 +34,30 @@ const topics = {
       end('Noch ein Tipp: Eine Teil-Nummer antippen öffnet die Teile-Seite, das Pfeil-Symbol am Zeilenende bringt das Lot direkt zum Umlagern.'),
     ],
   },
+  minifig: {
+    title: 'Minifig-Finder',
+    steps: [
+      { say: 'Der Minifig-Finder sucht Minifiguren, die sich aus losen Teilen bauen lassen. Er rechnet nur mit unseren eigenen Daten, ganz ohne BrickLink-Abrufe.', target: head },
+      { say: 'Hier wählst du, woher die Teile kommen: nur aus dem Lager, aus eigenen BrickStore-Dateien (BSX) oder aus beidem. Das gilt für alle.', target: () => q('main .sources') },
+      { say: 'Die Zahlen oben zeigen, was geht: sofort baubar, alle zusammen baubar, 1 Teil fehlt, blockiert. Antippen springt zur passenden Liste.', target: () => q('main .kpis') },
+      { say: 'Alle Figuren stehen in einer Liste mit Reitern. „Bauplan“ verteilt die Teile so, dass keins doppelt verplant ist. „1 Teil fehlt“ und „Fehlteile“ zeigen, was sich nachzukaufen lohnt.', target: () => q('main .mflist .tabs') },
+      { say: '„Teile & Lagerorte“ klappt auf, welche Teile eine Figur braucht und in welchem Kästchen oder welcher Datei sie liegen.', target: () => q('main .mflist details.figdetails summary') },
+      { say: 'Figur zusammengesucht? „Fertig gebaut“ legt sie in die gemeinsame Sammlung „Fertige Figuren“. Am Ende schließt einer die Sammlung ab: Datei für BrickLink, geänderte BSX-Dateien, und die Figuren werden als neue Lots eingelagert.', target: () => byText('main .mflist .btn', 'Fertig gebaut') },
+      { say: 'Mit „Herunterladen …“ holst du eine Liste als CSV oder BrickStore-Datei, auch nur Nr. 1 bis 20. Unter „Technik“ stehen Figurenkatalog, Preise und Abrufe.', target: () => byText('main .mflist .btn', 'Herunterladen') },
+      end('Zusammenbauen und abschließen nicht vergessen!'),
+    ],
+  },
+  pickliste: {
+    title: 'Pickliste',
+    steps: [
+      { say: 'Mit der Pickliste sammelst du die Teile offener Bestellungen zusammen. Tippe eine Bestellung an, um sie zu öffnen.', target: () => q('main .order') ?? head() },
+      { say: 'Jede Zeile ist ein Teil, sortiert nach Laufweg: rechts das Kästchen und die Menge. Teile in der Hand? Zeile antippen, dann ist sie gepickt, mit deinem Namen.', target: () => q('main .rows .row') },
+      { say: 'Seid ihr zu mehreren? „Markieren“ merkt einzelne Zeilen für dich vor. Mit einem Bereich (G, H, N …) und „Bereich übernehmen“ nimmst du alle freien Teile aus diesem Bereich auf einmal.', target: () => q('main .zones') ?? byText('main .btn', 'Markieren') },
+      { say: 'Fehlt etwas oder stimmt der Lagerort nicht? Das Ausrufezeichen meldet es für alle. Das Kästchen kommt dann automatisch auf die Zählliste der Inventur.', target: () => q('main .row .report') },
+      { say: 'Sind alle Zeilen gepickt, schließt du die Bestellung ab. Bei Großbrief zeigt die Versandart eine Briefvorschau mit der Adresse.', target: () => q('main .summary') },
+      end('Bei schlechtem WLAN macht das nichts: Gepicktes wird gespeichert und später geschickt.'),
+    ],
+  },
   umlagern: {
     title: 'Umlagern',
     steps: [
@@ -124,7 +148,7 @@ const byPath = [
   [/^\/$/, 'start'],
   [/^\/inventar/, 'inventar'], [/^\/umlagern/, 'umlagern'], [/^\/inventur/, 'inventur'], [/^\/analyse/, 'analyse'],
   [/^\/auftraege/, 'auftraege'], [/^\/scanner/, 'scanner'], [/^\/teil\//, 'teil'], [/^\/lagerort\//, 'lagerort'],
-  [/^\/suche/, 'suche'], [/^\/modul\//, 'modul'],
+  [/^\/suche/, 'suche'], [/^\/modul\//, 'modul'], [/^\/minifig/, 'minifig'], [/^\/pickliste$/, 'pickliste'],
 ]
 
 /** Hilfe-Thema für eine Seite (oder null, dann gibt es kein „?“). */

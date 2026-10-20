@@ -72,6 +72,10 @@ const studentList = [
     say: 'Hier steht jedes Teil mit dem Kästchen, in dem es liegt. Das Kästchen kannst du antippen und direkt hingehen. Zusammenbauen, fertig!',
     target: () => panel('Figuren')?.querySelector('details[open] .parts'), wait: 'next', go: '/minifig', mood: 'cheer',
   },
+  {
+    say: 'Hast du eine Figur zusammengesucht, tippst du „Fertig gebaut“. Sie kommt in die gemeinsame Sammlung „Fertige Figuren“. Am Ende schließt einer die Sammlung ab: Dann gibt es die Datei für BrickLink, und die Figur wird als neues Lot eingelagert.',
+    target: () => byText('main .mflist .btn', 'Fertig gebaut'), wait: 'next', go: '/minifig',
+  },
   // ---------- Pickliste ----------
   {
     chapter: 'Pickliste',
@@ -89,6 +93,14 @@ const studentList = [
   {
     say: 'Durchgestrichen heißt: gepickt, mit deinem Namen dran. Fehlt etwas oder stimmt der Lagerort nicht, tippst du auf das Ausrufezeichen und meldest es. Sind alle Zeilen gepickt, schließt du die Bestellung ab.',
     target: () => q('.row.picked') ?? q('.rows'), wait: 'next', go: '/pickliste',
+  },
+  {
+    say: 'Seid ihr zu mehreren? Mit „Markieren“ merkst du dir einzelne Zeilen vor. Oder du wählst einen Bereich wie G oder N und tippst „Bereich übernehmen“, dann gehören dir alle freien Teile daraus. So läuft niemand doppelt.',
+    target: () => q('.zones') ?? byText('.btn', 'Markieren'), wait: 'next', go: '/pickliste',
+  },
+  {
+    say: 'Und meldest du über das Ausrufezeichen ein Fehlteil, kommt das Kästchen automatisch auf die Zählliste der Inventur. So wird der Fehler gleich nachgezählt.',
+    target: () => q('.row .report'), wait: 'next', go: '/pickliste',
   },
   // ---------- Inventar und Lagerplan ----------
   {
