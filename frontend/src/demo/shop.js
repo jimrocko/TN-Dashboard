@@ -45,7 +45,7 @@ const conditionFor = (code) => (/^(N|FN)\d+$/i.test(code) ? 'N' : 'U')
 function blChanges(lot, existing, qty, toCode) {
   const upd = (row, set) => (row.bl_lot_id
     ? { type: 'update', lot_id: row.bl_lot_id, ...set }
-    : { type: 'fehlt', item_no: row.item_no, color_name: row.color_name })
+    : { type: 'fehlt', item_no: row.item_no, color_name: row.color_name, local_id: row.id ?? null })
   const full = qty === lot.qty
   if (existing) return [upd(existing, { qty }), upd(lot, full ? { delete: true } : { qty: -qty })]
   if (full) return [upd(lot, { remarks: toCode })]
@@ -54,6 +54,72 @@ function blChanges(lot, existing, qty, toCode) {
     { type: 'upload', item_type: lot.item_type, item_no: lot.item_no, color_id: lot.color_id, qty, price: lot.price,
       condition: lot.bl_condition ?? 'U', remarks: toCode },
   ]
+}
+
+/**
+ * Was zu BrickLink muss, nur die Änderungen (wie BrickLinkSync::changesForExport): Update-Zeilen je BrickLink-Lot
+ * (Menge +/-, Remarks, löschen wenn leer), neue Lots für die Upload-Datei, Änderungen an Lots ohne Lot-Nr.
+ */
+function blChangesForExport(db) {
+  const e = (db.blExports ?? []).find((x) => x.open)
+  const tIds = e ? e.transfer_ids : db.transfers.filter((t) => !t.bl_done_at && t.bl_changes).map((t) => t.id)
+  const sIds = e ? e.stocktake_ids ?? [] : db.stocktakes.filter((x) => !x.bl_done_at && x.bl_changes).map((x) => x.id)
+  const agg = new Map()
+  const up = (id) => { if (!agg.has(id)) agg.set(id, { lot_id: id, qty: 0, remarks: false, delete: false }); return agg.get(id) }
+  const uploads = []
+  const noLot = []
+  for (const id of tIds) {
+    for (const c of db.transfers.find((t) => t.id === id)?.bl_changes ?? []) {
+      if (c.type === 'update') {
+        const a = up(Number(c.lot_id))
+        a.qty += Number(c.qty ?? 0)
+        if (c.remarks !== undefined) a.remarks = true
+        if (c.delete) a.delete = true
+      } else if (c.type === 'upload') uploads.push(c)
+      else if (c.type === 'fehlt') noLot.push({ item_no: c.item_no ?? '', color_name: c.color_name ?? '', local_id: Number(c.local_id ?? 0) })
+    }
+  }
+  for (const id of sIds) {
+    const st = db.stocktakes.find((x) => x.id === id)
+    for (const c of st?.bl_changes ?? []) {
+      let lotId = Number(c.lot_id ?? 0)
+      if (!lotId) {
+        // Ältere Inventuren ohne Lot-Nr.: über die gezählte Position suchen
+        const it = st.items.find((x) => x.item_no === c.item_no && x.color_name === c.color)
+        lotId = Number(db.inventory.find((i) => i.id === it?.inventory_id)?.bl_lot_id ?? 0)
+      }
+      if (lotId) up(lotId).qty += Number(c.diff ?? 0)
+      else noLot.push({ item_no: c.item_no ?? '', color_name: c.color ?? '', local_id: Number(c.local_id ?? 0) })
+    }
+  }
+  const byBl = new Map(db.inventory.filter((i) => i.bl_lot_id != null).map((i) => [Number(i.bl_lot_id), i]))
+  const update = []
+  for (const [lotId, a] of agg) {
+    const lot = byBl.get(lotId)
+    if (a.delete || !lot || lot.qty <= 0) { update.push({ lot_id: lotId, delete: true }); continue }
+    const row = { lot_id: lotId }
+    if (a.qty !== 0) row.qty = a.qty
+    const code = loc(db, lot.location_id)?.code
+    if (a.remarks && code != null) row.remarks = code
+    if (Object.keys(row).length > 1) update.push(row)
+  }
+  const upload = []
+  const seen = new Set()
+  for (const c of uploads) {
+    const ids = c.local_id ? [Number(c.local_id)]
+      : db.inventory.filter((i) => i.bl_lot_id == null && i.item_no === c.item_no && i.color_id === Number(c.color_id) && loc(db, i.location_id)?.code === c.remarks).map((i) => i.id)
+    for (const lid of ids) {
+      if (seen.has(lid)) continue
+      seen.add(lid)
+      const l = db.inventory.find((i) => i.id === lid && i.bl_lot_id == null)
+      if (!l || l.qty <= 0) continue
+      upload.push({ item_type: l.item_type, item_no: l.item_no, color_id: l.color_id, qty: l.qty, price: Math.round(l.price * 1000) / 1000,
+        condition: (l.bl_condition ?? 'U') === 'N' ? 'N' : 'U', remarks: loc(db, l.location_id)?.code ?? '' })
+    }
+  }
+  const missing = noLot.filter((m) => !seen.has(m.local_id)).map(({ item_no, color_name }) => ({ item_no, color_name }))
+  update.sort((x, y) => x.lot_id - y.lot_id)
+  return { update, upload, missing, transfer_ids: tIds.map(Number), stocktake_ids: sIds.map(Number) }
 }
 
 export function seedData(seed) {
@@ -580,7 +646,10 @@ function transfer(db, lotId, toId, qty, userId, expectLoc = null, expectQty = nu
     lot.updated_at = t
   } else {
     // Neues Lot bekommt seine BrickLink-Lot-ID erst beim nächsten Import
-    db.inventory.push({ ...lot, id: db.nextLot++, location_id: toId, qty, updated_at: t, bl_lot_id: null, bl_inventory_id: null })
+    const id = db.nextLot++
+    db.inventory.push({ ...lot, id, location_id: toId, qty, updated_at: t, bl_lot_id: null, bl_inventory_id: null })
+    // Für die Upload-Datei: welches lokale Lot das neue ist (wie Shop::transfer)
+    for (const c of bl) if (c.type === 'upload') c.local_id = id
   }
   if (existing || qty < lot.qty) {
     if (qty === lot.qty) db.inventory = db.inventory.filter((i) => i.id !== lotId)
@@ -865,18 +934,9 @@ export function route(db, method, parts, params, body, requireUser, log) {
       export: e ? exportRow(e) : null,
     }
   }
-  if (method === 'GET' && a === 'bricklink' && b === 'stock') {
-    // wie BrickLinkSync::stock(): ganzer Bestand, weggeräumte Lot-IDs, alle offenen Umlagerungen
+  if (method === 'GET' && a === 'bricklink' && b === 'changes') {
     requireUser()
-    const lots = db.inventory.map((i) => ({ bl_lot_id: i.bl_lot_id ?? null, item_type: i.item_type, item_no: i.item_no, color_id: i.color_id,
-      qty: i.qty, price: i.price, bl_condition: i.bl_condition ?? 'U', code: loc(db, i.location_id)?.code ?? null, id: i.id }))
-    lots.sort((x, y) => (x.bl_lot_id === null) - (y.bl_lot_id === null) || (x.bl_lot_id ?? 0) - (y.bl_lot_id ?? 0) || x.id - y.id)
-    const have = new Set(lots.map((l) => l.bl_lot_id).filter(Boolean))
-    const open = db.transfers.filter((t) => !t.bl_done_at && t.bl_changes)
-    const deleted = new Set()
-    for (const t of open) for (const c of t.bl_changes) if (c.type === 'update' && c.delete && !have.has(c.lot_id)) deleted.add(c.lot_id)
-    const openSt = db.stocktakes.filter((x) => !x.bl_done_at && x.bl_changes)
-    return { lots: lots.map(({ id, ...l }) => l), deleted: [...deleted], transfer_ids: open.map((t) => t.id), stocktake_ids: openSt.map((x) => x.id) }
+    return blChangesForExport(db)
   }
   if (method === 'POST' && a === 'bricklink' && b === 'start') {
     // Übertragung starten; immer nur eine offen (wie BrickLinkSync::start)
@@ -964,7 +1024,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
       const diff = it.counted - it.expected
       lot.qty = Math.max(0, lot.qty + diff)
       lot.updated_at = t
-      corrections.push({ item_no: it.item_no, color: it.color_name, diff })
+      corrections.push({ item_no: it.item_no, color: it.color_name, diff, lot_id: lot.bl_lot_id ?? null, local_id: lot.id })
     }
     // Korrekturen müssen noch zu BrickLink (wie Shop::closeStocktake)
     Object.assign(st, { status: 'abgeschlossen', closed_at: t, closed_by_name: me.display_name, bl_changes: corrections.length ? corrections : null, bl_done_at: null })

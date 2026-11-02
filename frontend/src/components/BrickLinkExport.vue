@@ -1,21 +1,22 @@
 <script setup>
-// Pop-up direkt nach dem Umlagern (Wunsch des Inhabers): ganzen Bestand (alle Lots mit Menge nach dem Abziehen)
-// als BrickLink-XML in die Zwischenablage und BrickLink öffnen. Dort unten beim Upload einfügen und bestätigen.
-// Gemeinsam für alle, nicht persönlich: Offene Umlagerungen und die laufende Übertragung sieht jeder, und jeder darf
-// sie abschließen. Es ist immer nur eine Übertragung offen, damit kein älterer Bestand einen neueren überschreibt.
+// Pop-up direkt nach dem Umlagern (Wunsch des Inhabers): die Änderungen als BrickLink-XML in die Zwischenablage und
+// BrickLink öffnen. Nur die Änderungen, nicht der ganze Bestand (für BrickLink zu groß, Sitzung 8): eine Update-Datei
+// (Mengen, Lagerort, leere Lots löschen) und, wenn neue Lots entstanden sind, eine Upload-Datei. Sehr große Mengen werden
+// auf mehrere Dateien verteilt. Gemeinsam für alle, nicht persönlich: Offene Umlagerungen und die laufende Übertragung
+// sieht jeder, und jeder darf sie abschließen. Es ist immer nur eine Übertragung offen.
 // Mit „Später“ geschlossen, bleibt der Kasten unten auf der Seite. Die App schreibt selbst nie zu BrickLink.
 // Auch abgeschlossene Inventuren mit Korrekturen kommen hier hinein (gleiches Pop-up nach „Abschließen“).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Upload, Check, Copy, X } from 'lucide-vue-next'
 import { api, IS_TUTORIAL } from '../api'
 import { num, dateTime } from '../utils/format'
-import { BRICKLINK_XML_URL, buildStockXml, copyText } from '../utils/bricklinkXml'
+import { BRICKLINK_XML_URL, buildChangeFiles, copyText } from '../utils/bricklinkXml'
 
 const pending = ref([])  // offene Umlagerungen aller Nutzer
 const pendingSt = ref([]) // abgeschlossene Inventuren mit Korrekturen, noch nicht übertragen
 const exp = ref(null)    // laufende Übertragung (oder null)
-const stock = ref(null)  // ganzer Bestand (wird vorher geladen, Kopieren muss direkt im Tipp passieren)
-const copied = ref(false)
+const changes = ref(null) // was zu BrickLink muss (wird vorher geladen, Kopieren muss direkt im Tipp passieren)
+const copied = ref(new Set()) // Nummern der schon kopierten Dateien
 const doneMsg = ref('')
 const error = ref('')
 const busy = ref(false)
@@ -28,12 +29,12 @@ async function refresh({ popup: show = false } = {}) {
     pending.value = r.transfers
     pendingSt.value = r.stocktakes ?? []
     exp.value = r.export
-    copied.value = false
-    stock.value = null
+    copied.value = new Set()
+    changes.value = null
     if (openCount.value || exp.value) {
       doneMsg.value = ''
       if (show && !IS_TUTORIAL) popup.value = true
-      stock.value = await api.get('bricklink/stock')
+      changes.value = await api.get('bricklink/changes')
     }
   } catch (e) { error.value = e.message }
 }
@@ -47,8 +48,10 @@ const onKey = (e) => { if (e.key === 'Escape' && popup.value) close() }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
-const xml = computed(() => (stock.value ? buildStockXml(stock.value)[0].xml : ''))
-const lotCount = computed(() => (stock.value ? stock.value.lots.length + stock.value.deleted.length : 0))
+const files = computed(() => (changes.value ? buildChangeFiles(changes.value) : []))
+const fileLabel = (f) => `${f.kind === 'update' ? 'Update' : 'Upload'}-Datei${f.parts > 1 ? ` ${f.part}/${f.parts}` : ''}`
+const fileHint = (f) => (f.kind === 'update' ? 'bei BrickLink unter „Update“ einfügen' : 'bei BrickLink unter „Upload“ einfügen')
+const missing = computed(() => changes.value?.missing ?? [])
 const openCount = computed(() => pending.value.length + pendingSt.value.length)
 // „2 Umlagerungen und 1 Inventur“
 const what = (u, i) => [u && `${u} ${u === 1 ? 'Umlagerung' : 'Umlagerungen'}`, i && `${i} ${i === 1 ? 'Inventur' : 'Inventuren'}`].filter(Boolean).join(' und ')
@@ -57,17 +60,18 @@ const newer = computed(() => (exp.value
   ? pending.value.filter((t) => !exp.value.transfer_ids.includes(t.id)).length + pendingSt.value.filter((x) => !(exp.value.stocktake_ids ?? []).includes(x.id)).length
   : 0))
 
-function copyAndOpen() {
+function copyAndOpen(i) {
   // Kopieren und Öffnen direkt im Tipp, sonst blockiert Safari beides
-  copyText(xml.value)
+  copyText(files.value[i].xml)
   window.open(BRICKLINK_XML_URL, '_blank', 'noopener')
-  copied.value = true
+  copied.value = new Set([...copied.value, i])
 }
-async function start() {
+/** Erste Datei kopieren startet die Übertragung (danach sieht jeder, dass sie läuft). Ohne Dateien: nur starten. */
+async function start(i) {
   error.value = ''
-  copyAndOpen()
+  if (i !== undefined) copyAndOpen(i)
   try {
-    exp.value = (await api.post('bricklink/start', { ids: stock.value.transfer_ids, stocktake_ids: stock.value.stocktake_ids ?? [] })).export
+    exp.value = (await api.post('bricklink/start', { ids: changes.value.transfer_ids, stocktake_ids: changes.value.stocktake_ids ?? [] })).export
   } catch (e) {
     await refresh()
     error.value = e.message
@@ -108,15 +112,20 @@ async function finish(done) {
         <div>
           <h2>Übertragung läuft</h2>
           <p class="muted small">Seit {{ dateTime(exp.created_at) }} · {{ what(exp.transfer_ids.length, (exp.stocktake_ids ?? []).length) }}.
-            Wurde der kopierte Bestand bei BrickLink unten beim Upload eingefügt und bestätigt?</p>
+            <template v-if="files.length">Wurde{{ files.length > 1 ? 'n alle Dateien' : ' die Datei' }} bei BrickLink eingefügt und bestätigt?</template>
+            <template v-else>Bei BrickLink ist nichts einzufügen.</template></p>
         </div>
       </div>
       <div class="steps">
         <button class="btn btn-primary big" type="button" :disabled="busy" @click="finish(true)"><Check :size="20" /><span><b>Ja, ist eingefügt</b></span></button>
         <button class="btn big2" type="button" :disabled="busy" @click="finish(false)">Nein, verwerfen</button>
       </div>
-      <button class="btn btn-sm again" type="button" :disabled="!stock" @click="copyAndOpen"><Copy :size="15" /> Bestand nochmal kopieren · BrickLink öffnen</button>
-      <p v-if="copied" class="success small">Kopiert! Bei BrickLink unten beim Upload einfügen und bestätigen.</p>
+      <div v-if="files.length" class="files">
+        <button v-for="(f, i) in files" :key="i" class="btn btn-sm again" type="button" @click="copyAndOpen(i)">
+          <Copy :size="15" /> {{ fileLabel(f) }} {{ copied.has(i) ? 'nochmal ' : '' }}kopieren · {{ num(f.lots) }} Lots
+        </button>
+      </div>
+      <p v-if="copied.size" class="success small">Kopiert! Jetzt {{ fileHint(files[[...copied].at(-1)]) }} und bestätigen.</p>
       <p v-if="newer" class="faint small">{{ newer }} {{ newer === 1 ? 'neuere Änderung kommt' : 'neuere Änderungen kommen' }} danach in die nächste Übertragung.</p>
     </template>
 
@@ -127,14 +136,21 @@ async function finish(done) {
         <div>
           <h2>Zu BrickLink übertragen</h2>
           <p class="muted small">{{ what(pending.length, pendingSt.length) }} {{ openCount === 1 ? 'ist' : 'sind' }} noch nicht im BrickLink-Shop.
-            <template v-if="stock">Kopiert wird der ganze Bestand: {{ num(lotCount) }} Lots mit den aktuellen Mengen.</template></p>
+            <template v-if="changes && files.length">Kopiert werden nur die Änderungen: {{ files.map((f) => `${fileLabel(f)} (${num(f.lots)} Lots)`).join(', ') }}.</template></p>
         </div>
       </div>
       <div class="steps">
-        <button v-if="stock" class="btn btn-primary big" type="button" @click="start"><Upload :size="20" /><span><b>Bestand kopieren</b> · BrickLink öffnen</span></button>
-        <span v-else-if="!error" class="faint small">Bestand wird geladen …</span>
+        <template v-if="changes">
+          <button v-for="(f, i) in files" :key="i" class="btn big" :class="{ 'btn-primary': i === 0 }" type="button" @click="start(i)">
+            <Upload :size="20" /><span><b>{{ files.length > 1 ? `${i + 1}. ` : '' }}{{ fileLabel(f) }} kopieren</b> · BrickLink öffnen</span>
+          </button>
+          <button v-if="!files.length" class="btn btn-primary big" type="button" @click="start()"><Check :size="20" /><span><b>Nichts einzufügen</b> · abschließen</span></button>
+        </template>
+        <span v-else-if="!error" class="faint small">Änderungen werden geladen …</span>
       </div>
-      <p class="faint small">Der Knopf kopiert den Bestand und öffnet BrickLink. Dort unten beim Upload einfügen und bestätigen.</p>
+      <p v-if="files.length" class="faint small">Der Knopf kopiert die Datei und öffnet BrickLink. Update-Datei unter „Update“, Upload-Datei unter „Upload“ einfügen und bestätigen.</p>
+      <p v-if="missing.length" class="error small">{{ missing.length }} {{ missing.length === 1 ? 'Änderung betrifft ein Lot' : 'Änderungen betreffen Lots' }} ohne BrickLink-Lot-Nr.
+        ({{ missing.slice(0, 3).map((m) => `${m.item_no} ${m.color_name}`.trim()).join(', ') }}{{ missing.length > 3 ? ' …' : '' }}). Bitte bei BrickLink von Hand nachtragen.</p>
     </template>
 
     <template v-else>
@@ -169,4 +185,5 @@ async function finish(done) {
 .big2 { flex: 1 1 140px; min-height: 52px; justify-content: center; }
 .big svg, .head svg { flex-shrink: 0; }
 .success, .faint, .error { margin: 0; }
+.files { display: flex; flex-wrap: wrap; gap: 8px; }
 </style>

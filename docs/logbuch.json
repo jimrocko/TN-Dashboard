@@ -144,7 +144,7 @@
       ]
     },
     "2026-11-02": {
-      "kurz": "Bestand aus BrickStore-Datei im Dev-Bereich einlesen, Minifig-Finder rechnet mit BSX-Dateien wie der Standalone, fertige Figuren: leere Lots per DELETE, Umlagern und Startseite schnell (15 s auf 1,5 s), Echtbestand mit neuem Bestand.",
+      "kurz": "Bestand aus BrickStore-Datei im Dev-Bereich einlesen, Minifig-Finder rechnet mit BSX-Dateien wie der Standalone, fertige Figuren: leere Lots per DELETE, Umlagern und Startseite schnell (15 s auf 1,5 s), BrickLink-Übertragung nur noch mit den Änderungen, Echtbestand mit neuem Bestand.",
       "zusammenfassung": "Der Inhaber brachte einen neuen Shop-Bestand als BrickStore-Datei mit und wollte damit den Minifig-Finder testen. Dafür kam ein Weg dazu, den Bestand selbst aus einer Datei zu erneuern. Beim Vergleich mit dem MinifigFinder Standalone zeigte sich ein Unterschied bei Preisen und baubaren Figuren, sobald zusätzliche BSX-Dateien im Spiel sind. Er wurde gefunden und behoben.",
       "themen": [
         {
@@ -158,6 +158,10 @@
         {
           "titel": "Echtbestand, BrickLink-Datei und Tempo",
           "text": "Die private Echtbestand-Version wurde mit dem neuen Bestand neu gebaut, diesmal mit den echten BrickLink-Lot-Nummern. Weil Artifact-Seiten keine Bilder von fremden Servern laden dürfen, bekam der Inhaber dieselbe Version zusätzlich als private HTML-Datei, in der die Bilder am PC erscheinen. Beim Hochladen der Datei für fertige Figuren meldete BrickLink einen Fehler: Ein Minus, das ein Lot auf 0 bringt, wird abgelehnt. Solche Lots stehen jetzt mit „löschen“ in der Datei. Außerdem brauchten Startseite und Umlagern-Vorschläge mit dem echten Bestand etwa 15 Sekunden. Die Vorschlagsrechnung durchsuchte für jedes Lot das ganze Lager und verglich dieselben Teile-Paare millionenfach. Mit Verzeichnissen und gemerkten Ergebnissen sind es jetzt etwa 1,5 Sekunden, die Startseite merkt sich die Zahl der Vorschläge, bis sich der Bestand ändert. Die Vorschlagsliste bleibt dabei exakt gleich; das wurde mit dem echten Bestand und den Beispieldaten verglichen. Dabei fiel auf, dass Server und Demo Kästchen-Codes ohne führende Nullen (N68 neben N094) verschieden sortierten; beide benutzen jetzt dieselbe Sortierung."
+        },
+        {
+          "titel": "Kleine Dateien für BrickLink",
+          "text": "Beim Umlagern mit dem echten Bestand meldete BrickLink, die Datei sei zu groß. Bisher wurde nach jeder Umlagerung der ganze Bestand kopiert, mit 13.700 Lots etwa ein Megabyte, BrickLink nimmt aber nur rund 200 Kilobyte je Datei an. Jetzt kopiert das Fenster „Zu BrickLink übertragen“ nur noch die Änderungen: eine Update-Datei mit Mengen als Plus oder Minus, dem neuen Kästchen in den Remarks und „löschen“ für leer gewordene Lots, und nur wenn nötig eine Upload-Datei für neue Lots aus Teilmengen. Mehrere Umlagerungen am selben Lot werden zusammengerechnet, Inventur-Korrekturen kommen als Mengenänderung dazu. Sehr viele Änderungen verteilt die App auf mehrere Dateien unter 200 Kilobyte. Server und Demo liefern mit dem echten Bestand dieselben Dateien."
         }
       ]
     }

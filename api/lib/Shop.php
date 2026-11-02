@@ -596,6 +596,10 @@ final class Shop
                 q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, bl_condition, new_or_used, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$lot['item_type'], $lot['item_no'], $lot['color_id'], $lot['color_name'],
                    $lot['name'], $lot['category'], $toId, $qty, $lot['price'], $lot['bl_condition'], $lot['new_or_used'] ?? $lot['bl_condition'], $t]);
+                // Für die Upload-Datei: welches lokale Lot das neue ist (es kann später wachsen oder weiterziehen)
+                $newId = (int) $pdo->lastInsertId();
+                foreach ($blChanges as &$c) if (($c['type'] ?? '') === 'upload') $c['local_id'] = $newId;
+                unset($c);
             }
             if ($existing || $qty < (int) $lot['qty']) {
                 if ($qty === (int) $lot['qty']) {
@@ -684,12 +688,14 @@ final class Shop
             $t = now();
             foreach ($s['items'] as $it) {
                 if ($it['counted'] === null || $it['counted'] === $it['expected'] || !$it['inventory_id']) continue;
-                $current = q('SELECT qty FROM {inventory} WHERE id = ?', [$it['inventory_id']])->fetchColumn();
-                if ($current === false) continue;
+                $cur = q('SELECT qty, bl_lot_id FROM {inventory} WHERE id = ?', [$it['inventory_id']])->fetch();
+                if (!$cur) continue;
+                $current = $cur['qty'];
                 // Differenz anwenden, damit zwischenzeitliche Buchungen nicht überschrieben werden.
                 $diff = $it['counted'] - $it['expected'];
                 q('UPDATE {inventory} SET qty = ?, updated_at = ? WHERE id = ?', [max(0, (int) $current + $diff), $t, $it['inventory_id']]);
-                $corrections[] = ['item_no' => $it['item_no'], 'color' => $it['color_name'], 'diff' => $diff];
+                $corrections[] = ['item_no' => $it['item_no'], 'color' => $it['color_name'], 'diff' => $diff,
+                    'lot_id' => $cur['bl_lot_id'] !== null ? (int) $cur['bl_lot_id'] : null, 'local_id' => (int) $it['inventory_id']];
             }
             // Korrekturen müssen noch zu BrickLink (gleiches Pop-up wie nach dem Umlagern, siehe BrickLinkSync)
             q("UPDATE {stocktakes} SET status = 'abgeschlossen', closed_at = ?, closed_by = ?, bl_changes = ? WHERE id = ?",

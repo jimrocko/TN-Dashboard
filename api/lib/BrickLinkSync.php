@@ -66,7 +66,7 @@ final class BrickLinkSync
     {
         $upd = function ($row, array $set) {
             if (empty($row['bl_lot_id'])) {
-                return ['type' => 'fehlt', 'item_no' => $row['item_no'], 'color_name' => $row['color_name']];
+                return ['type' => 'fehlt', 'item_no' => $row['item_no'], 'color_name' => $row['color_name'], 'local_id' => isset($row['id']) ? (int) $row['id'] : null];
             }
             return ['type' => 'update', 'lot_id' => (int) $row['bl_lot_id']] + $set;
         };
@@ -113,35 +113,83 @@ final class BrickLinkSync
     }
 
     /**
-     * Ganzer Bestand für die XML: alle Lots mit aktueller Menge und Lagerort, dazu die Lot-IDs, die beim Umlagern
-     * ganz weggeräumt wurden (noch nicht übertragen), und die IDs aller offenen Umlagerungen (von allen Nutzern,
-     * denn der ganze Bestand enthält auch ihre Änderungen).
+     * Was zu BrickLink muss, nur die Änderungen (der ganze Bestand ist für BrickLink zu groß, Grenze ca. 200 KB je Datei):
+     * offene Umlagerungen und Inventuren, bei laufender Übertragung genau deren. Gleiche Lots werden zusammengerechnet.
+     * - update: je BrickLink-Lot Mengenänderung (+/-), neuer Lagerort (Remarks) oder löschen (wenn das Lot leer ist; BrickLink
+     *   nimmt kein Minus auf Menge 0 an). Für „Update Inventory“.
+     * - upload: neue Lots aus Teilmengen (noch ohne BrickLink-Lot-Nr.) mit der aktuellen Menge. Für „Upload“.
+     * - missing: Änderungen an Lots ohne BrickLink-Lot-Nr., die nicht übertragen werden können.
      */
-    public static function stock(): array
+    public static function changesForExport(): array
     {
         self::ensureSchema();
-        $lots = q('SELECT i.bl_lot_id, i.item_type, i.item_no, i.color_id, i.qty, i.price, i.bl_condition, l.code
-            FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id
-            ORDER BY CASE WHEN i.bl_lot_id IS NULL THEN 1 ELSE 0 END, i.bl_lot_id, i.id')->fetchAll();
-        $have = [];
-        foreach ($lots as &$l) {
-            $l['bl_lot_id'] = $l['bl_lot_id'] === null ? null : (int) $l['bl_lot_id'];
-            $l['color_id'] = (int) $l['color_id'];
-            $l['qty'] = (int) $l['qty'];
-            $l['price'] = round((float) $l['price'], 3);
-            if ($l['bl_lot_id']) $have[$l['bl_lot_id']] = true;
-        }
-        unset($l);
-        $ids = [];
-        $deleted = [];
-        foreach (q('SELECT id, bl_changes FROM {transfers} WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL ORDER BY id')->fetchAll() as $t) {
-            $ids[] = (int) $t['id'];
-            foreach (json_decode((string) $t['bl_changes'], true) ?: [] as $c) {
-                if (($c['type'] ?? '') === 'update' && !empty($c['delete']) && !isset($have[(int) $c['lot_id']])) $deleted[(int) $c['lot_id']] = true;
+        $exp = self::openExport();
+        $tIds = $exp ? $exp['transfer_ids'] : array_column(self::pending(), 'id');
+        $sIds = $exp ? $exp['stocktake_ids'] : array_column(self::pendingStocktakes(), 'id');
+        $agg = [];
+        $uploads = [];
+        $noLot = []; // Änderungen an Lots ohne BrickLink-Lot-Nr.
+        $up = function (int $lotId) use (&$agg) { return $agg[$lotId] ??= ['lot_id' => $lotId, 'qty' => 0, 'remarks' => false, 'delete' => false]; };
+        foreach ($tIds as $id) {
+            $t = q('SELECT bl_changes FROM {transfers} WHERE id = ?', [(int) $id])->fetchColumn();
+            foreach (json_decode((string) $t, true) ?: [] as $c) {
+                if (($c['type'] ?? '') === 'update') {
+                    $up((int) $c['lot_id']);
+                    $agg[(int) $c['lot_id']]['qty'] += (int) ($c['qty'] ?? 0);
+                    if (isset($c['remarks'])) $agg[(int) $c['lot_id']]['remarks'] = true;
+                    if (!empty($c['delete'])) $agg[(int) $c['lot_id']]['delete'] = true;
+                } elseif (($c['type'] ?? '') === 'upload') {
+                    $uploads[] = $c;
+                } elseif (($c['type'] ?? '') === 'fehlt') {
+                    $noLot[] = ['item_no' => $c['item_no'] ?? '', 'color_name' => $c['color_name'] ?? '', 'local_id' => (int) ($c['local_id'] ?? 0)];
+                }
             }
         }
-        $stIds = array_map('intval', q('SELECT id FROM {stocktakes} WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
-        return ['lots' => $lots, 'deleted' => array_keys($deleted), 'transfer_ids' => $ids, 'stocktake_ids' => $stIds];
+        foreach ($sIds as $id) {
+            $st = q('SELECT bl_changes FROM {stocktakes} WHERE id = ?', [(int) $id])->fetchColumn();
+            foreach (json_decode((string) $st, true) ?: [] as $c) {
+                $lotId = (int) ($c['lot_id'] ?? 0);
+                if (!$lotId) {
+                    // Ältere Inventuren ohne Lot-Nr.: über die gezählte Position suchen
+                    $lotId = (int) q('SELECT i.bl_lot_id FROM {stocktake_items} s JOIN {inventory} i ON i.id = s.inventory_id
+                        WHERE s.stocktake_id = ? AND s.item_no = ? AND s.color_name = ?', [(int) $id, $c['item_no'] ?? '', $c['color'] ?? ''])->fetchColumn();
+                }
+                if ($lotId) { $up($lotId); $agg[$lotId]['qty'] += (int) ($c['diff'] ?? 0); }
+                else $noLot[] = ['item_no' => $c['item_no'] ?? '', 'color_name' => $c['color'] ?? '', 'local_id' => (int) ($c['local_id'] ?? 0)];
+            }
+        }
+        // Aktueller Stand der betroffenen Lots: Lagerort und ob das Lot leer bzw. weg ist
+        $update = [];
+        foreach ($agg as $lotId => $a) {
+            $lot = q('SELECT i.qty, l.code FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id WHERE i.bl_lot_id = ?', [$lotId])->fetch();
+            if ($a['delete'] || !$lot || (int) $lot['qty'] <= 0) { $update[] = ['lot_id' => $lotId, 'delete' => true]; continue; }
+            $row = ['lot_id' => $lotId];
+            if ($a['qty'] !== 0) $row['qty'] = $a['qty'];
+            if ($a['remarks'] && $lot['code'] !== null) $row['remarks'] = (string) $lot['code'];
+            if (count($row) > 1) $update[] = $row;
+        }
+        // Neue Lots mit ihrer aktuellen Menge und ihrem aktuellen Kästchen (sie können seitdem gewachsen oder weitergezogen sein)
+        $upload = [];
+        $seen = [];
+        foreach ($uploads as $c) {
+            $ids = !empty($c['local_id']) ? [(int) $c['local_id']]
+                : array_map('intval', q('SELECT i.id FROM {inventory} i JOIN {locations} l ON l.id = i.location_id
+                    WHERE i.bl_lot_id IS NULL AND i.item_no = ? AND i.color_id = ? AND l.code = ?', [$c['item_no'], (int) $c['color_id'], $c['remarks']])->fetchAll(PDO::FETCH_COLUMN));
+            foreach ($ids as $lid) {
+                if (isset($seen[$lid])) continue;
+                $seen[$lid] = true;
+                $l = q('SELECT i.*, l.code FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id WHERE i.id = ? AND i.bl_lot_id IS NULL', [$lid])->fetch();
+                if (!$l || (int) $l['qty'] <= 0) continue;
+                $upload[] = ['item_type' => $l['item_type'], 'item_no' => $l['item_no'], 'color_id' => (int) $l['color_id'], 'qty' => (int) $l['qty'],
+                    'price' => round((float) $l['price'], 3), 'condition' => ($l['bl_condition'] ?? 'U') === 'N' ? 'N' : 'U', 'remarks' => (string) ($l['code'] ?? '')];
+            }
+        }
+        // Lots ohne BrickLink-Lot-Nr. sind nur dann kein Problem, wenn sie als neues Lot mit aktueller Menge in der Upload-Datei stehen
+        $missing = [];
+        foreach ($noLot as $m) if (!isset($seen[$m['local_id']])) $missing[] = ['item_no' => $m['item_no'], 'color_name' => $m['color_name']];
+        usort($update, fn ($x, $y) => $x['lot_id'] <=> $y['lot_id']);
+        return ['update' => $update, 'upload' => $upload, 'missing' => $missing,
+            'transfer_ids' => array_values(array_map('intval', $tIds)), 'stocktake_ids' => array_values(array_map('intval', $sIds))];
     }
 
     /** Die offene Übertragung (oder null). Gemeinsam für alle, ohne Namen. */

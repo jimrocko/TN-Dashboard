@@ -635,13 +635,14 @@ p('Der Verkaufsbestand liegt bei <b>BrickLink</b>. Das TN Dashboard hält eine e
 abschnitt('Übertragung nach Umlagern und Inventur')
 p('Direkt nach einer Umlagerung oder einer Inventur mit Korrekturen öffnet sich das Fenster <b>Zu BrickLink übertragen</b>.')
 schritte([
-    'Auf <b>Kopieren und BrickLink öffnen</b> tippen. Der ganze Bestand wird als XML in die Zwischenablage kopiert (alle Lots mit der Menge '
-    'nach dem Abziehen, Lagerort in den Remarks), und die Upload-Seite von BrickLink öffnet sich in einem neuen Tab.',
-    'Bei BrickLink unten beim Upload einfügen und bestätigen.',
+    'Auf <b>Update-Datei kopieren</b> tippen. Nur die Änderungen werden als XML in die Zwischenablage kopiert (Mengen mit Plus oder '
+    'Minus, neuer Lagerort in den Remarks, leer gewordene Lots werden gelöscht), und die XML-Seite von BrickLink öffnet sich in einem neuen Tab.',
+    'Bei BrickLink unter „Update“ einfügen und bestätigen. Sind beim Umlagern neue Lots entstanden (Teilmenge in ein neues Kästchen), gibt '
+    'es zusätzlich eine <b>Upload-Datei</b>, die unter „Upload“ eingefügt wird.',
     'Zurück in der App <b>Ja, ist eingefügt</b> tippen. Erst dann gelten die Änderungen als übertragen. „Nein, verwerfen“ bricht ab.',
 ])
-hinweis('Es läuft immer nur <b>eine</b> Übertragung. Alle sehen sie, und jede Person kann sie abschließen. So überschreibt kein älterer '
-        'Bestand einen neueren. Eine einzige Datei enthält immer den gesamten Bestand.')
+hinweis('Es läuft immer nur <b>eine</b> Übertragung. Alle sehen sie, und jede Person kann sie abschließen. Die Dateien enthalten nur die '
+        'Änderungen und bleiben deshalb klein; sehr viele Änderungen werden auf mehrere Dateien unter 200 KB (Grenze von BrickLink) verteilt.')
 
 abschnitt('Gleichzeitiges Arbeiten')
 p('Bucht jemand ein Lot um, prüft der Server, ob Lagerort und Menge noch dem Stand auf dem Bildschirm entsprechen. Hat eine andere Person '

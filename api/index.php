@@ -224,10 +224,10 @@ switch (true) {
         json_response(['transfers' => BrickLinkSync::pending(), 'stocktakes' => BrickLinkSync::pendingStocktakes(),
             'export' => BrickLinkSync::openExport()]);
 
-    case $route === 'bricklink/stock' && $method === 'GET':
-        // Ganzer Bestand für die BrickLink-XML (alle Lots mit Menge nach dem Abziehen)
+    case $route === 'bricklink/changes' && $method === 'GET':
+        // Was zu BrickLink muss: nur die Änderungen (Update- und Upload-Datei), bei laufender Übertragung genau deren
         require_user();
-        json_response(BrickLinkSync::stock());
+        json_response(BrickLinkSync::changesForExport());
 
     case $route === 'bricklink/start' && $method === 'POST':
         // Übertragung starten (Bestand wurde kopiert). Es darf immer nur eine offen sein.

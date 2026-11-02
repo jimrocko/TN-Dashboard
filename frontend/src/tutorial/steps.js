@@ -177,7 +177,7 @@ const studentList = [
     target: () => q('.umlist .btn-take'), wait: { api: /^POST transfers$/ }, go: '/umlagern',
   },
   {
-    say: 'Gebucht! Jetzt muss es noch in den BrickLink-Shop. Dafür taucht unten dieser große Knopf auf: Er kopiert den ganzen Bestand mit den neuen Mengen und öffnet BrickLink. Dort fügst du ihn unten beim Upload ein und bestätigst. Hier im Tutorial lassen wir BrickLink in Ruhe.',
+    say: 'Gebucht! Jetzt muss es noch in den BrickLink-Shop. Dafür taucht unten dieser große Knopf auf: Er kopiert die Änderungen (neue Mengen und Lagerorte) und öffnet BrickLink. Dort fügst du sie unter „Update“ ein und bestätigst. Hier im Tutorial lassen wir BrickLink in Ruhe.',
     target: () => q('.bl-export'), wait: 'next', go: '/umlagern',
   },
   {
