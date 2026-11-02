@@ -907,7 +907,13 @@ function buildExportFiles(db) {
       f.lots++
       f.parts += l.quantity
       files.set(l.bsx_id, f)
-    } else if (l.bl_lot_id) xml += `<ITEM><LOTID>${l.bl_lot_id}</LOTID><QTY>-${l.quantity}</QTY></ITEM>\n`
+    } else if (l.bl_lot_id) {
+      // Bleibt nichts übrig, Lot löschen: BrickLink lehnt ein Minus auf Menge 0 ab (außer im Lagerraum), wie in Minifig.php
+      const have = (l.local_id ? db.inventory.find((i) => i.id === l.local_id) : db.inventory.find((i) => i.bl_inventory_id === l.bl_lot_id))?.qty
+      xml += have !== undefined && have - l.quantity <= 0
+        ? `<ITEM><LOTID>${l.bl_lot_id}</LOTID><DELETE>Y</DELETE></ITEM>\n`
+        : `<ITEM><LOTID>${l.bl_lot_id}</LOTID><QTY>-${l.quantity}</QTY></ITEM>\n`
+    }
     else noLot.push(l)
   }
   const b = builds(db)

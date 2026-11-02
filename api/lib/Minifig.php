@@ -1507,7 +1507,12 @@ final class Minifig
                 $files[$l['bsx_id']]['lots']++;
                 $files[$l['bsx_id']]['parts'] += (int) $l['quantity'];
             } elseif (!empty($l['bl_lot_id'])) {
-                $xml .= "<ITEM><LOTID>{$l['bl_lot_id']}</LOTID><QTY>-" . (int) $l['quantity'] . "</QTY></ITEM>\n";
+                // Bleibt nichts übrig, Lot löschen: BrickLink lehnt ein Minus auf Menge 0 ab (außer im Lagerraum)
+                $have = !empty($l['local_id']) ? q('SELECT qty FROM {inventory} WHERE id = ?', [(int) $l['local_id']])->fetchColumn()
+                    : q('SELECT qty FROM {inventory} WHERE bl_inventory_id = ?', [(int) $l['bl_lot_id']])->fetchColumn();
+                $xml .= $have !== false && (int) $have - (int) $l['quantity'] <= 0
+                    ? "<ITEM><LOTID>{$l['bl_lot_id']}</LOTID><DELETE>Y</DELETE></ITEM>\n"
+                    : "<ITEM><LOTID>{$l['bl_lot_id']}</LOTID><QTY>-" . (int) $l['quantity'] . "</QTY></ITEM>\n";
             } else {
                 $noLot[] = $l;
             }

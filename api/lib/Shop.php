@@ -178,14 +178,30 @@ final class Shop
         $moved = [];
         // Geplanter Inhalt je Kästchen (nach den bisherigen Vorschlägen): location_id => [Lot-ID => Lot]
         $in = [];
-        foreach ($all as $l) $in[$l['location_id']][$l['id']] = $l;
-        $add = function (array $lot, array $target, string $reason, array $extra = [], bool $merge = false) use (&$out, &$moved, &$in) {
+        $where = []; // Lot-ID => Kästchen im geplanten Inhalt (schneller als alle Kästchen zu durchsuchen)
+        $idx = null; // Verzeichnisse für die Zielsuche, ab Durchlauf 4 (siehe unten)
+        $areaOfLoc = [];
+        self::$confusableCache = [];
+        foreach ($all as $l) { $in[$l['location_id']][$l['id']] = $l; $where[$l['id']] = $l['location_id']; }
+        $add = function (array $lot, array $target, string $reason, array $extra = [], bool $merge = false) use (&$out, &$moved, &$in, &$where, &$idx, &$areaOfLoc) {
             $out[] = ['lot' => $lot, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'],
                 'target_qty' => $target['qty'], 'reason' => $reason] + $extra;
-            $moved[$lot['id']] = true;
-            foreach ($in as $loc => $lots) if (isset($lots[$lot['id']])) unset($in[$loc][$lot['id']]);
+            $id = $lot['id'];
+            $moved[$id] = true;
+            $from = $where[$id] ?? null;
+            if ($from !== null) {
+                unset($in[$from][$id], $where[$id]);
+                if ($idx !== null && empty($in[$from]) && isset($areaOfLoc[$from])) $idx['empty'][$areaOfLoc[$from]][$from] = true;
+            }
             // Gleiches Teil + Farbe am Ziel wird zusammengeführt, sonst liegt das Lot danach dort
-            if (!$merge) $in[$target['location_id']][$lot['id']] = $lot;
+            if (!$merge) {
+                $to = $target['location_id'];
+                $in[$to][$id] = $lot;
+                $where[$id] = $to;
+                if ($idx !== null && isset($areaOfLoc[$to])) unset($idx['empty'][$areaOfLoc[$to]][$to]);
+            } elseif ($idx !== null) {
+                unset($idx['ic'][$lot['item_no'] . '|' . $lot['color_id']][$id], $idx['item'][$lot['item_no']][$id], $idx['cat'][$lot['category']][$id]);
+            }
         };
         // Liegt im Kästchen schon etwas, das man mit diesem Lot leicht verwechselt?
         $clash = function (array $lot, int $loc) use (&$in) {
@@ -303,47 +319,64 @@ final class Shop
         foreach ($codes as $id => $c) $byArea[self::areaOf($c)][] = $id;
         foreach ($byArea as &$ids) usort($ids, fn ($a, $b) => strnatcasecmp($codes[$a], $codes[$b]) ?: $a <=> $b);
         unset($ids);
-        $num = fn (int $loc) => preg_match('/(\d+)$/', $codes[$loc] ?? '', $m) ? (int) $m[1] : 0;
+        $numOf = [];
+        foreach ($codes as $id => $c) $numOf[$id] = preg_match('/(\d+)$/', $c, $m) ? (int) $m[1] : 0;
         $box = fn (int $loc, int $qty = 0) => ['location_id' => $loc, 'location_code' => $codes[$loc] ?? '', 'qty' => $qty];
+        // Verzeichnisse für die Zielsuche (bei großem Bestand sonst je Lot das ganze Lager durchsucht): Bereich und Platz je
+        // Kästchen, Lots je Teil+Farbe, je Teil, je Art und leere Kästchen je Bereich. $add hält sie aktuell.
+        $areaOfLoc = $pos = [];
+        foreach ($byArea as $area => $ids) foreach ($ids as $i => $b) { $areaOfLoc[$b] = $area; $pos[$b] = $i; }
+        $idx = ['ic' => [], 'item' => [], 'cat' => [], 'empty' => []];
+        foreach ($in as $b => $lots) foreach ($lots as $id => $x) {
+            $idx['ic'][$x['item_no'] . '|' . $x['color_id']][$id] = $x;
+            $idx['item'][$x['item_no']][$id] = $x;
+            $idx['cat'][$x['category']][$id] = $x;
+        }
+        foreach ($byArea as $area => $ids) foreach ($ids as $b) if (empty($in[$b])) $idx['empty'][$area][$b] = true;
+        // Bester Kandidat: größter Wert, bei Gleichstand das Kästchen weiter vorn (wie das frühere Durchsuchen der Reihe nach)
+        $better = fn (?array $best, int $b, int $v) => $best === null || $v > $best[1] || ($v === $best[1] && $pos[$b] < $pos[$best[0]]);
         // Ziel für ein Lot im Bereich $area (nicht $from): a) gleiches Teil + Farbe (zusammenführen), b) gleiches Teil mit Platz,
         // c) Kästchen nur mit dieser Art und Platz, d) leeres Kästchen mit der nächsten Nummer. Je Stufe: wo am meisten davon liegt.
-        $targetFor = function (array $lot, string $area, int $from, string $steps) use (&$in, $byArea, $codes, $clash, $num, $box) {
-            $boxes = $byArea[$area] ?? [];
+        $targetFor = function (array $lot, string $area, int $from, string $steps) use (&$in, &$where, &$idx, $areaOfLoc, $clash, $numOf, $box, $better) {
+            $here = fn ($b) => $b !== $from && ($areaOfLoc[$b] ?? null) === $area;
             if (str_contains($steps, 'a')) {
                 $best = null;
-                foreach ($boxes as $b) {
-                    if ($b === $from) continue;
-                    foreach ($in[$b] ?? [] as $x) {
-                        if ($x['item_no'] !== $lot['item_no'] || $x['color_id'] !== $lot['color_id']) continue;
-                        if ($best === null || $x['qty'] > $best['qty']) $best = ['loc' => $b, 'qty' => $x['qty']];
-                    }
+                foreach ($idx['ic'][$lot['item_no'] . '|' . $lot['color_id']] ?? [] as $id => $x) {
+                    $b = $where[$id];
+                    if ($here($b) && $better($best, $b, $x['qty'])) $best = [$b, $x['qty']];
                 }
-                if ($best) return [$box($best['loc'], $best['qty']), true];
+                if ($best) return [$box($best[0], $best[1]), true];
             }
-            $pickBy = function (callable $score) use ($boxes, $from, &$in, $lot, $clash) {
+            // Kästchen mit Platz (nicht leer, weniger als SLOT_MAX_LOTS Lots), Wert > 0, nichts Verwechselbares darin
+            $pick = function (array $cands, callable $score) use (&$in, $lot, $clash, $better) {
                 $best = null;
-                foreach ($boxes as $b) {
-                    if ($b === $from || count($in[$b] ?? []) >= SLOT_MAX_LOTS || empty($in[$b])) continue;
+                foreach (array_keys($cands) as $b) {
+                    if (count($in[$b] ?? []) >= SLOT_MAX_LOTS || empty($in[$b])) continue;
                     $v = $score($in[$b]);
                     if ($v <= 0 || $clash($lot, $b)) continue;
-                    if ($best === null || $v > $best[1]) $best = [$b, $v];
+                    if ($better($best, $b, $v)) $best = [$b, $v];
                 }
                 return $best[0] ?? null;
             };
+            $boxesWith = function (array $lots) use (&$where, $here) {
+                $c = [];
+                foreach (array_keys($lots) as $id) if ($here($where[$id])) $c[$where[$id]] = true;
+                return $c;
+            };
             if (str_contains($steps, 'b')) {
-                $b = $pickBy(function ($lots) use ($lot) { $q = 0; foreach ($lots as $x) if ($x['item_no'] === $lot['item_no']) $q += $x['qty']; return $q; });
+                $b = $pick($boxesWith($idx['item'][$lot['item_no']] ?? []), function ($lots) use ($lot) { $q = 0; foreach ($lots as $x) if ($x['item_no'] === $lot['item_no']) $q += $x['qty']; return $q; });
                 if ($b !== null) return [$box($b), false];
             }
             if (str_contains($steps, 'c')) {
-                $b = $pickBy(function ($lots) use ($lot) { foreach ($lots as $x) if ($x['category'] !== $lot['category']) return 0; return count($lots); });
+                $b = $pick($boxesWith($idx['cat'][$lot['category']] ?? []), function ($lots) use ($lot) { foreach ($lots as $x) if ($x['category'] !== $lot['category']) return 0; return count($lots); });
                 if ($b !== null) return [$box($b), false];
             }
             if (str_contains($steps, 'd')) {
                 $best = null;
-                foreach ($boxes as $b) {
-                    if ($b === $from || !empty($in[$b])) continue;
-                    $d = abs($num($b) - $num($from));
-                    if ($best === null || $d < $best[1]) $best = [$b, $d];
+                foreach (array_keys($idx['empty'][$area] ?? []) as $b) {
+                    if ($b === $from) continue;
+                    // nächste Nummer = kleinster Abstand (als negativer Wert, damit „größer ist besser“ gilt)
+                    if ($better($best, $b, -abs($numOf[$b] - ($numOf[$from] ?? 0)))) $best = [$b, -abs($numOf[$b] - ($numOf[$from] ?? 0))];
                 }
                 if ($best) return [$box($best[0]), false];
             }
@@ -395,8 +428,11 @@ final class Shop
                     $lots = array_values($in[$b] ?? []);
                     usort($lots, fn ($x, $y) => $x['id'] <=> $y['id']);
                     $done = true;
-                    foreach ($lots as $i => $x) {
-                        foreach (array_slice($lots, $i + 1) as $y) {
+                    $n = count($lots);
+                    for ($i = 0; $i < $n; $i++) {
+                        $x = $lots[$i];
+                        for ($j = $i + 1; $j < $n; $j++) {
+                            $y = $lots[$j];
                             if (!self::confusable($x, $y)) continue;
                             $mover = $y['qty'] < $x['qty'] || ($y['qty'] === $x['qty']) ? $y : $x;
                             if (isset($moved[$mover['id']])) $mover = $mover === $y ? $x : $y;
@@ -449,25 +485,50 @@ final class Shop
      * (3626b/3626c); gleicher Name bis auf einen Zusatz („Tile 1 x 2“ / „… with Groove“); gleiche Form in ähnlicher Größe
      * (Name gleich bis auf Zahlen, jede höchstens 2 auseinander: Plate 1 x 4 / 1 x 5, Axle 5 / 6).
      */
+    /** Vorbereitete Merkmale je Teil (Art, Nr., Farbe, Name) und Ergebnisse je Paar; suggestions() leert beides. */
+    private static array $confusableCache = [];
+
     public static function confusable(array $a, array $b): bool
     {
-        if (strtoupper((string) ($a['item_type'] ?? 'PART')) !== 'PART' || strtoupper((string) ($b['item_type'] ?? 'PART')) !== 'PART') return false;
-        if ($a['item_no'] === $b['item_no']) {
-            $x = mb_strtolower(trim((string) $a['color_name']));
-            $y = mb_strtolower(trim((string) $b['color_name']));
-            foreach (self::CONFUSABLE_COLORS as [$p, $q]) if (($x === $p && $y === $q) || ($x === $q && $y === $p)) return true;
+        $ka = self::confusableKey($a);
+        $kb = self::confusableKey($b);
+        $pair = $ka < $kb ? "$ka\x1e$kb" : "$kb\x1e$ka";
+        return self::$confusableCache[$pair] ??= self::confusableCheck(self::confusableSig($a, $ka), self::confusableSig($b, $kb));
+    }
+
+    private static function confusableKey(array $l): string
+    {
+        return strtoupper((string) ($l['item_type'] ?? 'PART')) . "\x1f{$l['item_no']}\x1f{$l['color_name']}\x1f{$l['name']}";
+    }
+
+    private static function confusableSig(array $l, string $key): array
+    {
+        if (isset(self::$confusableCache[$key])) return self::$confusableCache[$key];
+        $name = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $l['name'])));
+        preg_match_all('/\d+/', $name, $nums);
+        return self::$confusableCache[$key] = [
+            'part' => strtoupper((string) ($l['item_type'] ?? 'PART')) === 'PART', 'no' => (string) $l['item_no'],
+            'color' => mb_strtolower(trim((string) $l['color_name'])),
+            'base' => preg_match('/^(\d+)[a-z]?$/i', (string) $l['item_no'], $m) ? $m[1] : null,
+            'name' => $name, 'shape' => preg_replace('/\d+/', '#', $name), 'nums' => $nums[0],
+        ];
+    }
+
+    private static function confusableCheck(array $a, array $b): bool
+    {
+        if (!$a['part'] || !$b['part']) return false;
+        if ($a['no'] === $b['no']) {
+            foreach (self::CONFUSABLE_COLORS as [$p, $q]) if (($a['color'] === $p && $b['color'] === $q) || ($a['color'] === $q && $b['color'] === $p)) return true;
             return false;
         }
-        if (preg_match('/^(\d+)[a-z]?$/i', (string) $a['item_no'], $m1) && preg_match('/^(\d+)[a-z]?$/i', (string) $b['item_no'], $m2) && $m1[1] === $m2[1]) return true;
-        $na = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $a['name'])));
-        $nb = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $b['name'])));
+        if ($a['base'] !== null && $b['base'] !== null && $a['base'] === $b['base']) return true;
+        $na = $a['name'];
+        $nb = $b['name'];
         if ($na === '' || $nb === '') return false;
         if (str_starts_with($na, $nb . ' ') || str_starts_with($nb, $na . ' ')) return true;
-        if (preg_replace('/\d+/', '#', $na) !== preg_replace('/\d+/', '#', $nb)) return false;
-        preg_match_all('/\d+/', $na, $xa);
-        preg_match_all('/\d+/', $nb, $xb);
-        if (!$xa[0]) return $na === $nb;
-        foreach ($xa[0] as $i => $v) if (abs((int) $v - (int) $xb[0][$i]) > 2) return false;
+        if ($a['shape'] !== $b['shape']) return false;
+        if (!$a['nums']) return $na === $nb;
+        foreach ($a['nums'] as $i => $v) if (abs((int) $v - (int) $b['nums'][$i]) > 2) return false;
         return true;
     }
 
