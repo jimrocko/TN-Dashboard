@@ -142,6 +142,24 @@
           "text": "Die Kurzhilfe gibt es jetzt auch für Minifig-Finder und Pickliste; das Tutorial erklärt „Fertig gebaut“, „Bereich übernehmen“ und den Weg von einer Meldung zur Zählliste. Zum Abschluss des Tages entstand dieses Handbuch als PDF mit Bildschirmfotos, Inhalts- und Abbildungsverzeichnis sowie das vorliegende Logbuch. Danach kam das Handbuch auch in die App: Es wird beim Bauen als handbuch.pdf neben die App gelegt, und in der Lehrer-Ansicht öffnet der Knopf „Handbuch (PDF)“ es in einem neuen Tab. Teilnehmer sehen den Knopf nicht. Das Lehrer-Tutorial zeigt ihn in einem eigenen Schritt (jetzt 34 Schritte)."
         }
       ]
+    },
+    "2026-11-02": {
+      "kurz": "Bestand aus BrickStore-Datei im Dev-Bereich einlesen (mit Vorschau), Minifig-Finder rechnet mit BSX-Dateien jetzt genau wie der Standalone (Shoppreise), Echtbestand mit neuem Bestand.",
+      "zusammenfassung": "Der Inhaber brachte einen neuen Shop-Bestand als BrickStore-Datei mit und wollte damit den Minifig-Finder testen. Dafür kam ein Weg dazu, den Bestand selbst aus einer Datei zu erneuern. Beim Vergleich mit dem MinifigFinder Standalone zeigte sich ein Unterschied bei Preisen und baubaren Figuren, sobald zusätzliche BSX-Dateien im Spiel sind. Er wurde gefunden und behoben.",
+      "themen": [
+        {
+          "titel": "Bestand aus BrickStore-Datei",
+          "text": "Im Dev-Bereich unter Einstellungen gibt es ein neues Panel, mit dem Lehrkräfte eine BrickStore-Datei (.bsx) als neuen Bestand übernehmen. Nach dem Auswählen zeigt eine Vorschau, wie viele Lots bleiben, neu dazukommen oder entfernt werden und wie viele Kästchen neu angelegt werden. Erst nach einer Rückfrage wird der Bestand ersetzt, genauso wie beim Import aus BrickLink: gleiche Lot-Nummern behalten ihre Einträge, der Lagerort kommt aus den Remarks. Eine Sicherheitsbremse verhindert das Übernehmen einer zu kleinen Datei, und solange eine BrickLink-Übertragung oder ein Figuren-Abschluss läuft, ist das Einlesen gesperrt. Das funktioniert auf dem Server und in der Demo gleich; große Dateien dürfen jetzt bis zu fünf Minuten zum Hochladen brauchen. Mit der Datei des Inhabers (13.695 Lots, 127.617 Teile) dauert das Einlesen gut eine Sekunde."
+        },
+        {
+          "titel": "Gleiche Ergebnisse wie der Standalone",
+          "text": "Der Inhaber bemerkte, dass das TN Dashboard und der MinifigFinder Standalone unterschiedlich viele baubare Figuren und andere Preise anzeigen. Ein Vergleich mit dem Programmcode des Standalone und denselben Daten ergab: Nur mit dem Lager waren beide schon gleich, mit zusätzlichen BSX-Dateien nicht. Der Standalone nimmt die Preise aus allen eingelesenen Beständen als aktuellen Shoppreis, das TN Dashboard nahm nur das Lager. Dadurch fehlten Preise für Fehlteile, und die Reihenfolge im gemeinsamen Bauplan änderte sich. Jetzt kommen die Shoppreise aus denselben Quellen wie die Teile. Mit dem neuen Bestand und zwei BSX-Dateien stimmen alle Listen, Mengen, Preise und Reihenfolgen überein (zusammen baubar 93 Figuren, einzeln 332, ein Teil fehlt 867)."
+        },
+        {
+          "titel": "Echtbestand und Messungen",
+          "text": "Die private Echtbestand-Version wurde mit dem neuen Bestand neu gebaut, diesmal mit den echten BrickLink-Lot-Nummern. Beim Testen fiel auf, dass Startseite und Umlagern-Vorschläge mit dem echten Bestand auf dem Server etwa zehn Sekunden brauchen; das ist als offener Punkt festgehalten."
+        }
+      ]
     }
   },
   "commit_texte": {

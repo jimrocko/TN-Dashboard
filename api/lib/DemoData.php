@@ -35,7 +35,7 @@ final class DemoData
                 q('INSERT INTO {inventory} (item_type, item_no, color_id, color_name, name, category, location_id, qty, price, updated_at,
                    bl_lot_id, bl_condition, bl_inventory_id, new_or_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$p['item_type'], $p['item_no'], $p['color_id'],
                    $p['color_name'], $p['name'], $p['category'], $loc[$p['location']], $p['qty'], $p['price'], $ago($p['updated_days_ago']),
-                   self::DEMO_LOT_BASE + $i, $cond, self::DEMO_LOT_BASE + $i, $cond]);
+                   $p['lot_id'] ?? self::DEMO_LOT_BASE + $i, $cond, $p['lot_id'] ?? self::DEMO_LOT_BASE + $i, $cond]);
                 $lot[$i] = (int) $pdo->lastInsertId();
             }
             foreach ($data['orders'] as $o) {

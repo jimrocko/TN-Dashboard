@@ -231,10 +231,10 @@ final class Minifig
     public static function prices(): array
     {
         // Mengengewichteter Durchschnitt, in PHP gerechnet (gleiche Reihenfolge wie die Datenbank, volle Genauigkeit)
-        $avg = function (string $sql, bool $withColor) {
+        $avg = function (array $rows, bool $withColor) {
             // Summe nach Kahan-Babuška-Neumaier wie SUM() in SQLite (genauer als einfaches Addieren)
             $sum = $err = $qty = [];
-            foreach (q($sql)->fetchAll() as $r) {
+            foreach ($rows as $r) {
                 $k = $withColor ? self::key((string) $r['item_no'], (int) $r['color_id']) : (string) $r['item_no'];
                 $x = (int) $r['qty'] * (float) $r['price'];
                 $s = $sum[$k] ?? 0.0;
@@ -247,10 +247,24 @@ final class Minifig
             foreach ($sum as $k => $s) if ($qty[$k] > 0) $out[$k] = ($s + $err[$k]) / $qty[$k];
             return $out;
         };
-        $partCur = $avg("SELECT item_no, color_id, qty, price FROM {inventory} WHERE UPPER(item_type) = 'PART' AND qty > 0 AND price > 0 ORDER BY id", true);
-        $partHist = $avg("SELECT item_no, color_id, qty, price FROM {order_items} WHERE UPPER(item_type) = 'PART' AND color_id IS NOT NULL AND price > 0 ORDER BY id", true);
-        $figCur = $avg("SELECT item_no, qty, price FROM {inventory} WHERE UPPER(item_type) = 'MINIFIG' AND qty > 0 AND price > 0 ORDER BY id", false);
-        $figHist = $avg("SELECT item_no, qty, price FROM {order_items} WHERE UPPER(item_type) IN ('MINIFIG', 'MINIFIGURE') AND price > 0 ORDER BY id", false);
+        // „Aktueller Shoppreis“ aus denselben Quellen wie der Teilebestand (im Standalone zählen alle aktiven Bestände,
+        // also auch eingelesene BSX-Dateien): Lager zuerst, dann die Dateien in der Reihenfolge des Hochladens
+        $src = self::stockSource();
+        $bsxParts = [];
+        if ($src !== 'bestand') {
+            foreach (q('SELECT items_json FROM {minifig_bsx} ORDER BY id')->fetchAll(PDO::FETCH_COLUMN) as $j) {
+                foreach (json_decode((string) $j, true) ?: [] as $r) {
+                    if ((int) $r['quantity'] > 0 && (float) ($r['price'] ?? 0) > 0) {
+                        $bsxParts[] = ['item_no' => $r['item_no'], 'color_id' => $r['color_id'], 'qty' => $r['quantity'], 'price' => $r['price']];
+                    }
+                }
+            }
+        }
+        $lager = fn (string $sql) => $src === 'bsx' ? [] : q($sql)->fetchAll();
+        $partCur = $avg(array_merge($lager("SELECT item_no, color_id, qty, price FROM {inventory} WHERE UPPER(item_type) = 'PART' AND qty > 0 AND price > 0 ORDER BY id"), $bsxParts), true);
+        $partHist = $avg(q("SELECT item_no, color_id, qty, price FROM {order_items} WHERE UPPER(item_type) = 'PART' AND color_id IS NOT NULL AND price > 0 ORDER BY id")->fetchAll(), true);
+        $figCur = $avg($lager("SELECT item_no, qty, price FROM {inventory} WHERE UPPER(item_type) = 'MINIFIG' AND qty > 0 AND price > 0 ORDER BY id"), false);
+        $figHist = $avg(q("SELECT item_no, qty, price FROM {order_items} WHERE UPPER(item_type) IN ('MINIFIG', 'MINIFIGURE') AND price > 0 ORDER BY id")->fetchAll(), false);
         $guideParts = $guideFigs = [];
         foreach (q("SELECT item_type, item_no, color_id, avg_price FROM {price_guide} WHERE currency = 'EUR' ORDER BY fetched_at ASC")->fetchAll() as $r) {
             $p = (float) $r['avg_price'];

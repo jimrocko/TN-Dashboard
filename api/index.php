@@ -371,6 +371,22 @@ switch (true) {
         ActivityLog::log((int) $staff['id'], 'ollie_import', null, ['lose' => $r['lots'], 'neu' => $r['new'], 'entfernt' => $r['removed']]);
         json_response($r);
 
+    case $route === 'inventory/bsx-import' && $method === 'POST':
+        // Bestand aus einer BrickStore-Datei übernehmen (Dev-Bereich → Einstellungen, nur Lehrer); ?preview=1 zählt nur
+        $staff = require_staff();
+        [$content, $name] = upload_body(64 * 1024 * 1024);
+        $preview = !empty($_GET['preview']);
+        try {
+            $r = BrickLinkSync::importBsx($content, $preview);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 422);
+        }
+        if (!$preview) {
+            ActivityLog::log((int) $staff['id'], 'bsx_import', 'inventar', ['datei' => $name, 'lots' => $r['lots'], 'teile' => $r['parts'],
+                'neu' => $r['new'], 'entfernt' => $r['removed']]);
+        }
+        json_response($r + ['name' => $name]);
+
     case $route === 'ollie/refresh' && $method === 'POST':
         // Wie Ollies Knopf „BrickLink-Inventar“: sein Dashboard lädt neu von BrickLink, danach übernehmen wir den Stand
         $staff = require_staff();

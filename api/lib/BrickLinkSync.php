@@ -216,6 +216,58 @@ final class BrickLinkSync
     }
 
     /**
+     * Bestand aus einer BrickStore-Datei (.bsx) übernehmen (Dev-Bereich → Einstellungen, nur Lehrer).
+     * Ersetzt den Bestand wie der BrickLink-Import: gleiche Lot-Nr. behält ihre ID, was nicht in der Datei steht,
+     * wird entfernt, Lagerort = Remarks. $preview = nur zählen, nichts ändern.
+     */
+    public static function importBsx(string $content, bool $preview): array
+    {
+        self::ensureSchema();
+        [$rows] = Bsx::parse($content);
+        $items = Bsx::toInventory($rows);
+        $have = (int) q('SELECT COUNT(*) FROM {inventory}')->fetchColumn();
+        // Gleiche Sicherheitsbremse wie beim Abgleich mit Ollies Dashboard
+        if ($have >= 100 && count($items) < $have * 0.2) {
+            throw new RuntimeException('Sicherheitsabbruch: Die Datei hat nur ' . count($items) . " Lots, im Lager sind es {$have}. Bestand bleibt unverändert.");
+        }
+        if (self::openExport()) {
+            throw new RuntimeException('Gerade läuft eine BrickLink-Übertragung. Bitte die erst abschließen („Ja, ist eingefügt“ oder „Nein, verwerfen“).');
+        }
+        if (Minifig::buildExportActive()) {
+            throw new RuntimeException('Gerade wird die Sammlung „Fertige Figuren“ im Minifig-Finder hochgeladen. Bitte die erst abschließen.');
+        }
+        $pending = count(self::pending()) + count(self::pendingStocktakes());
+        $parts = array_sum(array_column($items, 'quantity'));
+
+        if ($preview) {
+            $known = array_flip(array_map('intval', q('SELECT bl_lot_id FROM {inventory} WHERE bl_lot_id IS NOT NULL')->fetchAll(PDO::FETCH_COLUMN)));
+            $locs = array_flip(array_map('strtolower', q('SELECT code FROM {locations}')->fetchAll(PDO::FETCH_COLUMN)));
+            $seen = [];
+            $newLocs = [];
+            $new = 0;
+            $noLoc = 0;
+            foreach ($items as $it) {
+                $id = (int) $it['inventory_id'];
+                if (isset($known[$id])) $seen[$id] = true; else $new++;
+                $code = strtolower(substr(trim((string) $it['remarks']), 0, 32));
+                if ($code === '') $noLoc++;
+                elseif (!isset($locs[$code])) $newLocs[$code] = true;
+            }
+            return ['lots' => count($items), 'parts' => $parts, 'new' => $new, 'updated' => count($items) - $new,
+                'removed' => $have - count($seen), 'new_locations' => count($newLocs), 'without_location' => $noLoc,
+                'pending' => $pending, 'current_lots' => $have];
+        }
+
+        // Kategorie aus der Datei, Minifiguren wie beim Abgleich mit Ollies Dashboard als „Minifigur“
+        $stats = self::importItems($items, function (array $it, ?string $old) {
+            if ($it['item']['type'] === 'MINIFIG') return 'Minifigur';
+            $cat = trim((string) ($it['item']['category_name'] ?? ''));
+            return $cat !== '' ? $cat : ($old ?: OllieSync::categoryFromName((string) $it['item']['name'], 'PART'));
+        });
+        return $stats + ['parts' => $parts, 'pending' => $pending];
+    }
+
+    /**
      * Gemeinsamer Abgleich für BrickLink und Ollies Dashboard (OllieSync): $items im Format der BrickLink-API
      * (/inventories), $categoryOf(item, bisherige Kategorie des Lots oder null) liefert die Kategorie.
      */

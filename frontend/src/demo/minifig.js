@@ -194,9 +194,14 @@ function prices(db) {
   const inv = [...db.inventory].sort((a, b) => a.id - b.id)
   const items = db.orders.flatMap((o) => o.items).sort((a, b) => a.id - b.id)
   const up = (v) => String(v ?? '').toUpperCase()
-  const partCur = avg(inv.filter((i) => up(i.item_type) === 'PART' && i.qty > 0 && i.price > 0), true)
+  // „Aktueller Shoppreis“ aus denselben Quellen wie der Teilebestand (wie Minifig::prices): Lager, dann BSX-Dateien nach Hochladen
+  const src = sourceOf(db)
+  const lager = src === 'bsx' ? [] : inv
+  const bsxParts = src === 'bestand' ? [] : [...(mfOf(db).bsx ?? [])].sort((a, b) => a.id - b.id)
+    .flatMap((f) => f.items.filter((r) => r.quantity > 0 && r.price > 0).map((r) => ({ item_no: r.item_no, color_id: r.color_id, qty: r.quantity, price: r.price })))
+  const partCur = avg([...lager.filter((i) => up(i.item_type) === 'PART' && i.qty > 0 && i.price > 0), ...bsxParts], true)
   const partHist = avg(items.filter((x) => up(x.item_type) === 'PART' && x.color_id !== null && x.color_id !== undefined && x.price > 0), true)
-  const figCur = avg(inv.filter((i) => up(i.item_type) === 'MINIFIG' && i.qty > 0 && i.price > 0), false)
+  const figCur = avg(lager.filter((i) => up(i.item_type) === 'MINIFIG' && i.qty > 0 && i.price > 0), false)
   const figHist = avg(items.filter((x) => ['MINIFIG', 'MINIFIGURE'].includes(up(x.item_type)) && x.price > 0), false)
   const guideParts = new Map()
   const guideFigs = new Map()

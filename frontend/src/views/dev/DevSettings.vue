@@ -62,6 +62,32 @@ const appOptions = {
 }
 const appModules = homeModules.filter((m) => appOptions[m.id] || m.status === 'extern')
 
+// Bestand aus einer BrickStore-Datei (.bsx) übernehmen: erst Vorschau (zählt nur), dann nach Rückfrage ersetzen (nur Lehrer).
+const bsxFile = ref(null)
+const bsxPreview = ref(null)
+const bsxBusy = ref(false)
+const bsxForm = () => { const f = new FormData(); f.append('file', bsxFile.value, bsxFile.value.name); return f }
+async function pickBsx(e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f) return
+  bsxFile.value = f
+  bsxPreview.value = null
+  bsxBusy.value = 'preview'
+  err.value = ''
+  try { bsxPreview.value = await api.upload('inventory/bsx-import', bsxForm(), { preview: 1 }) } catch (e2) { err.value = e2.message; bsxFile.value = null } finally { bsxBusy.value = false }
+}
+async function importBsx() {
+  bsxBusy.value = 'import'
+  try {
+    const r = await api.upload('inventory/bsx-import', bsxForm(), {})
+    say(`Bestand aus ${r.name} übernommen: ${num(r.lots)} Lots, ${num(r.parts)} Teile (${num(r.new)} neu, ${num(r.removed)} entfernt, ${num(r.new_locations)} neue Lagerorte).`)
+    bsxFile.value = null
+    bsxPreview.value = null
+  } catch (e) { err.value = e.message } finally { bsxBusy.value = false }
+}
+const cancelBsx = () => { bsxFile.value = null; bsxPreview.value = null }
+
 // Ollies Dashboard auf demselben Rechner: Bestand aus seiner Datenbank übernehmen (nur lesend, kein BrickLink-Abruf).
 const ollie = ref(null)
 const ollieBusy = ref(false)
@@ -161,6 +187,36 @@ async function resetDemoData() {
       </div>
     </section>
 
+    <section class="panel bsx-panel">
+      <div class="panel-head"><h2>Bestand aus BrickStore-Datei</h2><span class="faint small">ersetzt das ganze Lager</span></div>
+      <div class="rows">
+        <div class="row">
+          <div>
+            <div class="k">BrickStore-Datei (.bsx) einlesen</div>
+            <div class="h">Zum Beispiel ein frischer Export aus BrickStore. Die Datei wird der neue Bestand: Lots mit gleicher Lot-Nr. werden aktualisiert, neue kommen hinzu, Lots, die nicht in der Datei stehen, werden entfernt. Lagerort = Remarks, fehlende Kästchen werden angelegt. Danach rechnen Inventar, Umlagern und Minifig-Finder mit dem neuen Stand.</div>
+          </div>
+          <span v-if="!auth.isStaff" class="faint small">nur Lehrer</span>
+          <label v-else class="btn btn-sm" :class="{ disabled: bsxBusy }">
+            {{ bsxBusy === 'preview' ? 'Wird gelesen …' : 'Datei wählen …' }}
+            <input type="file" accept=".bsx,.xml" hidden :disabled="!!bsxBusy" @change="pickBsx" />
+          </label>
+        </div>
+        <div v-if="bsxPreview" class="row bsx-preview">
+          <div>
+            <div class="k">{{ bsxPreview.name }}</div>
+            <div class="h">{{ num(bsxPreview.lots) }} Lots · {{ num(bsxPreview.parts) }} Teile (bisher {{ num(bsxPreview.current_lots) }} Lots).
+              {{ num(bsxPreview.updated) }} bleiben und werden aktualisiert, {{ num(bsxPreview.new) }} kommen neu dazu, {{ num(bsxPreview.removed) }} werden entfernt,
+              {{ num(bsxPreview.new_locations) }} neue Lagerorte<template v-if="bsxPreview.without_location">, {{ num(bsxPreview.without_location) }} Lots ohne Lagerort in den Remarks</template>.</div>
+            <div v-if="bsxPreview.pending" class="h warn">Achtung: {{ num(bsxPreview.pending) }} Umlagerungen oder Inventuren sind noch nicht bei BrickLink eingefügt. Sie gehen verloren, wenn die Datei sie nicht schon enthält.</div>
+          </div>
+          <div class="inline">
+            <button class="btn btn-sm danger" :disabled="!!bsxBusy" @click="importBsx">{{ bsxBusy === 'import' ? 'Wird übernommen …' : 'Ja, Bestand ersetzen' }}</button>
+            <button class="btn btn-sm btn-ghost" :disabled="!!bsxBusy" @click="cancelBsx">Abbrechen</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="panel">
       <div class="panel-head"><h2>Ollies Dashboard</h2><span class="faint small">gleicher Rechner · seine Daten werden nie verändert</span></div>
       <div class="rows">
@@ -246,4 +302,8 @@ async function resetDemoData() {
 .app-head h3 { margin: 0; font-size: 0.98rem; flex: 1; }
 .app-icon { flex: none; }
 .danger { color: var(--danger); border-color: var(--danger); }
+.warn { color: var(--warn); }
+.bsx-preview { background: var(--surface-2); }
+label.btn { cursor: pointer; }
+label.btn.disabled { opacity: 0.6; pointer-events: none; }
 </style>

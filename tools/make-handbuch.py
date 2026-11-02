@@ -586,7 +586,9 @@ p('Der Minifig-Finder findet Minifiguren, die sich aus losen Teilen im Lager bau
 unter('Woher kommen die Teile?')
 p('Oben wählt man die Quelle, die für alle gilt: <b>Nur Lager</b> (der eigene Bestand), <b>Lager + BSX-Dateien</b> (zusätzlich eigene '
   'BrickStore-Dateien, z. B. eine gekaufte Teilekiste) oder <b>Nur BSX-Dateien</b>. Dateien werden mit „BSX-Datei hinzufügen“ hochgeladen. '
-  'Liegt ein Teil im Lager und in einer Datei, legt man fest, was zuerst verbraucht wird und in welcher Reihenfolge die Dateien drankommen.')
+  'Liegt ein Teil im Lager und in einer Datei, legt man fest, was zuerst verbraucht wird und in welcher Reihenfolge die Dateien drankommen. '
+  'Die Preise der Teile in den Dateien zählen wie im MinifigFinder Standalone beim „aktuellen Shoppreis“ mit, wenn ein Teil keinen Preis '
+  'aus dem Preis-Cache hat.')
 abb('minifig', 'Minifig-Finder: Erklärung, Quelle und Ergebnis-Kacheln')
 unter('Die Liste „Figuren“')
 p('Alle Ergebnisse stehen in einer Liste mit Reitern. Die Zahlen-Kacheln oben springen direkt zum passenden Reiter.')
@@ -647,12 +649,15 @@ p('Bucht jemand ein Lot um, prüft der Server, ob Lagerort und Menge noch dem St
   'also immer nur die erste Buchung durch.')
 
 abschnitt('Bestand und Aufträge holen')
-p('In der Lehrer-Ansicht gibt es zwei Wege, Daten von den Plattformen zu holen:')
+p('Es gibt drei Wege, den Bestand zu erneuern. Die ersten beiden stehen in der Lehrer-Ansicht, der dritte im Dev-Bereich:')
 liste([
     '<b>Shop-Daten holen</b>: Bestand und Aufträge von BrickLink und BrickOwl (frühestens alle 10 Minuten). Auftragspositionen werden pro '
     'Auftrag nur einmal geladen.',
     '<b>Lager aus BrickLink übernehmen</b>: alle Lots mit Lot-ID und Lagerort aus den Remarks. Fehlende Lagerorte werden angelegt, Lots, die es '
     'bei BrickLink nicht mehr gibt, entfernt.',
+    '<b>Bestand aus BrickStore-Datei</b> (Dev-Bereich → Einstellungen, nur Lehrkräfte): Eine .bsx-Datei, zum Beispiel ein frischer '
+    'Export aus BrickStore, wird der neue Bestand. Vor dem Übernehmen zeigt eine Vorschau, wie viele Lots bleiben, neu dazukommen oder '
+    'entfernt werden und wie viele Kästchen neu angelegt werden. Ohne BrickLink-Abruf.',
 ])
 hinweis('Vor einem Abruf offene Übertragungen abschließen, sonst überschreibt der Abruf die noch nicht übertragenen Umlagerungen. Als '
         'Sicherung bricht der Import ab, wenn BrickLink keine oder auffällig wenige Lots liefert (unter 20 % des bisherigen Bestands).',
@@ -715,7 +720,7 @@ tabelle(['Reiter', 'Inhalt'], [
     ['Daten', 'alle Tabellen ansehen, blättern, filtern und als JSON kopieren (nur lesen)'],
     ['API', 'Konsole für lesende Aufrufe, die letzten Aufrufe mit Status und Dauer, BrickLink-Artikel abrufen'],
     ['Einstellungen', 'Debug-Anzeige, langsames Netz simulieren, Aufrufe mitschreiben, Cache leeren, Startanimation, '
-                      'Shop-Dashboard-Abgleich und Einstellungen je Bereich (pro Gerät)'],
+                      'Bestand aus BrickStore-Datei einlesen (nur Lehrkräfte), Shop-Dashboard-Abgleich und Einstellungen je Bereich (pro Gerät)'],
 ], [3, 13], 'Reiter des Dev-Bereichs')
 abb('dev', 'Dev-Bereich, Reiter „System“')
 abb('dev-tests', 'Dev-Bereich, Reiter „Tests“')

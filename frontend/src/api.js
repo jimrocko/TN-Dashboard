@@ -70,7 +70,7 @@ async function request(method, route, opts = {}) {
   }
 }
 
-async function send(method, route, { body, params, form } = {}) {
+async function send(method, route, { body, params, form, timeout } = {}) {
   if (IS_DEMO) {
     // Kurz Luft lassen, damit eine Ladeanzeige gezeichnet wird, bevor das Demo-Backend länger rechnet
     await new Promise((r) => setTimeout(r, 0))
@@ -82,7 +82,7 @@ async function send(method, route, { body, params, form } = {}) {
   }
   let res
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => ctrl.abort(), timeout ?? TIMEOUT_MS)
   try {
     res = await fetch(apiUrl(route, params), {
       method,
@@ -114,7 +114,8 @@ export const api = {
   /** label: kurze Beschreibung, falls die Aktion offline warten muss und später abgelehnt wird (z. B. „3001 Rot, G245“). */
   post: (route, body, label) => request('POST', route, { body, label }),
   /** Datei-Upload als multipart/form-data, z. B. ein Foto für die Teileerkennung. */
-  upload: (route, form, params) => request('POST', route, { form, params }),
+  // Hochladen großer Dateien (Bestand, Figurenkatalog) darf länger dauern als normale Abrufe
+  upload: (route, form, params) => request('POST', route, { form, params, timeout: 5 * 60 * 1000 }),
   /** Datei einer Route herunterladen (CSV, BrickStore, ZIP): Server liefert sie direkt, die Demo erzeugt sie im Browser. */
   async download(route, params = {}) {
     if (!IS_DEMO) {

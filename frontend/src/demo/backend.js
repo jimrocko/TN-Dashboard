@@ -275,6 +275,20 @@ function dispatch(db, method, route, params, body) {
   }
   const countResult = counting.route(db, method, parts, body, () => requireUser(db), (...a) => log(db, ...a))
   if (countResult !== undefined) return countResult
+  if (method === 'POST' && parts[0] === 'inventory' && parts[1] === 'bsx-import') {
+    // Bestand aus einer BrickStore-Datei übernehmen (wie BrickLinkSync::importBsx, nur Lehrer)
+    const me = requireUser(db)
+    if (!isStaff(me)) throw new DemoError('Nur für Lehrer', 403)
+    const f = body?.get?.('file')
+    if (!f) throw new DemoError('Keine Datei übertragen', 400)
+    const preview = !!Number(params.preview)
+    return f.text().then((text) => {
+      let r
+      try { r = shop.importBsx(db, text, preview, minifig.buildExportActive(db)) } catch (e) { throw e instanceof DemoError ? e : new DemoError(e.message, 422) }
+      if (!preview) log(db, me.id, 'bsx_import', 'inventar', { datei: f.name, lots: r.lots, teile: r.parts, neu: r.new, entfernt: r.removed })
+      return { ...r, name: f.name }
+    })
+  }
   const result = shop.route(db, method, parts, params, body, () => requireUser(db), (...a) => log(db, ...a))
   if (result !== undefined) return result
   if (method === 'GET' && parts[0] === 'bl' && parts[1] === 'item') {

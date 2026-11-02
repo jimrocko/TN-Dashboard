@@ -2,6 +2,8 @@
 import { markDone, openRequests } from './counting.js'
 import { DemoError, now } from './backend.js'
 import { isMixedBox } from '../utils/areas.js'
+import { parseBsx } from '../utils/files.js'
+import { htmlText } from '../utils/format.js'
 
 const ORDER_STATUSES = ['Neu', 'Bezahlt', 'Verpackt', 'Versandt', 'Abgeschlossen']
 const ORDER_ACTIVE = ['Neu', 'Bezahlt', 'Verpackt']
@@ -46,7 +48,8 @@ export function seedData(seed) {
     name: p.name, category: p.category, location_id: locId[p.location], qty: p.qty, price: p.price,
     new_or_used: p.new_or_used ?? conditionFor(p.location), description: null, updated_at: ago(p.updated_days_ago),
     // Erfundene BrickLink-Lot-IDs, gleiche Rechnung wie api/lib/DemoData.php (bl_inventory_id = bl_lot_id, new_or_used = bl_condition)
-    bl_lot_id: DEMO_LOT_BASE + i, bl_inventory_id: DEMO_LOT_BASE + i, bl_condition: p.new_or_used ?? conditionFor(p.location),
+    // lot_id nur in privaten Builds mit echtem Bestand (echte BrickLink-Lot-Nr.)
+    bl_lot_id: p.lot_id ?? DEMO_LOT_BASE + i, bl_inventory_id: p.lot_id ?? DEMO_LOT_BASE + i, bl_condition: p.new_or_used ?? conditionFor(p.location),
   }))
   let itemId = 1
   const orders = seed.orders.map((o, i) => {
@@ -623,6 +626,90 @@ function analysis(db) {
 }
 
 /** Liefert die Antwort für Shop-Routen oder undefined, wenn die Route nicht hierher gehört. */
+const BSX_TYPES = { P: 'PART', M: 'MINIFIG', S: 'SET', B: 'BOOK', G: 'GEAR', C: 'CATALOG', I: 'INSTRUCTION', O: 'ORIGINAL_BOX' }
+const AREA_NAMES = { G: 'Gebraucht', H: 'Regal H', N: 'Neu', FG: 'Figuren gebraucht', FN: 'Figuren neu', FT: 'Figurenteile', PLATE: 'Plates' }
+
+/** Bestand aus einer BrickStore-Datei übernehmen (wie BrickLinkSync::importBsx + importItems); preview = nur zählen. */
+export function importBsx(db, text, preview, figuresUploading) {
+  const [rows] = parseBsx(text)
+  // wie Bsx::toInventory
+  const items = rows.map((r, n) => ({
+    lot_id: r.lot_id ?? 900000000 + n, type: BSX_TYPES[r.item_type.toUpperCase()] ?? r.item_type.toUpperCase(), no: r.item_no,
+    name: r.item_name, category_name: r.category_name ?? '', color_id: Math.max(0, r.color_id), color_name: r.color_name, qty: r.quantity,
+    price: r.price, cond: r.condition === 'N' ? 'N' : 'U', code: (r.remarks ?? '').trim().slice(0, 32),
+  }))
+  const have = db.inventory.length
+  if (have >= 100 && items.length < have * 0.2) {
+    throw new DemoError(`Sicherheitsabbruch: Die Datei hat nur ${items.length} Lots, im Lager sind es ${have}. Bestand bleibt unverändert.`, 422)
+  }
+  if ((db.blExports ?? []).some((x) => x.open)) {
+    throw new DemoError('Gerade läuft eine BrickLink-Übertragung. Bitte die erst abschließen („Ja, ist eingefügt“ oder „Nein, verwerfen“).', 422)
+  }
+  if (figuresUploading) throw new DemoError('Gerade wird die Sammlung „Fertige Figuren“ im Minifig-Finder hochgeladen. Bitte die erst abschließen.', 422)
+  const pending = db.transfers.filter((t) => !t.bl_done_at && t.bl_changes).length + db.stocktakes.filter((s) => !s.bl_done_at && s.bl_changes).length
+  const parts = items.reduce((s, i) => s + i.qty, 0)
+  const known = new Map(db.inventory.filter((i) => i.bl_lot_id != null).map((i) => [Number(i.bl_lot_id), i]))
+  const locs = new Map(db.locations.map((l) => [l.code.toLowerCase(), l]))
+  if (preview) {
+    const seen = new Set()
+    const newLocs = new Set()
+    let neu = 0
+    let noLoc = 0
+    for (const it of items) {
+      if (known.has(it.lot_id)) seen.add(it.lot_id); else neu++
+      const c = it.code.toLowerCase()
+      if (!c) noLoc++
+      else if (!locs.has(c)) newLocs.add(c)
+    }
+    return { lots: items.length, parts, new: neu, updated: items.length - neu, removed: have - seen.size, new_locations: newLocs.size,
+      without_location: noLoc, pending, current_lots: have }
+  }
+  const t = now()
+  const stats = { lots: 0, new: 0, updated: 0, removed: 0, new_locations: 0, without_location: 0 }
+  const keep = new Set()
+  let nextLoc = Math.max(0, ...db.locations.map((l) => l.id)) + 1
+  for (const it of items) {
+    let locId = null
+    if (!it.code) stats.without_location++
+    else if (locs.has(it.code.toLowerCase())) locId = locs.get(it.code.toLowerCase()).id
+    else {
+      const area = areaOf(it.code)
+      const l = { id: nextLoc++, code: it.code, name: AREA_NAMES[area] ? `${AREA_NAMES[area]}, Kästchen ${it.code.slice(area.length)}` : it.code, kind: 'regal' }
+      db.locations.push(l)
+      locs.set(it.code.toLowerCase(), l)
+      locId = l.id
+      stats.new_locations++
+    }
+    const old = known.get(it.lot_id)
+    const cat = it.type === 'MINIFIG' ? 'Minifigur' : (it.category_name.trim() || old?.category || categoryFromName(htmlText(it.name)))
+    const vals = { item_type: it.type, item_no: it.no, color_id: it.color_id, color_name: it.color_name, name: htmlText(it.name), category: cat,
+      location_id: locId, qty: it.qty, price: it.price, bl_condition: it.cond, new_or_used: it.cond, updated_at: t, bl_inventory_id: it.lot_id }
+    if (old) {
+      Object.assign(old, vals)
+      keep.add(old.id)
+      stats.updated++
+    } else {
+      const lot = { id: db.nextLot++, ...vals, description: null, bl_lot_id: it.lot_id }
+      db.inventory.push(lot)
+      keep.add(lot.id)
+      stats.new++
+    }
+    stats.lots++
+  }
+  stats.removed = db.inventory.filter((i) => !keep.has(i.id)).length
+  db.inventory = db.inventory.filter((i) => keep.has(i.id))
+  for (const x of db.transfers) if (!x.bl_done_at && x.bl_changes) x.bl_done_at = t
+  for (const x of db.stocktakes) if (!x.bl_done_at && x.bl_changes) x.bl_done_at = t
+  for (const e of db.blExports ?? []) if (e.open) Object.assign(e, { open: false, closed_at: t, state: 'verworfen' })
+  return { ...stats, parts, pending }
+}
+
+/** „Plate, Round 1 x 1“ → „Plate, Round“ (wie OllieSync::categoryFromName) */
+function categoryFromName(name) {
+  const head = name.split(/\d/, 1)[0].replace(/^[ ,-]+|[ ,-]+$/g, '')
+  return head && [...head].length <= 30 ? head : 'Sonstiges'
+}
+
 export function route(db, method, parts, params, body, requireUser, log) {
   const [a, b, c] = parts
   const id = Number(b)
