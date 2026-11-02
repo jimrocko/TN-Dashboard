@@ -295,7 +295,7 @@ const letter = ref(false)
           <span v-if="g.owner" class="claim-name">{{ g.name }}</span>
           <div v-for="[x, i] in g.rows" :key="x.id" class="row" :class="rowClass(x, i)" role="button" tabindex="0"
             :aria-pressed="x.picked" @click="tap(x)" @keydown.enter.prevent="tap(x)">
-            <button class="imgbtn" title="Bild vergrößern" @click.stop="imageFor = x"><PartImage :no="x.item_no" :color="x.color_id" :type="x.item_type" :src="x.image_url" :size="60" /></button>
+            <button class="imgbtn" title="Bild vergrößern" @click.stop="imageFor = x"><PartImage :no="x.item_no" :color="x.color_id" :type="x.item_type" :src="x.image_url" :size="60" no-zoom /></button>
             <div class="desc">
               <div class="name">{{ x.item_name || x.item_no }}</div>
               <div class="meta small">
@@ -341,7 +341,7 @@ const letter = ref(false)
     </TnDialog>
 
     <TnDialog v-if="imageFor" :title="imageFor.item_name || imageFor.item_no" @close="imageFor = null">
-      <div class="bigimg"><PartImage :no="imageFor.item_no" :color="imageFor.color_id" :type="imageFor.item_type" :src="imageFor.image_url" :size="240" /></div>
+      <div class="bigimg"><PartImage :no="imageFor.item_no" :color="imageFor.color_id" :type="imageFor.item_type" :src="imageFor.image_url" :size="240" no-zoom /></div>
       <div class="info">
         <div><span class="faint small">Teil-Nr.</span><span class="mono">{{ imageFor.item_no }}</span></div>
         <div><span class="faint small">Zustand</span>{{ imageFor.condition || '–' }}</div>

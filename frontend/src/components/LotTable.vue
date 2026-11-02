@@ -20,7 +20,7 @@ const router = useRouter()
       </thead>
       <tbody>
         <tr v-for="i in items" :key="i.id" class="clickable" @click="router.push(`/teil/${i.item_no}`)">
-          <td class="imgcell"><PartImage :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="36" /></td>
+          <td class="imgcell"><PartImage :name="i.name ?? i.item_name" :color-name="i.color_name" :no="i.item_no" :color="i.color_id" :type="i.item_type" :size="36" /></td>
           <td class="mono"><RouterLink :to="`/teil/${i.item_no}`" @click.stop>{{ i.item_no }}</RouterLink></td>
           <td>{{ i.name }}</td>
           <td class="nowrap"><ColorSwatch :name="i.color_name" /></td>

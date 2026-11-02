@@ -361,7 +361,9 @@ liste([
 abschnitt('Grundprinzipien')
 liste([
     '<b>Alles ist anklickbar.</b> Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nummer die Teile-Seite, jeder Balken in der '
-    'Analyse die passende Liste.',
+    'Analyse die passende Liste. Jedes Teile- und Figurenbild öffnet beim Antippen eine Großansicht mit Nummer, Name und den '
+    'Knöpfen „Teile-Seite öffnen“ und „Bei BrickLink ansehen“; im Minifig-Finder klappt ein Tipp auf Nummer oder Name der Figur '
+    'die Teileliste auf.',
     '<b>Daten aus der eigenen Datenbank.</b> Die App rechnet immer mit den Daten auf dem Server. Externe Dienste wie BrickLink '
     'werden nur auf Knopfdruck abgefragt; die Antworten werden gespeichert. Das spart Kosten und schont die Tageslimits.',
     '<b>Die App schreibt nie selbst zu BrickLink.</b> Änderungen am Bestand werden als Datei bereitgestellt und von einer Person im '

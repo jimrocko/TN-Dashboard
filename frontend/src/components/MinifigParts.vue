@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ExternalLink } from 'lucide-vue-next'
 import LocationTag from './LocationTag.vue'
 import PartImage from './PartImage.vue'
@@ -10,7 +10,11 @@ import { htmlText } from '../utils/format'
 // Gleiche Teile (Teil + Farbe) werden zusammengefasst: „je Figur 2× · für 3 Figuren 6×“.
 // upTo = einzeln gerechnet so oft baubar (Reiter „Einzeln baubar“ und „Alle“): zeigt zusätzlich die Menge für alle diese Figuren.
 const props = defineProps({ row: Object, open: Boolean, copies: { type: Number, default: 1 }, upTo: { type: Number, default: 0 } })
+// open: von außen steuerbar (Tipp auf Figurennummer/-name in der Liste klappt auf und zu)
+const emit = defineEmits(['update:open'])
 const shown = ref(props.open)
+watch(() => props.open, (v) => { shown.value = v })
+const toggled = (v) => { shown.value = v; if (v !== props.open) emit('update:open', v) }
 
 const parts = computed(() => {
   const m = new Map()
@@ -34,16 +38,16 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 </script>
 
 <template>
-  <details class="figdetails" :open="shown" @toggle="shown = $event.target.open">
+  <details class="figdetails" :open="shown" @toggle="toggled($event.target.open)">
     <summary>{{ (row.missing ?? []).length ? 'Bild, Fehlteil & Lagerorte' : 'Teile & Lagerorte' }} <span class="faint">({{ parts.length }})</span></summary>
     <div v-if="shown" class="wrap">
       <div class="fig">
-        <PartImage :no="row.minifig_no" type="MINIFIG" :src="row.image_url" :size="110" eager />
+        <PartImage :no="row.minifig_no" type="MINIFIG" :src="row.image_url" :size="110" eager :name="row.name" />
         <a v-if="row.catalog_url" :href="row.catalog_url" target="_blank" rel="noopener" class="small">BrickLink-Katalog <ExternalLink :size="12" /></a>
       </div>
       <div class="parts">
         <div v-for="(p, i) in parts" :key="i" class="part" :class="{ missing: p.shortfall > 0 }">
-          <PartImage :no="p.item_no" :color="p.color_id" :size="40" eager />
+          <PartImage :name="p.name ?? p.item_name" :color-name="p.color_name" :no="p.item_no" :color="p.color_id" :size="40" eager />
           <div class="pinfo">
             <div>
               <RouterLink class="mono" :to="`/teil/${encodeURIComponent(p.item_no)}`">{{ p.item_no }}</RouterLink>

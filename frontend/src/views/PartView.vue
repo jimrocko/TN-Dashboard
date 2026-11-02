@@ -68,7 +68,7 @@ const pct = (s) => `${Math.round(s * 100)} %`
 
     <div class="top">
       <section class="panel imgpanel">
-        <PartImage :no="route.params.no" :type="part?.item_type" :src="scan?.hit.img_url" :size="200" />
+        <PartImage :no="route.params.no" :type="part?.item_type" :src="scan?.hit.img_url" :size="200" :name="title" />
         <div v-if="scan" class="small center">
           Erkannt mit <strong>{{ pct(scan.hit.score) }}</strong> Sicherheit
         </div>
@@ -97,7 +97,7 @@ const pct = (s) => `${Math.round(s * 100)} %`
           <tbody>
             <template v-for="g in byColor" :key="g.color_id">
               <tr v-for="(l, i) in g.lots" :key="l.id">
-                <td v-if="i === 0" :rowspan="g.lots.length" class="tcell"><PartImage :no="route.params.no" :color="g.color_id" :type="part?.item_type" :size="40" /></td>
+                <td v-if="i === 0" :rowspan="g.lots.length" class="tcell"><PartImage :no="route.params.no" :color="g.color_id" :type="part?.item_type" :size="40" :name="title" :color-name="g.color_name" /></td>
                 <td v-if="i === 0" :rowspan="g.lots.length" class="nowrap"><ColorSwatch :name="g.color_name" /></td>
                 <td><LocationTag :code="l.location_code" :kind="l.location_kind" /></td>
                 <td class="num strong">{{ num(l.qty) }}</td>
@@ -152,7 +152,7 @@ const pct = (s) => `${Math.round(s * 100)} %`
       <div class="panel-head"><h2>Doch ein anderes Teil?</h2><span class="faint small">weitere Möglichkeiten der Erkennung</span></div>
       <div class="alts">
         <RouterLink v-for="o in scan.others" :key="o.type + o.id" class="alt" :to="{ path: `/teil/${o.id}`, query: { scan: '1', t: route.query.t } }">
-          <PartImage :no="o.id" :src="o.img_url" :size="56" />
+          <PartImage :no="o.id" :src="o.img_url" :size="56" no-zoom />
           <span class="mono">{{ o.id }}</span>
           <span class="small muted name">{{ o.name }}</span>
           <span class="small faint">{{ pct(o.score) }} · {{ o.lots.length ? `${num(o.lots.reduce((s, l) => s + l.qty, 0))} bei uns` : 'nicht im Lager' }}</span>

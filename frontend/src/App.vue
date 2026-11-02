@@ -8,6 +8,7 @@ import DebugOverlay from './components/DebugOverlay.vue'
 import PageLoading from './components/PageLoading.vue'
 import BootAnimation from './components/BootAnimation.vue'
 import OfflineBar from './components/OfflineBar.vue'
+import ImageZoom from './components/ImageZoom.vue'
 import { setOfflineUser } from './utils/offline'
 import { useAuth } from './stores/auth'
 import { boot, bootOnStart, closeBoot } from './utils/boot'
@@ -47,6 +48,7 @@ watch(() => route.path, () => closeHelp())
   <PageLoading v-if="chrome" />
   <Coach v-if="IS_TUTORIAL" />
   <Coach v-else-if="help.topic" :key="help.run" :help="helpSteps(help.topic)" @close="closeHelp" />
+  <ImageZoom />
   <BootAnimation v-if="boot.show" :key="boot.run" @done="closeBoot" />
 </template>
 

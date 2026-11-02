@@ -34,7 +34,7 @@ Im Lego-Shop der Schule arbeiten die Teilnehmer mit BrickLink, BrickStore und vi
 Auf dem Home-Bildschirm (Safari → Teilen → „Zum Home-Bildschirm“) erscheint das App-Icon: der Lego-Stein des TN Dashboards, für die App auf dem Schulserver genauso wie für die Demo. Beim Tutorial winkt zusätzlich Klemmi unten rechts aus der Ecke.
 <br clear="left">
 
-Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren. Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale.
+Jede Aktion wird pro Teilnehmer protokolliert. Der Lehrer sieht so jederzeit, wer was gemacht hat, und kann es als CSV exportieren. Alles ist anklickbar: Jeder Lagerort öffnet seine Lagerort-Seite, jede Teil-Nr. die Teile-Seite, jeder Auftrag die Auftragszentrale. Jedes Bild lässt sich antippen und groß ansehen, mit Link zur Teile-Seite und zu BrickLink.
 
 ## Startseite und Suche
 
