@@ -16,6 +16,22 @@ const ago = (days) => fmt(new Date(Date.now() - days * 86400000 - Math.floor(Mat
 const like = (v, term) => String(v ?? '').toLowerCase().includes(term.toLowerCase())
 // Natürliche Reihenfolge für Lagerort-Codes: N4 vor N150, Plate2 vor Plate10
 const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'de', { numeric: true })
+/** Kästchen-Codes für die Umlagerungsvorschläge vergleichen, gleich wie Shop::codeCmp (Zahlen nach Wert, ohne Groß-/Kleinschreibung) */
+export function codeCmp(a, b) {
+  const x = String(a ?? '').toLowerCase().match(/\d+|\D+/g) ?? []
+  const y = String(b ?? '').toLowerCase().match(/\d+|\D+/g) ?? []
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    let p = x[i]
+    let q = y[i]
+    if (/^\d/.test(p) && /^\d/.test(q)) {
+      p = p.replace(/^0+/, '')
+      q = q.replace(/^0+/, '')
+      if (p.length !== q.length) return p.length < q.length ? -1 : 1
+    }
+    if (p !== q) return p < q ? -1 : 1
+  }
+  return x.length === y.length ? 0 : x.length < y.length ? -1 : 1
+}
 const round = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d
 
 const DEMO_LOT_BASE = 300000001
@@ -119,7 +135,7 @@ export function dashboard(db) {
       value: round(db.inventory.reduce((s, i) => s + i.qty * i.price, 0)),
     },
     auftraege: { active: db.orders.filter((o) => ORDER_ACTIVE.includes(o.status)).length },
-    umlagern: { suggestions: suggestions(db).length },
+    umlagern: { suggestions: suggestionCount(db) },
     inventur: { open: db.stocktakes.filter((s) => s.status === 'offen').length },
     analyse: { last_run: new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) },
     lagerorte: { count: db.locations.length },
@@ -199,6 +215,22 @@ const byteCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
  *  7. 'trennen' – Verwechselbares im selben Kästchen → das kleinere Lot woandershin
  * Nie in ein Kästchen mit etwas Verwechselbarem (confusable).
  */
+// Anzahl offener Vorschläge für die Startseite, gemerkt solange sich Bestand und Lagerorte nicht ändern (wie Shop::suggestionCount;
+// hier nur im Arbeitsspeicher, damit der Browser-Speicher nicht wächst)
+let suggestionCache = null
+function inventoryPrint(db) {
+  let qty = 0, maxId = 0, maxAt = '', mix = 0
+  for (const i of db.inventory) { qty += i.qty; maxId = Math.max(maxId, i.id); if (i.updated_at > maxAt) maxAt = i.updated_at; mix += i.id * (i.location_id ?? 0) }
+  return `${db.inventory.length}|${qty}|${maxId}|${maxAt}|${mix}|${db.locations.length}|${Math.max(0, ...db.locations.map((l) => l.id))}`
+}
+function suggestionCount(db, known) {
+  const fp = inventoryPrint(db)
+  if (known === undefined && suggestionCache?.db === db && suggestionCache.fp === fp) return suggestionCache.n
+  const n = known ?? suggestions(db).length
+  suggestionCache = { db, fp, n }
+  return n
+}
+
 function suggestions(db) {
   const all = db.inventory.map((i) => lotRow(db, i)).filter((l) => l.location_code).sort((a, b) => a.id - b.id)
   const out = []
@@ -206,14 +238,42 @@ function suggestions(db) {
   // Geplanter Inhalt je Kästchen (wie $in in Shop::suggestions): location_id → Map(Lot-ID → Lot)
   const inBox = new Map()
   for (const l of all) { if (!inBox.has(l.location_id)) inBox.set(l.location_id, new Map()); inBox.get(l.location_id).set(l.id, l) }
+  // Lot-ID → Kästchen im geplanten Inhalt; Verzeichnisse für die Zielsuche ab Schritt 4 (wie $where/$idx in Shop::suggestions)
+  const where = new Map(all.map((l) => [l.id, l.location_id]))
+  let idx = null
+  let areaOfLoc = new Map()
+  // Verwechselbar? Merkmale je Lot einmal vorbereitet, Ergebnis je Lot-Paar gemerkt (wie $conf in Shop::suggestions)
+  const sigs = new Map()
+  const pairs = new Map()
+  const sigOf = (x) => { let s = sigs.get(x.id); if (!s) { s = confusableSig(x); sigs.set(x.id, s) } return s }
+  const conf = (x, y) => {
+    const k = x.id < y.id ? `${x.id}:${y.id}` : `${y.id}:${x.id}`
+    let r = pairs.get(k)
+    if (r === undefined) { r = confusableCheck(sigOf(x), sigOf(y)); pairs.set(k, r) }
+    return r
+  }
   const add = (lot, t, reason, extra = {}, merge = false) => {
     out.push({ lot, to_location_id: t.location_id, to_location_code: t.location_code, target_qty: t.qty, reason, ...extra })
     moved.add(lot.id)
-    for (const m of inBox.values()) m.delete(lot.id)
-    if (!merge) { if (!inBox.has(t.location_id)) inBox.set(t.location_id, new Map()); inBox.get(t.location_id).set(lot.id, lot) }
+    const from = where.get(lot.id)
+    if (from !== undefined) {
+      inBox.get(from)?.delete(lot.id)
+      where.delete(lot.id)
+      if (idx && !inBox.get(from)?.size && areaOfLoc.has(from)) idx.empty.get(areaOfLoc.get(from)).add(from)
+    }
+    if (!merge) {
+      if (!inBox.has(t.location_id)) inBox.set(t.location_id, new Map())
+      inBox.get(t.location_id).set(lot.id, lot)
+      where.set(lot.id, t.location_id)
+      if (idx && areaOfLoc.has(t.location_id)) idx.empty.get(areaOfLoc.get(t.location_id))?.delete(t.location_id)
+    } else if (idx) {
+      idx.ic.get(`${lot.item_no}|${lot.color_id}`)?.delete(lot.id)
+      idx.item.get(lot.item_no)?.delete(lot.id)
+      idx.cat.get(lot.category)?.delete(lot.id)
+    }
   }
-  const clash = (lot, loc) => [...(inBox.get(loc)?.values() ?? [])].some((x) => x.id !== lot.id && confusable(lot, x))
-  const cmpCode = (a, b) => natural(a.location_code, b.location_code) || a.id - b.id
+  const clash = (lot, loc) => { for (const x of inBox.get(loc)?.values() ?? []) if (x.id !== lot.id && conf(lot, x)) return true; return false }
+  const cmpCode = (a, b) => codeCmp(a.location_code, b.location_code) || a.id - b.id
 
   // 1. Falsch einsortiert
   const byCombo = new Map()
@@ -327,49 +387,61 @@ function suggestions(db) {
   const codes = new Map([...db.locations].sort((a, b) => a.id - b.id).map((l) => [l.id, l.code]))
   const byArea = new Map()
   for (const [id, c] of codes) { const a = areaOf(c); if (!byArea.has(a)) byArea.set(a, []); byArea.get(a).push(id) }
-  for (const ids of byArea.values()) ids.sort((a, b) => natural(codes.get(a), codes.get(b)) || a - b)
+  for (const ids of byArea.values()) ids.sort((a, b) => codeCmp(codes.get(a), codes.get(b)) || a - b)
   const areaOrder = [...byArea.keys()] // Reihenfolge wie PHP: Bereiche in der Reihenfolge, in der sie unter den Lagerorten auftauchen
   const num = (loc) => Number(/(\d+)$/.exec(codes.get(loc) ?? '')?.[1] ?? 0)
   const box = (loc, qty = 0) => ({ location_id: loc, location_code: codes.get(loc) ?? '', qty })
   const lotsIn = (b) => [...(inBox.get(b)?.values() ?? [])]
+  const numOf = new Map([...codes].map(([id, c]) => [id, num(id)]))
+  const pos = new Map()
+  areaOfLoc = new Map()
+  for (const [area, ids] of byArea) ids.forEach((b, i) => { areaOfLoc.set(b, area); pos.set(b, i) })
+  const put = (m, k, id, x) => { if (!m.has(k)) m.set(k, new Map()); m.get(k).set(id, x) }
+  idx = { ic: new Map(), item: new Map(), cat: new Map(), empty: new Map() }
+  for (const lots of inBox.values()) for (const [id, x] of lots) {
+    put(idx.ic, `${x.item_no}|${x.color_id}`, id, x)
+    put(idx.item, x.item_no, id, x)
+    put(idx.cat, x.category, id, x)
+  }
+  for (const [area, ids] of byArea) idx.empty.set(area, new Set(ids.filter((b) => !inBox.get(b)?.size)))
+  // Bester Kandidat: größter Wert, bei Gleichstand das Kästchen weiter vorn (wie früher beim Durchsuchen der Reihe nach)
+  const better = (best, b, v) => best === null || v > best[1] || (v === best[1] && pos.get(b) < pos.get(best[0]))
   const targetFor = (lot, area, from, steps) => {
-    const boxes = byArea.get(area) ?? []
+    const here = (b) => b !== from && areaOfLoc.get(b) === area
     if (steps.includes('a')) {
       let best = null
-      for (const b of boxes) {
-        if (b === from) continue
-        for (const x of lotsIn(b)) {
-          if (x.item_no !== lot.item_no || x.color_id !== lot.color_id) continue
-          if (best === null || x.qty > best.qty) best = { loc: b, qty: x.qty }
-        }
+      for (const [id, x] of idx.ic.get(`${lot.item_no}|${lot.color_id}`) ?? []) {
+        const b = where.get(id)
+        if (here(b) && better(best, b, x.qty)) best = [b, x.qty]
       }
-      if (best) return [box(best.loc, best.qty), true]
+      if (best) return [box(best[0], best[1]), true]
     }
-    const pickBy = (score) => {
+    const boxesWith = (lots) => new Set([...(lots?.keys() ?? [])].map((id) => where.get(id)).filter(here))
+    const pick = (cands, score) => {
       let best = null
-      for (const b of boxes) {
+      for (const b of cands) {
         const lots = lotsIn(b)
-        if (b === from || lots.length >= SLOT_MAX_LOTS || !lots.length) continue
+        if (lots.length >= SLOT_MAX_LOTS || !lots.length) continue
         const v = score(lots)
         if (v <= 0 || clash(lot, b)) continue
-        if (best === null || v > best[1]) best = [b, v]
+        if (better(best, b, v)) best = [b, v]
       }
       return best?.[0] ?? null
     }
     if (steps.includes('b')) {
-      const b = pickBy((lots) => lots.reduce((q, x) => q + (x.item_no === lot.item_no ? x.qty : 0), 0))
+      const b = pick(boxesWith(idx.item.get(lot.item_no)), (lots) => lots.reduce((q, x) => q + (x.item_no === lot.item_no ? x.qty : 0), 0))
       if (b !== null) return [box(b), false]
     }
     if (steps.includes('c')) {
-      const b = pickBy((lots) => (lots.every((x) => x.category === lot.category) ? lots.length : 0))
+      const b = pick(boxesWith(idx.cat.get(lot.category)), (lots) => (lots.every((x) => x.category === lot.category) ? lots.length : 0))
       if (b !== null) return [box(b), false]
     }
     if (steps.includes('d')) {
       let best = null
-      for (const b of boxes) {
-        if (b === from || lotsIn(b).length) continue
-        const d = Math.abs(num(b) - num(from))
-        if (best === null || d < best[1]) best = [b, d]
+      for (const b of idx.empty.get(area) ?? []) {
+        if (b === from) continue
+        const d = -Math.abs(numOf.get(b) - (numOf.get(from) ?? 0))
+        if (better(best, b, d)) best = [b, d]
       }
       if (best) return [box(best[0]), false]
     }
@@ -417,9 +489,10 @@ function suggestions(db) {
         const lots = lotsIn(b).sort((x, y) => x.id - y.id)
         let done = true
         outer: for (let i = 0; i < lots.length; i++) {
-          for (const y of lots.slice(i + 1)) {
-            const x = lots[i]
-            if (!confusable(x, y)) continue
+          const x = lots[i]
+          for (let j2 = i + 1; j2 < lots.length; j2++) {
+            const y = lots[j2]
+            if (!conf(x, y)) continue
             let mover = y.qty <= x.qty ? y : x
             if (moved.has(mover.id)) mover = mover === y ? x : y
             if (moved.has(mover.id)) continue
@@ -443,25 +516,27 @@ function suggestions(db) {
 const REST_MAX_QTY = 3
 const CONFUSABLE_COLORS = [['light gray', 'light bluish gray'], ['dark gray', 'dark bluish gray'], ['tan', 'dark tan'], ['white', 'very light gray'], ['black', 'dark bluish gray']]
 const normName = (n) => String(n ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+// Was die Prüfung je Teil braucht (Art, Nr., Farbe, Name), einmal vorbereitet (wie Shop::confusableSig)
+function confusableSig(l) {
+  const name = normName(l.name)
+  const base = /^(\d+)[a-z]?$/i.exec(String(l.item_no))
+  return { part: String(l.item_type ?? 'PART').toUpperCase() === 'PART', no: l.item_no, color: String(l.color_name ?? '').trim().toLowerCase(),
+    base: base ? base[1] : null, name, shape: name.replace(/\d+/g, '#'), nums: name.match(/\d+/g) ?? [] }
+}
 export function confusable(a, b) {
-  if (String(a.item_type ?? 'PART').toUpperCase() !== 'PART' || String(b.item_type ?? 'PART').toUpperCase() !== 'PART') return false
-  if (a.item_no === b.item_no) {
-    const x = String(a.color_name ?? '').trim().toLowerCase()
-    const y = String(b.color_name ?? '').trim().toLowerCase()
-    return CONFUSABLE_COLORS.some(([p, q]) => (x === p && y === q) || (x === q && y === p))
-  }
-  const m1 = /^(\d+)[a-z]?$/i.exec(String(a.item_no))
-  const m2 = /^(\d+)[a-z]?$/i.exec(String(b.item_no))
-  if (m1 && m2 && m1[1] === m2[1]) return true
-  const na = normName(a.name)
-  const nb = normName(b.name)
+  return confusableCheck(confusableSig(a), confusableSig(b))
+}
+function confusableCheck(a, b) {
+  if (!a.part || !b.part) return false
+  if (a.no === b.no) return CONFUSABLE_COLORS.some(([p, q]) => (a.color === p && b.color === q) || (a.color === q && b.color === p))
+  if (a.base !== null && b.base !== null && a.base === b.base) return true
+  const na = a.name
+  const nb = b.name
   if (!na || !nb) return false
   if (na.startsWith(nb + ' ') || nb.startsWith(na + ' ')) return true
-  if (na.replace(/\d+/g, '#') !== nb.replace(/\d+/g, '#')) return false
-  const xa = na.match(/\d+/g) ?? []
-  const xb = nb.match(/\d+/g) ?? []
-  if (!xa.length) return na === nb
-  return xa.every((v, i) => Math.abs(Number(v) - Number(xb[i])) <= 2)
+  if (a.shape !== b.shape) return false
+  if (!a.nums.length) return na === nb
+  return a.nums.every((v, i) => Math.abs(Number(v) - Number(b.nums[i])) <= 2)
 }
 
 // Ordnungsgrad, ein Eintrag pro Tag (wie Shop::sortProgress). Die öffentliche Demo bekommt beim ersten Mal erfundene frühere
@@ -759,6 +834,7 @@ export function route(db, method, parts, params, body, requireUser, log) {
   if (method === 'GET' && a === 'transfers' && b === 'suggestions') {
     requireUser()
     const sug = suggestions(db)
+    suggestionCount(db, sug.length)
     return { suggestions: sug, progress: sortProgress(db, sug.length) }
   }
   if (method === 'GET' && a === 'transfers' && !b) {

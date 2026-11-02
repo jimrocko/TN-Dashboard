@@ -144,7 +144,7 @@
       ]
     },
     "2026-11-02": {
-      "kurz": "Bestand aus BrickStore-Datei im Dev-Bereich einlesen (mit Vorschau), Minifig-Finder rechnet mit BSX-Dateien jetzt genau wie der Standalone (Shoppreise), Echtbestand mit neuem Bestand.",
+      "kurz": "Bestand aus BrickStore-Datei im Dev-Bereich einlesen, Minifig-Finder rechnet mit BSX-Dateien wie der Standalone, fertige Figuren: leere Lots per DELETE, Umlagern und Startseite schnell (15 s auf 1,5 s), Echtbestand mit neuem Bestand.",
       "zusammenfassung": "Der Inhaber brachte einen neuen Shop-Bestand als BrickStore-Datei mit und wollte damit den Minifig-Finder testen. Dafür kam ein Weg dazu, den Bestand selbst aus einer Datei zu erneuern. Beim Vergleich mit dem MinifigFinder Standalone zeigte sich ein Unterschied bei Preisen und baubaren Figuren, sobald zusätzliche BSX-Dateien im Spiel sind. Er wurde gefunden und behoben.",
       "themen": [
         {
@@ -156,8 +156,8 @@
           "text": "Der Inhaber bemerkte, dass das TN Dashboard und der MinifigFinder Standalone unterschiedlich viele baubare Figuren und andere Preise anzeigen. Ein Vergleich mit dem Programmcode des Standalone und denselben Daten ergab: Nur mit dem Lager waren beide schon gleich, mit zusätzlichen BSX-Dateien nicht. Der Standalone nimmt die Preise aus allen eingelesenen Beständen als aktuellen Shoppreis, das TN Dashboard nahm nur das Lager. Dadurch fehlten Preise für Fehlteile, und die Reihenfolge im gemeinsamen Bauplan änderte sich. Jetzt kommen die Shoppreise aus denselben Quellen wie die Teile. Mit dem neuen Bestand und zwei BSX-Dateien stimmen alle Listen, Mengen, Preise und Reihenfolgen überein (zusammen baubar 93 Figuren, einzeln 332, ein Teil fehlt 867)."
         },
         {
-          "titel": "Echtbestand und Messungen",
-          "text": "Die private Echtbestand-Version wurde mit dem neuen Bestand neu gebaut, diesmal mit den echten BrickLink-Lot-Nummern. Beim Testen fiel auf, dass Startseite und Umlagern-Vorschläge mit dem echten Bestand auf dem Server etwa zehn Sekunden brauchen; das ist als offener Punkt festgehalten."
+          "titel": "Echtbestand, BrickLink-Datei und Tempo",
+          "text": "Die private Echtbestand-Version wurde mit dem neuen Bestand neu gebaut, diesmal mit den echten BrickLink-Lot-Nummern. Weil Artifact-Seiten keine Bilder von fremden Servern laden dürfen, bekam der Inhaber dieselbe Version zusätzlich als private HTML-Datei, in der die Bilder am PC erscheinen. Beim Hochladen der Datei für fertige Figuren meldete BrickLink einen Fehler: Ein Minus, das ein Lot auf 0 bringt, wird abgelehnt. Solche Lots stehen jetzt mit „löschen“ in der Datei. Außerdem brauchten Startseite und Umlagern-Vorschläge mit dem echten Bestand etwa 15 Sekunden. Die Vorschlagsrechnung durchsuchte für jedes Lot das ganze Lager und verglich dieselben Teile-Paare millionenfach. Mit Verzeichnissen und gemerkten Ergebnissen sind es jetzt etwa 1,5 Sekunden, die Startseite merkt sich die Zahl der Vorschläge, bis sich der Bestand ändert. Die Vorschlagsliste bleibt dabei exakt gleich; das wurde mit dem echten Bestand und den Beispieldaten verglichen. Dabei fiel auf, dass Server und Demo Kästchen-Codes ohne führende Nullen (N68 neben N094) verschieden sortierten; beide benutzen jetzt dieselbe Sortierung."
         }
       ]
     }

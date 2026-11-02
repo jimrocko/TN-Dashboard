@@ -610,7 +610,7 @@ schritte([
     'Figur zusammensuchen und bei der Figur auf <b>Fertig gebaut</b> tippen (Anzahl wählbar). Sie kommt in die gemeinsame Sammlung '
     '„Fertige Figuren“; ihre Teile sind sofort aus der Rechnung heraus.',
     'Am Ende tippt eine Person auf <b>Sammlung abschließen</b>. Es entsteht eine Datei für BrickLink mit Minus-Mengen je Lot '
-    '(einfügen unter „Upload/Update Inventory“) und, falls Teile aus BSX-Dateien stammen, die geänderten Dateien.',
+    '(einfügen unter „Upload/Update Inventory“; Lots, die dabei leer werden, werden gelöscht, weil BrickLink keine Menge 0 annimmt) und, falls Teile aus BSX-Dateien stammen, die geänderten Dateien.',
     'Im Schritt <b>Figuren einlagern</b> werden Zustand (gebraucht → FG, neu → FN), Preis (Vorschlag aus den Figurenpreisen) und '
     'Kästchen geprüft. Eine zweite Datei legt die Figuren bei BrickLink als neue Lots an.',
     'Nach <b>Ja, ist hochgeladen</b> werden die Teile im Bestand abgezogen und die Figuren als neue Lots eingetragen.',

@@ -203,6 +203,7 @@ switch (true) {
     case $route === 'transfers/suggestions' && $method === 'GET':
         require_user();
         $sug = Shop::suggestions();
+        Shop::suggestionCount(count($sug)); // Zahl für die Startseite gleich mitmerken
         json_response(['suggestions' => $sug, 'progress' => Shop::sortProgress(count($sug))]);
 
     case $route === 'transfers' && $method === 'GET':

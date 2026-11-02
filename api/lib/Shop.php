@@ -40,6 +40,23 @@ final class Shop
             i.location_id, i.qty, i.price, i.updated_at, i.new_or_used, l.code AS location_code, l.kind AS location_kind
         FROM {inventory} i LEFT JOIN {locations} l ON l.id = i.location_id';
 
+    /**
+     * Anzahl offener Umlagerungsvorschläge für die Startseite. Gemerkt in tn_settings und nur neu gerechnet, wenn sich Bestand
+     * oder Lagerorte geändert haben (Fingerabdruck aus Anzahl, Mengen, Lagerorten und letzter Änderung). $known = gerade gerechnet.
+     */
+    public static function suggestionCount(?int $known = null): int
+    {
+        $fp = json_encode([
+            q('SELECT COUNT(*), COALESCE(SUM(qty), 0), COALESCE(MAX(id), 0), COALESCE(MAX(updated_at), \'\'), COALESCE(SUM(id * COALESCE(location_id, 0)), 0) FROM {inventory}')->fetch(PDO::FETCH_NUM),
+            q('SELECT COUNT(*), COALESCE(MAX(id), 0) FROM {locations}')->fetch(PDO::FETCH_NUM),
+        ]);
+        $c = json_decode((string) (Dev::setting('umlagern_cache') ?? ''), true);
+        if ($known === null && is_array($c) && ($c['fp'] ?? null) === $fp) return (int) $c['n'];
+        $n = $known ?? count(self::suggestions());
+        Dev::setSetting('umlagern_cache', json_encode(['fp' => $fp, 'n' => $n]));
+        return $n;
+    }
+
     public static function dashboard(): array
     {
         $inv = q('SELECT COUNT(*) AS lots, COALESCE(SUM(qty), 0) AS parts, COALESCE(SUM(qty * price), 0) AS value FROM {inventory}')->fetch();
@@ -47,7 +64,7 @@ final class Shop
         return [
             'inventar'  => ['total_parts' => (int) $inv['parts'], 'lots' => (int) $inv['lots'], 'value' => round((float) $inv['value'], 2)],
             'auftraege' => ['active' => (int) q("SELECT COUNT(*) FROM {orders} WHERE status IN ($in)", ORDER_ACTIVE)->fetchColumn()],
-            'umlagern'  => ['suggestions' => count(self::suggestions())],
+            'umlagern'  => ['suggestions' => self::suggestionCount()],
             'inventur'  => ['open' => (int) q("SELECT COUNT(*) FROM {stocktakes} WHERE status = 'offen'")->fetchColumn()],
             'analyse'   => ['last_run' => date('d.m.Y')],
             'lagerorte' => ['count' => (int) q('SELECT COUNT(*) FROM {locations}')->fetchColumn()],
@@ -181,7 +198,12 @@ final class Shop
         $where = []; // Lot-ID => Kästchen im geplanten Inhalt (schneller als alle Kästchen zu durchsuchen)
         $idx = null; // Verzeichnisse für die Zielsuche, ab Durchlauf 4 (siehe unten)
         $areaOfLoc = [];
-        self::$confusableCache = [];
+        // Verwechselbar? Merkmale je Lot einmal vorbereitet, Ergebnis je Lot-Paar gemerkt (wird in großen Kästchen sehr oft gefragt)
+        $sigs = $pairs = [];
+        $conf = function (array $x, array $y) use (&$sigs, &$pairs) {
+            $k = $x['id'] < $y['id'] ? $x['id'] . ':' . $y['id'] : $y['id'] . ':' . $x['id'];
+            return $pairs[$k] ??= self::confusableCheck($sigs[$x['id']] ??= self::confusableSig($x), $sigs[$y['id']] ??= self::confusableSig($y));
+        };
         foreach ($all as $l) { $in[$l['location_id']][$l['id']] = $l; $where[$l['id']] = $l['location_id']; }
         $add = function (array $lot, array $target, string $reason, array $extra = [], bool $merge = false) use (&$out, &$moved, &$in, &$where, &$idx, &$areaOfLoc) {
             $out[] = ['lot' => $lot, 'to_location_id' => $target['location_id'], 'to_location_code' => $target['location_code'],
@@ -204,11 +226,11 @@ final class Shop
             }
         };
         // Liegt im Kästchen schon etwas, das man mit diesem Lot leicht verwechselt?
-        $clash = function (array $lot, int $loc) use (&$in) {
-            foreach ($in[$loc] ?? [] as $x) if ($x['id'] !== $lot['id'] && self::confusable($lot, $x)) return true;
+        $clash = function (array $lot, int $loc) use (&$in, $conf) {
+            foreach ($in[$loc] ?? [] as $x) if ($x['id'] !== $lot['id'] && $conf($lot, $x)) return true;
             return false;
         };
-        $cmpCode = fn ($a, $b) => strnatcasecmp($a['location_code'], $b['location_code']) ?: $a['id'] <=> $b['id'];
+        $cmpCode = fn ($a, $b) => self::codeCmp($a['location_code'], $b['location_code']) ?: $a['id'] <=> $b['id'];
 
         // 1. Falsch einsortiert: gleiche Nummer + Farbe im selben Bereich in mehreren Kästchen
         $byCombo = [];
@@ -317,7 +339,7 @@ final class Shop
         foreach (q('SELECT id, code FROM {locations} ORDER BY id')->fetchAll() as $r) $codes[(int) $r['id']] = (string) $r['code'];
         $byArea = [];
         foreach ($codes as $id => $c) $byArea[self::areaOf($c)][] = $id;
-        foreach ($byArea as &$ids) usort($ids, fn ($a, $b) => strnatcasecmp($codes[$a], $codes[$b]) ?: $a <=> $b);
+        foreach ($byArea as &$ids) usort($ids, fn ($a, $b) => self::codeCmp($codes[$a], $codes[$b]) ?: $a <=> $b);
         unset($ids);
         $numOf = [];
         foreach ($codes as $id => $c) $numOf[$id] = preg_match('/(\d+)$/', $c, $m) ? (int) $m[1] : 0;
@@ -433,7 +455,7 @@ final class Shop
                         $x = $lots[$i];
                         for ($j = $i + 1; $j < $n; $j++) {
                             $y = $lots[$j];
-                            if (!self::confusable($x, $y)) continue;
+                            if (!$conf($x, $y)) continue;
                             $mover = $y['qty'] < $x['qty'] || ($y['qty'] === $x['qty']) ? $y : $x;
                             if (isset($moved[$mover['id']])) $mover = $mover === $y ? $x : $y;
                             if (isset($moved[$mover['id']])) continue;
@@ -476,6 +498,26 @@ final class Shop
         return ['lots' => $lots, 'open' => $open, 'history' => $history];
     }
 
+    /**
+     * Kästchen-Codes natürlich vergleichen (für die Umlagerungsvorschläge, gleich wie codeCmp in frontend/src/demo/shop.js):
+     * Zahlen nach Wert (N68 vor N094, führende Nullen zählen nicht), Text ohne Groß-/Kleinschreibung.
+     */
+    public static function codeCmp(?string $a, ?string $b): int
+    {
+        preg_match_all('/\d+|\D+/', mb_strtolower((string) $a), $x);
+        preg_match_all('/\d+|\D+/', mb_strtolower((string) $b), $y);
+        [$x, $y] = [$x[0], $y[0]];
+        for ($i = 0, $n = min(count($x), count($y)); $i < $n; $i++) {
+            [$p, $q] = [$x[$i], $y[$i]];
+            if (ctype_digit($p) && ctype_digit($q)) {
+                [$p, $q] = [ltrim($p, '0'), ltrim($q, '0')];
+                if (strlen($p) !== strlen($q)) return strlen($p) <=> strlen($q);
+            }
+            if ($p !== $q) return strcmp($p, $q) < 0 ? -1 : 1;
+        }
+        return count($x) <=> count($y);
+    }
+
     /** Verwechselbare Farben (BrickLink-Namen, kleingeschrieben). Gleiche Liste in frontend/src/demo/shop.js. */
     private const CONFUSABLE_COLORS = [['light gray', 'light bluish gray'], ['dark gray', 'dark bluish gray'], ['tan', 'dark tan'],
         ['white', 'very light gray'], ['black', 'dark bluish gray']];
@@ -485,28 +527,17 @@ final class Shop
      * (3626b/3626c); gleicher Name bis auf einen Zusatz („Tile 1 x 2“ / „… with Groove“); gleiche Form in ähnlicher Größe
      * (Name gleich bis auf Zahlen, jede höchstens 2 auseinander: Plate 1 x 4 / 1 x 5, Axle 5 / 6).
      */
-    /** Vorbereitete Merkmale je Teil (Art, Nr., Farbe, Name) und Ergebnisse je Paar; suggestions() leert beides. */
-    private static array $confusableCache = [];
-
     public static function confusable(array $a, array $b): bool
     {
-        $ka = self::confusableKey($a);
-        $kb = self::confusableKey($b);
-        $pair = $ka < $kb ? "$ka\x1e$kb" : "$kb\x1e$ka";
-        return self::$confusableCache[$pair] ??= self::confusableCheck(self::confusableSig($a, $ka), self::confusableSig($b, $kb));
+        return self::confusableCheck(self::confusableSig($a), self::confusableSig($b));
     }
 
-    private static function confusableKey(array $l): string
+    /** Was die Prüfung je Teil braucht (Art, Nr., Farbe, Name), einmal vorbereitet. */
+    private static function confusableSig(array $l): array
     {
-        return strtoupper((string) ($l['item_type'] ?? 'PART')) . "\x1f{$l['item_no']}\x1f{$l['color_name']}\x1f{$l['name']}";
-    }
-
-    private static function confusableSig(array $l, string $key): array
-    {
-        if (isset(self::$confusableCache[$key])) return self::$confusableCache[$key];
         $name = trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $l['name'])));
         preg_match_all('/\d+/', $name, $nums);
-        return self::$confusableCache[$key] = [
+        return [
             'part' => strtoupper((string) ($l['item_type'] ?? 'PART')) === 'PART', 'no' => (string) $l['item_no'],
             'color' => mb_strtolower(trim((string) $l['color_name'])),
             'base' => preg_match('/^(\d+)[a-z]?$/i', (string) $l['item_no'], $m) ? $m[1] : null,
