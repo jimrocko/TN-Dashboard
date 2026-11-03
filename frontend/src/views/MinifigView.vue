@@ -150,14 +150,19 @@ const removeBuild = (b) => run('Figur wird aus der Sammlung genommen', async () 
 const lotEdit = ref(null)
 const openLots = (b) => run('Lots werden geladen', async () => {
   const r = await api.get(`minifig/builds/${b.id}/lots`)
-  r.parts.forEach((p) => p.lots.forEach((l) => { l.take = l.used }))
+  r.parts.forEach((p) => { p.lots.forEach((l) => { l.take = l.used }); p.own = (p.manual ?? []).map((m) => ({ code: m.remarks, take: m.quantity })) })
   lotEdit.value = r
 })
-const lotSum = (p) => p.lots.reduce((t, l) => t + (Number(l.take) || 0), 0)
+const lotSum = (p) => p.lots.reduce((t, l) => t + (Number(l.take) || 0), 0) + (p.own ?? []).reduce((t, o) => t + (String(o.code).trim() ? Number(o.take) || 0 : 0), 0)
+// Eigener Ort: liegt das Teil dort laut Bestand, nimmt der Server dieses Lot
+const ownKnown = (p, o) => p.lots.find((l) => !l.file && String(l.remarks).toUpperCase() === String(o.code).trim().toUpperCase())
 const lotOk = computed(() => lotEdit.value?.parts.every((p) => lotSum(p) === p.need && p.lots.every((l) => (Number(l.take) || 0) >= 0 && (Number(l.take) || 0) <= l.available)))
 const saveLots = () => run('Wird gespeichert', async () => {
   const e = lotEdit.value
-  await api.post(`minifig/builds/${e.id}/lots`, { lots: e.parts.flatMap((p) => p.lots.filter((l) => Number(l.take) > 0).map((l) => ({ inventory_id: l.inventory_id, quantity: Number(l.take) }))) })
+  await api.post(`minifig/builds/${e.id}/lots`, { lots: e.parts.flatMap((p) => [
+    ...p.lots.filter((l) => Number(l.take) > 0).map((l) => ({ inventory_id: l.inventory_id, quantity: Number(l.take) })),
+    ...p.own.filter((o) => String(o.code).trim() && Number(o.take) > 0).map((o) => ({ manual: String(o.code).trim(), quantity: Number(o.take), item_no: p.item_no, color_id: p.color_id })),
+  ]) })
   lotEdit.value = null
   await loadAll()
   return `Teile von ${e.minifig_no} geändert. Die BrickLink-Datei zieht jetzt bei den neuen Kästchen ab.`
@@ -784,6 +789,13 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <span class="mono strong">{{ l.file ? l.file : (l.remarks || 'ohne Lagerort') }}</span><span v-if="l.file && l.remarks" class="small faint">{{ l.remarks }}</span>
           <span class="small faint">{{ l.available }} da<template v-if="l.condition"> · {{ l.condition === 'N' ? 'neu' : 'gebr.' }}</template> · Lot {{ l.inventory_id }}</span>
         </div>
+        <div v-for="(o, oi) in p.own" :key="`own${oi}`" class="lotopt">
+          <input v-model.number="o.take" class="input qty" type="number" min="0" inputmode="numeric" aria-label="Menge eigener Ort" />
+          <input v-model="o.code" class="input ownbox" placeholder="Kästchen, z. B. FG03" aria-label="Eigener Ort" />
+          <span v-if="String(o.code).trim()" class="small" :class="ownKnown(p, o) ? 'okc' : 'warnc'">{{ ownKnown(p, o) ? 'im Bestand, kommt in die BrickLink-Datei' : 'nicht im Bestand: bei BrickLink von Hand abziehen' }}</span>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Eigenen Ort entfernen" @click="p.own.splice(oi, 1)"><X :size="14" /></button>
+        </div>
+        <div class="lotopt"><button type="button" class="btn btn-sm" @click="p.own.push({ code: '', take: 1 })">+ Anderer Ort</button></div>
       </div>
       <template #actions>
         <button class="btn" @click="lotEdit = null">Abbrechen</button>
@@ -802,7 +814,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <span v-if="copied" class="small ok">Kopiert.</span>
         </div>
       </section>
-      <p v-if="expo.without_lot.length" class="small warnc">{{ expo.without_lot.length }} Lots haben keine BrickLink-Lot-Nr. (z. B. neu angelegt) und stehen nicht in der Datei: {{ expo.without_lot.map((l) => `${l.item_no} ${l.remarks}`).join(', ') }}. Diese bitte bei BrickLink von Hand abziehen.</p>
+      <p v-if="expo.without_lot.some((l) => l.kind !== 'manuell')" class="small warnc">{{ expo.without_lot.filter((l) => l.kind !== 'manuell').length }} Lots haben keine BrickLink-Lot-Nr. (z. B. neu angelegt) und stehen nicht in der Datei: {{ expo.without_lot.filter((l) => l.kind !== 'manuell').map((l) => `${l.item_no} ${l.remarks}`).join(', ') }}. Diese bitte bei BrickLink von Hand abziehen.</p>
+      <p v-if="expo.without_lot.some((l) => l.kind === 'manuell')" class="small warnc">Von Hand eingetragene Orte (nicht im Bestand, stehen nicht in der Datei, bitte bei BrickLink von Hand abziehen): {{ expo.without_lot.filter((l) => l.kind === 'manuell').map((l) => `${l.quantity}× ${l.item_no} aus ${l.remarks}`).join(', ') }}.</p>
       <section v-if="expo.bsx_files.length" class="step">
         <h3>{{ expo.xml ? 2 : 1 }}. BSX-Dateien</h3>
         <p class="small muted">Teile aus diesen Dateien wurden benutzt. Die neue Fassung enthält die Teile ohne die gebauten Figuren.</p>
@@ -866,6 +879,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 </template>
 
 <style scoped>
+.lotopt .ownbox { width: 150px; }
+.okc { color: var(--ok); }
 .lotpart { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
 .lotpart.bad { border-color: var(--danger); }
 .lotpart > .partcell .pill { margin-left: auto; }

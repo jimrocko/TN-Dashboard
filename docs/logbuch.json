@@ -188,6 +188,10 @@
         {
           "titel": "Teile ändern",
           "text": "In der Sammlung „Fertige Figuren“ hat jede Figur den Knopf „Teile ändern“. Hat man ein Teil aus einem anderen Kästchen genommen als vorgeschlagen, verteilt man dort die Menge je Teil auf die richtigen Lots; die Summe je Teil muss gleich bleiben, und die App prüft, ob dort genug liegt. Die BrickLink-Datei zieht danach bei den gewählten Lots ab. Server und Demo verhalten sich mit dem echten Bestand gleich."
+        },
+        {
+          "titel": "Eigener Ort und gemischte Quellen",
+          "text": "Im Fenster „Teile ändern“ lässt sich mit „+ Anderer Ort“ ein Kästchen von Hand eintragen. Liegt das Teil dort laut Bestand, zieht die BrickLink-Datei bei diesem Lot ab; sonst wird der Ort gemerkt und steht im Abschluss als „von Hand abziehen“. Kommt ein Teil für mehrere Kopien einer Figur aus verschiedenen Quellen, etwa einmal aus dem Lager und einmal aus einer BSX-Datei, zeigt die Teileliste es als eine Zeile mit dem Schild „aus n Quellen“ und hebt die Quellen farbig hervor."
         }
       ]
     }

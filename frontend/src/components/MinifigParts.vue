@@ -33,6 +33,9 @@ const parts = computed(() => {
   }
   return [...m.values()]
 })
+// Teil aus mehreren Quellen (z. B. 1× aus FG03, 2× aus einer BSX-Datei): eine Zeile, Quellen deutlich markiert
+const srcName = (x) => x.file || x.remarks || '–'
+const multi = (p) => new Set(p.sources.map(srcName)).size > 1
 const per = (p) => Math.round(p.quantity / Math.max(1, props.copies))
 const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 </script>
@@ -53,6 +56,7 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <RouterLink class="mono" :to="`/teil/${encodeURIComponent(p.item_no)}`">{{ p.item_no }}</RouterLink>
               · {{ p.color_name ? `${p.color_name} (Farbe ${p.color_id})` : `Farbe ${p.color_id}` }}
               <span v-if="p.shortfall > 0" class="pill danger">fehlt {{ p.shortfall }}×</span>
+              <span v-if="multi(p)" class="pill warn">aus {{ new Set(p.sources.map(srcName)).size }} Quellen</span>
             </div>
             <div class="small muted">{{ htmlText(p.item_name) }}</div>
             <div class="small need">
@@ -61,7 +65,8 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <template v-else-if="upTo > 1"> · für alle {{ upTo }} Figuren <strong>{{ per(p) * upTo }}×</strong></template>
               <span class="faint"><template v-if="p.stock_before_figure !== undefined"> · verfügbar vor Reservierung {{ p.stock_before_figure }}</template><template v-else> · zugeordnet {{ p.available ?? 0 }}</template></span>
             </div>
-            <div v-for="(s, k) in p.sources" :key="k" class="src small">
+            <div v-for="(s, k) in p.sources" :key="k" class="src small" :class="{ many: multi(p) }">
+              <strong v-if="multi(p)" class="srcqty">{{ s.quantity }}× {{ srcName(s) }}</strong>
               <span class="faint">Lot {{ s.inventory_id }} · {{ s.quantity }}×<template v-if="s.lot_quantity"> von {{ s.lot_quantity }}</template></span>
               <span v-if="cond(s.new_or_used)" class="faint">{{ cond(s.new_or_used) }}</span>
               <span v-if="s.file" class="tag">Datei: {{ s.file }}</span>
@@ -88,6 +93,8 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 .part.missing { border-color: var(--danger); }
 .pinfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .need strong { color: var(--text); }
+.src.many { border-left: 3px solid var(--warn); padding-left: 6px; }
+.srcqty { color: var(--warn); }
 .src { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; }
 .lbl { color: var(--text-3); }
 .tag { padding: 0 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }

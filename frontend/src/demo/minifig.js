@@ -923,8 +923,9 @@ function buildOptions(db, id) {
   const parts = new Map()
   for (const l of b.lots) {
     const k = key(l.item_no, l.color_id)
-    if (!parts.has(k)) parts.set(k, { item_no: l.item_no, item_name: l.item_name ?? '', color_id: l.color_id, color_name: l.color_name ?? '', need: 0, lots: [] })
+    if (!parts.has(k)) parts.set(k, { item_no: l.item_no, item_name: l.item_name ?? '', color_id: l.color_id, color_name: l.color_name ?? '', need: 0, lots: [], manual: [] })
     parts.get(k).need += l.quantity
+    if (l.kind === 'manuell') parts.get(k).manual.push({ remarks: l.remarks, quantity: l.quantity })
   }
   for (const [k, p] of parts) {
     for (const r of rows.get(k) ?? []) {
@@ -938,8 +939,25 @@ function buildOptions(db, id) {
 function updateBuildLots(db, id, lots) {
   const opt = buildOptions(db, id)
   if (!opt) throw new DemoError('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409)
+  // Eigener Ort (wie Minifig::updateBuildLots): bekanntes Lot dort zählt, sonst nur gemerkt (keine Lot-Nr.)
   const want = new Map()
-  for (const l of lots ?? []) { const i = Number(l.inventory_id); const n = Number(l.quantity); if (i > 0 && n > 0) want.set(i, (want.get(i) ?? 0) + n) }
+  const manual = []
+  const partOf = new Map(opt.parts.map((p) => [key(p.item_no, p.color_id), p]))
+  for (const l of lots ?? []) {
+    const n = Number(l.quantity)
+    if (!(n > 0)) continue
+    const code = String(l.manual ?? '').trim()
+    if (code) {
+      const p = partOf.get(key(l.item_no, l.color_id))
+      if (!p) throw new DemoError('Dieses Teil gehört nicht zur Figur.', 422)
+      const hit = p.lots.find((o) => String(o.remarks).toUpperCase() === code.toUpperCase() && o.file === '')
+      if (hit) want.set(hit.inventory_id, (want.get(hit.inventory_id) ?? 0) + n)
+      else manual.push({ p, code: code.slice(0, 32), quantity: n })
+      continue
+    }
+    const i = Number(l.inventory_id)
+    if (i > 0) want.set(i, (want.get(i) ?? 0) + n)
+  }
   const byLot = new Map(partRows(db, true).map((r) => [r.inventory_id, r]))
   const avail = new Map()
   for (const p of opt.parts) {
@@ -948,12 +966,14 @@ function updateBuildLots(db, id, lots) {
       sum += want.get(o.inventory_id) ?? 0
       if (byLot.has(o.inventory_id)) avail.set(o.inventory_id, { ...byLot.get(o.inventory_id), quantity: o.available })
     }
+    for (const m of manual) if (m.p === p) sum += m.quantity
     if (sum !== p.need) throw new DemoError(`Für ${p.item_no} werden ${p.need} Stück gebraucht, eingetragen sind ${sum}.`, 422)
   }
   for (const i of want.keys()) if (!avail.has(i)) throw new DemoError('Dieses Lot passt nicht zur Figur.', 422)
   const stored = storedLots(db, want, avail)
+  for (const m of manual) stored.push({ inventory_id: 0, quantity: m.quantity, item_no: m.p.item_no, item_name: m.p.item_name, color_id: m.p.color_id, color_name: m.p.color_name, remarks: m.code, condition: '', kind: 'manuell' })
   mfOf(db).builds.find((x) => x.id === id).lots = stored
-  return { id, minifig_no: opt.minifig_no, parts: [...want.values()].reduce((t, n) => t + n, 0) }
+  return { id, minifig_no: opt.minifig_no, parts: [...want.values()].reduce((t, n) => t + n, 0) + manual.reduce((t, m) => t + m.quantity, 0) }
 }
 
 function addBuild(db, no, qty, lots, me) {
@@ -981,8 +1001,9 @@ function exportLots(db) {
   for (const b of mfOf(db).builds ?? []) {
     if (b.status !== 'export') continue
     for (const l of b.lots) {
-      if (agg.has(l.inventory_id)) agg.get(l.inventory_id).quantity += l.quantity
-      else agg.set(l.inventory_id, { ...l })
+      const k = l.kind === 'manuell' ? `m|${String(l.remarks).toUpperCase()}|${key(l.item_no, l.color_id)}` : l.inventory_id
+      if (agg.has(k)) agg.get(k).quantity += l.quantity
+      else agg.set(k, { ...l })
     }
   }
   return [...agg.values()]

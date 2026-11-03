@@ -1539,8 +1539,9 @@ final class Minifig
         $parts = [];
         foreach ($mine as $l) {
             $k = self::key((string) $l['item_no'], (int) $l['color_id']);
-            $parts[$k] ??= ['item_no' => $l['item_no'], 'item_name' => $l['item_name'] ?? '', 'color_id' => (int) $l['color_id'], 'color_name' => $l['color_name'] ?? '', 'need' => 0, 'lots' => []];
+            $parts[$k] ??= ['item_no' => $l['item_no'], 'item_name' => $l['item_name'] ?? '', 'color_id' => (int) $l['color_id'], 'color_name' => $l['color_name'] ?? '', 'need' => 0, 'lots' => [], 'manual' => []];
             $parts[$k]['need'] += (int) $l['quantity'];
+            if (($l['kind'] ?? '') === 'manuell') $parts[$k]['manual'][] = ['remarks' => (string) $l['remarks'], 'quantity' => (int) $l['quantity']];
         }
         foreach ($parts as $k => &$p) {
             foreach ($rows[$k] ?? [] as $r) {
@@ -1560,15 +1561,31 @@ final class Minifig
     {
         $opt = self::buildOptions($id);
         if (!$opt) throw new RuntimeException('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss');
+        // Eigener Ort (Wunsch des Inhabers): Kästchen von Hand. Liegt dort laut Bestand dasselbe Teil, zählt dieses Lot,
+        // sonst wird der Ort nur gemerkt (keine Lot-Nr., bei BrickLink von Hand abziehen, im Dashboard-Bestand nichts abziehen).
         $want = [];
-        foreach ($lots as $l) {
-            $iid = (int) ($l['inventory_id'] ?? 0);
-            $n = (int) ($l['quantity'] ?? 0);
-            if ($iid > 0 && $n > 0) $want[$iid] = ($want[$iid] ?? 0) + $n;
-        }
-        $avail = [];
+        $manual = [];
         $byLot = [];
         foreach (self::partRows(true) as $r) $byLot[(int) $r['inventory_id']] = $r;
+        $partOf = [];
+        foreach ($opt['parts'] as $p) $partOf[self::key((string) $p['item_no'], (int) $p['color_id'])] = $p;
+        foreach ($lots as $l) {
+            $n = (int) ($l['quantity'] ?? 0);
+            if ($n <= 0) continue;
+            $code = trim((string) ($l['manual'] ?? ''));
+            if ($code !== '') {
+                $p = $partOf[self::key((string) ($l['item_no'] ?? ''), (int) ($l['color_id'] ?? 0))] ?? null;
+                if (!$p) throw new InvalidArgumentException('Dieses Teil gehört nicht zur Figur.');
+                $hit = null;
+                foreach ($p['lots'] as $o) if (strcasecmp($o['remarks'], $code) === 0 && $o['file'] === '') { $hit = $o['inventory_id']; break; }
+                if ($hit !== null) { $want[$hit] = ($want[$hit] ?? 0) + $n; continue; }
+                $manual[] = ['p' => $p, 'code' => mb_substr($code, 0, 32), 'quantity' => $n];
+                continue;
+            }
+            $iid = (int) ($l['inventory_id'] ?? 0);
+            if ($iid > 0) $want[$iid] = ($want[$iid] ?? 0) + $n;
+        }
+        $avail = [];
         foreach ($opt['parts'] as $p) {
             $sum = 0;
             foreach ($p['lots'] as $o) {
@@ -1576,6 +1593,7 @@ final class Minifig
                 $sum += $want[$iid] ?? 0;
                 if (isset($byLot[$iid])) $avail[$iid] = ['quantity' => $o['available']] + $byLot[$iid];
             }
+            foreach ($manual as $m) if ($m['p'] === $p) $sum += $m['quantity'];
             if ($sum !== $p['need']) throw new InvalidArgumentException("Für {$p['item_no']} werden {$p['need']} Stück gebraucht, eingetragen sind $sum.");
         }
         foreach ($want as $iid => $n) if (!isset($avail[$iid])) throw new InvalidArgumentException('Dieses Lot passt nicht zur Figur.');
@@ -1583,13 +1601,17 @@ final class Minifig
         $pdo->beginTransaction();
         try {
             $stored = self::storedLots($want, $avail);
+            foreach ($manual as $m) {
+                $stored[] = ['inventory_id' => 0, 'quantity' => $m['quantity'], 'item_no' => $m['p']['item_no'], 'item_name' => $m['p']['item_name'],
+                    'color_id' => $m['p']['color_id'], 'color_name' => $m['p']['color_name'], 'remarks' => $m['code'], 'condition' => '', 'kind' => 'manuell'];
+            }
             q("UPDATE {minifig_builds} SET lots_json = ? WHERE id = ? AND status = 'open'", [json_encode($stored, JSON_UNESCAPED_UNICODE), $id]);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $e;
         }
-        return ['id' => $id, 'minifig_no' => $opt['minifig_no'], 'parts' => array_sum($want)];
+        return ['id' => $id, 'minifig_no' => $opt['minifig_no'], 'parts' => array_sum($want) + array_sum(array_column($manual, 'quantity'))];
     }
 
     /** Figur wieder aus der Sammlung nehmen (nicht, solange der Abschluss läuft). */
@@ -1608,7 +1630,7 @@ final class Minifig
         $agg = [];
         foreach (q("SELECT lots_json FROM {minifig_builds} WHERE status = 'export' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) as $j) {
             foreach (json_decode((string) $j, true) ?: [] as $l) {
-                $k = (int) $l['inventory_id'];
+                $k = ($l['kind'] ?? '') === 'manuell' ? 'm|' . strtoupper((string) $l['remarks']) . '|' . self::key((string) $l['item_no'], (int) $l['color_id']) : (int) $l['inventory_id'];
                 if (isset($agg[$k])) $agg[$k]['quantity'] += (int) $l['quantity'];
                 else $agg[$k] = $l;
             }
