@@ -150,18 +150,21 @@ const removeBuild = (b) => run('Figur wird aus der Sammlung genommen', async () 
 const lotEdit = ref(null)
 const openLots = (b) => run('Lots werden geladen', async () => {
   const r = await api.get(`minifig/builds/${b.id}/lots`)
-  r.parts.forEach((p) => { p.lots.forEach((l) => { l.take = l.used }); p.own = (p.manual ?? []).map((m) => ({ code: m.remarks, take: m.quantity })) })
+  r.parts.forEach((p) => { p.lots.forEach((l) => { l.take = l.used }); p.own = (p.manual ?? []).map((m) => (m.file ? { type: 'datei', fileId: r.files.find((f) => f.name === m.file)?.id ?? '', code: '', take: m.quantity } : { type: 'kasten', code: m.remarks, fileId: '', take: m.quantity })) })
   lotEdit.value = r
 })
-const lotSum = (p) => p.lots.reduce((t, l) => t + (Number(l.take) || 0), 0) + (p.own ?? []).reduce((t, o) => t + (String(o.code).trim() ? Number(o.take) || 0 : 0), 0)
-// Eigener Ort: liegt das Teil dort laut Bestand, nimmt der Server dieses Lot
-const ownKnown = (p, o) => p.lots.find((l) => !l.file && String(l.remarks).toUpperCase() === String(o.code).trim().toUpperCase())
+// Eigener Ort: Kästchen (frei eingetippt) oder eine der eigenen BSX-Dateien
+const ownSet = (o) => (o.type === 'datei' ? !!o.fileId : !!String(o.code).trim())
+const lotSum = (p) => p.lots.reduce((t, l) => t + (Number(l.take) || 0), 0) + (p.own ?? []).reduce((t, o) => t + (ownSet(o) ? Number(o.take) || 0 : 0), 0)
+// Liegt das Teil dort laut Bestand bzw. in der Datei, nimmt der Server dieses Lot bzw. diese Zeile
+const ownKnown = (p, o) => (o.type === 'datei' ? p.lots.find((l) => l.bsx_id === Number(o.fileId))
+  : p.lots.find((l) => !l.file && String(l.remarks).toUpperCase() === String(o.code).trim().toUpperCase()))
 const lotOk = computed(() => lotEdit.value?.parts.every((p) => lotSum(p) === p.need && p.lots.every((l) => (Number(l.take) || 0) >= 0 && (Number(l.take) || 0) <= l.available)))
 const saveLots = () => run('Wird gespeichert', async () => {
   const e = lotEdit.value
   await api.post(`minifig/builds/${e.id}/lots`, { lots: e.parts.flatMap((p) => [
     ...p.lots.filter((l) => Number(l.take) > 0).map((l) => ({ inventory_id: l.inventory_id, quantity: Number(l.take) })),
-    ...p.own.filter((o) => String(o.code).trim() && Number(o.take) > 0).map((o) => ({ manual: String(o.code).trim(), quantity: Number(o.take), item_no: p.item_no, color_id: p.color_id })),
+    ...p.own.filter((o) => ownSet(o) && Number(o.take) > 0).map((o) => ({ ...(o.type === 'datei' ? { file_id: Number(o.fileId) } : { manual: String(o.code).trim() }), quantity: Number(o.take), item_no: p.item_no, color_id: p.color_id })),
   ]) })
   lotEdit.value = null
   await loadAll()
@@ -791,11 +794,21 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         </div>
         <div v-for="(o, oi) in p.own" :key="`own${oi}`" class="lotopt">
           <input v-model.number="o.take" class="input qty" type="number" min="0" inputmode="numeric" aria-label="Menge eigener Ort" />
-          <input v-model="o.code" class="input ownbox" placeholder="Kästchen, z. B. FG03" aria-label="Eigener Ort" />
-          <span v-if="String(o.code).trim()" class="small" :class="ownKnown(p, o) ? 'okc' : 'warnc'">{{ ownKnown(p, o) ? 'im Bestand, kommt in die BrickLink-Datei' : 'nicht im Bestand: bei BrickLink von Hand abziehen' }}</span>
+          <div class="seg" role="radiogroup" aria-label="Kästchen oder Datei">
+            <button type="button" :class="{ on: o.type !== 'datei' }" role="radio" :aria-checked="o.type !== 'datei'" @click="o.type = 'kasten'">Kästchen</button>
+            <button type="button" :class="{ on: o.type === 'datei' }" role="radio" :aria-checked="o.type === 'datei'" :disabled="!lotEdit.files.length" :title="lotEdit.files.length ? '' : 'Keine BSX-Datei hochgeladen'" @click="o.type = 'datei'">Datei</button>
+          </div>
+          <input v-if="o.type !== 'datei'" v-model="o.code" class="input ownbox" placeholder="Kästchen, z. B. FG03" aria-label="Eigener Ort" />
+          <select v-else v-model="o.fileId" class="select ownbox" aria-label="Datei">
+            <option value="">Datei wählen …</option>
+            <option v-for="f in lotEdit.files" :key="f.id" :value="f.id">{{ f.name }}</option>
+          </select>
+          <span v-if="ownSet(o)" class="small" :class="ownKnown(p, o) ? 'okc' : 'warnc'">{{ o.type === 'datei'
+            ? (ownKnown(p, o) ? 'in der Datei, wird dort abgezogen' : 'nicht in der Datei: von Hand abziehen')
+            : (ownKnown(p, o) ? 'im Bestand, kommt in die BrickLink-Datei' : 'nicht im Bestand: bei BrickLink von Hand abziehen') }}</span>
           <button type="button" class="btn btn-ghost btn-sm" aria-label="Eigenen Ort entfernen" @click="p.own.splice(oi, 1)"><X :size="14" /></button>
         </div>
-        <div class="lotopt"><button type="button" class="btn btn-sm" @click="p.own.push({ code: '', take: 1 })">+ Anderer Ort</button></div>
+        <div class="lotopt"><button type="button" class="btn btn-sm" @click="p.own.push({ type: 'kasten', code: '', fileId: '', take: 1 })">+ Anderer Ort</button></div>
       </div>
       <template #actions>
         <button class="btn" @click="lotEdit = null">Abbrechen</button>

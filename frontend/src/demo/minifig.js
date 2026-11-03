@@ -925,16 +925,17 @@ function buildOptions(db, id) {
     const k = key(l.item_no, l.color_id)
     if (!parts.has(k)) parts.set(k, { item_no: l.item_no, item_name: l.item_name ?? '', color_id: l.color_id, color_name: l.color_name ?? '', need: 0, lots: [], manual: [] })
     parts.get(k).need += l.quantity
-    if (l.kind === 'manuell') parts.get(k).manual.push({ remarks: l.remarks, quantity: l.quantity })
+    if (l.kind === 'manuell') parts.get(k).manual.push({ remarks: l.remarks, quantity: l.quantity, file: l.file ?? '' })
   }
   for (const [k, p] of parts) {
     for (const r of rows.get(k) ?? []) {
       const avail = (free.get(r.inventory_id) ?? 0) + (own.get(r.inventory_id) ?? 0)
       if (avail <= 0) continue
-      p.lots.push({ inventory_id: r.inventory_id, remarks: r.remarks ?? '', file: r.file ?? '', condition: r.new_or_used ?? '', available: avail, used: own.get(r.inventory_id) ?? 0 })
+      p.lots.push({ inventory_id: r.inventory_id, remarks: r.remarks ?? '', file: r.file ?? '', bsx_id: r.inventory_id >= BSX_BASE ? Math.floor((r.inventory_id - BSX_BASE) / 100000) : null,
+        condition: r.new_or_used ?? '', available: avail, used: own.get(r.inventory_id) ?? 0 })
     }
   }
-  return { id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, parts: [...parts.values()] }
+  return { id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, parts: [...parts.values()], files: bsxFiles(db).map((f) => ({ id: f.id, name: f.name })) }
 }
 function updateBuildLots(db, id, lots) {
   const opt = buildOptions(db, id)
@@ -947,6 +948,18 @@ function updateBuildLots(db, id, lots) {
     const n = Number(l.quantity)
     if (!(n > 0)) continue
     const code = String(l.manual ?? '').trim()
+    const fileId = Number(l.file_id) || 0
+    if (fileId > 0) {
+      // Eigene Datei (wie Minifig::updateBuildLots)
+      const p = partOf.get(key(l.item_no, l.color_id))
+      if (!p) throw new DemoError('Dieses Teil gehört nicht zur Figur.', 422)
+      const hit = p.lots.find((o) => o.bsx_id === fileId)
+      if (hit) { want.set(hit.inventory_id, (want.get(hit.inventory_id) ?? 0) + n); continue }
+      const f = opt.files.find((x) => x.id === fileId)
+      if (!f) throw new DemoError('Diese Datei gibt es nicht (mehr).', 422)
+      manual.push({ p, code: f.name.slice(0, 120), quantity: n, file: true })
+      continue
+    }
     if (code) {
       const p = partOf.get(key(l.item_no, l.color_id))
       if (!p) throw new DemoError('Dieses Teil gehört nicht zur Figur.', 422)
@@ -971,7 +984,7 @@ function updateBuildLots(db, id, lots) {
   }
   for (const i of want.keys()) if (!avail.has(i)) throw new DemoError('Dieses Lot passt nicht zur Figur.', 422)
   const stored = storedLots(db, want, avail)
-  for (const m of manual) stored.push({ inventory_id: 0, quantity: m.quantity, item_no: m.p.item_no, item_name: m.p.item_name, color_id: m.p.color_id, color_name: m.p.color_name, remarks: m.code, condition: '', kind: 'manuell' })
+  for (const m of manual) stored.push({ inventory_id: 0, quantity: m.quantity, item_no: m.p.item_no, item_name: m.p.item_name, color_id: m.p.color_id, color_name: m.p.color_name, remarks: m.code, condition: '', kind: 'manuell', ...(m.file ? { file: m.code } : {}) })
   mfOf(db).builds.find((x) => x.id === id).lots = stored
   return { id, minifig_no: opt.minifig_no, parts: [...want.values()].reduce((t, n) => t + n, 0) + manual.reduce((t, m) => t + m.quantity, 0) }
 }

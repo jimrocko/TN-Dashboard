@@ -614,8 +614,8 @@ schritte([
     'Teile sind sofort aus der Rechnung heraus. Der Bauplan bleibt dabei stabil: Gesammelte Figuren zählen als erledigt, die übrigen '
     'Figuren behalten ihre Teile. In „Einzeln baubar“ und „Alle“ steht die Figur weiter, wenn der Rest noch reicht, mit dem Hinweis „schon gebaut“.',
     'Hat man ein Teil aus einem anderen Kästchen genommen als vorgeschlagen, tippt man in „Fertige Figuren“ bei der Figur auf '
-    '<b>Teile ändern</b> und verteilt die Menge je Teil auf die richtigen Lots. Mit <b>+ Anderer Ort</b> lässt sich ein Kästchen von Hand eintragen; '
-    'kennt der Bestand das Teil dort, zieht die BrickLink-Datei dort ab, sonst steht es im Abschluss unter „von Hand abziehen“. '
+    '<b>Teile ändern</b> und verteilt die Menge je Teil auf die richtigen Lots. Mit <b>+ Anderer Ort</b> lässt sich ein Kästchen von Hand eintragen oder eine der eigenen BSX-Dateien wählen; '
+    'kennt der Bestand (bzw. die Datei) das Teil dort, wird es dort abgezogen, sonst steht es im Abschluss unter „von Hand abziehen“. '
     'Kommt ein Teil aus mehreren Quellen (Lager und BSX-Datei), zeigt die Teileliste es als eine Zeile mit dem Hinweis „aus n Quellen“.',
     '<b>Nicht bauen</b> nimmt eine Figur aus dem Bauplan; ihre Teile werden für andere Figuren frei. Unter dem Bauplan steht eingeklappt '
     '„Nicht bauen (n)“ mit <b>Wieder zulassen</b>.',

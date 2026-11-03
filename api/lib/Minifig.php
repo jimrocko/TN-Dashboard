@@ -1541,7 +1541,7 @@ final class Minifig
             $k = self::key((string) $l['item_no'], (int) $l['color_id']);
             $parts[$k] ??= ['item_no' => $l['item_no'], 'item_name' => $l['item_name'] ?? '', 'color_id' => (int) $l['color_id'], 'color_name' => $l['color_name'] ?? '', 'need' => 0, 'lots' => [], 'manual' => []];
             $parts[$k]['need'] += (int) $l['quantity'];
-            if (($l['kind'] ?? '') === 'manuell') $parts[$k]['manual'][] = ['remarks' => (string) $l['remarks'], 'quantity' => (int) $l['quantity']];
+            if (($l['kind'] ?? '') === 'manuell') $parts[$k]['manual'][] = ['remarks' => (string) $l['remarks'], 'quantity' => (int) $l['quantity'], 'file' => (string) ($l['file'] ?? '')];
         }
         foreach ($parts as $k => &$p) {
             foreach ($rows[$k] ?? [] as $r) {
@@ -1549,11 +1549,13 @@ final class Minifig
                 $avail = ($free[$iid] ?? 0) + ($own[$iid] ?? 0);
                 if ($avail <= 0) continue;
                 $p['lots'][] = ['inventory_id' => $iid, 'remarks' => (string) ($r['remarks'] ?? ''), 'file' => (string) ($r['file'] ?? ''),
+                    'bsx_id' => $iid >= self::BSX_BASE ? intdiv($iid - self::BSX_BASE, 100000) : null,
                     'condition' => (string) ($r['new_or_used'] ?? ''), 'available' => $avail, 'used' => $own[$iid] ?? 0];
             }
         }
         unset($p);
-        return ['id' => (int) $b['id'], 'minifig_no' => $b['minifig_no'], 'name' => $b['name'], 'qty' => (int) $b['qty'], 'parts' => array_values($parts)];
+        $files = array_map(fn ($f) => ['id' => (int) $f['id'], 'name' => $f['name']], self::bsxFiles());
+        return ['id' => (int) $b['id'], 'minifig_no' => $b['minifig_no'], 'name' => $b['name'], 'qty' => (int) $b['qty'], 'parts' => array_values($parts), 'files' => $files];
     }
 
     /** Neue Aufteilung speichern: je Teil+Farbe muss die Menge gleich bleiben, jedes Lot muss reichen. */
@@ -1573,6 +1575,20 @@ final class Minifig
             $n = (int) ($l['quantity'] ?? 0);
             if ($n <= 0) continue;
             $code = trim((string) ($l['manual'] ?? ''));
+            $fileId = (int) ($l['file_id'] ?? 0);
+            if ($fileId > 0) {
+                // Eigene Datei: enthält sie das Teil in der Farbe, zählt diese Zeile (wird beim Abschluss in der Datei abgezogen)
+                $p = $partOf[self::key((string) ($l['item_no'] ?? ''), (int) ($l['color_id'] ?? 0))] ?? null;
+                if (!$p) throw new InvalidArgumentException('Dieses Teil gehört nicht zur Figur.');
+                $hit = null;
+                foreach ($p['lots'] as $o) if ($o['bsx_id'] === $fileId) { $hit = $o['inventory_id']; break; }
+                if ($hit !== null) { $want[$hit] = ($want[$hit] ?? 0) + $n; continue; }
+                $fname = '';
+                foreach ($opt['files'] as $f) if ($f['id'] === $fileId) $fname = $f['name'];
+                if ($fname === '') throw new InvalidArgumentException('Diese Datei gibt es nicht (mehr).');
+                $manual[] = ['p' => $p, 'code' => mb_substr($fname, 0, 120), 'quantity' => $n, 'file' => true];
+                continue;
+            }
             if ($code !== '') {
                 $p = $partOf[self::key((string) ($l['item_no'] ?? ''), (int) ($l['color_id'] ?? 0))] ?? null;
                 if (!$p) throw new InvalidArgumentException('Dieses Teil gehört nicht zur Figur.');
@@ -1603,7 +1619,8 @@ final class Minifig
             $stored = self::storedLots($want, $avail);
             foreach ($manual as $m) {
                 $stored[] = ['inventory_id' => 0, 'quantity' => $m['quantity'], 'item_no' => $m['p']['item_no'], 'item_name' => $m['p']['item_name'],
-                    'color_id' => $m['p']['color_id'], 'color_name' => $m['p']['color_name'], 'remarks' => $m['code'], 'condition' => '', 'kind' => 'manuell'];
+                    'color_id' => $m['p']['color_id'], 'color_name' => $m['p']['color_name'], 'remarks' => $m['code'], 'condition' => '', 'kind' => 'manuell']
+                    + (!empty($m['file']) ? ['file' => $m['code']] : []);
             }
             q("UPDATE {minifig_builds} SET lots_json = ? WHERE id = ? AND status = 'open'", [json_encode($stored, JSON_UNESCAPED_UNICODE), $id]);
             $pdo->commit();

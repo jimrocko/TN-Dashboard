@@ -192,6 +192,10 @@
         {
           "titel": "Eigener Ort und gemischte Quellen",
           "text": "Im Fenster „Teile ändern“ lässt sich mit „+ Anderer Ort“ ein Kästchen von Hand eintragen. Liegt das Teil dort laut Bestand, zieht die BrickLink-Datei bei diesem Lot ab; sonst wird der Ort gemerkt und steht im Abschluss als „von Hand abziehen“. Kommt ein Teil für mehrere Kopien einer Figur aus verschiedenen Quellen, etwa einmal aus dem Lager und einmal aus einer BSX-Datei, zeigt die Teileliste es als eine Zeile mit dem Schild „aus n Quellen“ und hebt die Quellen farbig hervor."
+        },
+        {
+          "titel": "Eigener Ort aus einer Datei",
+          "text": "Bei „+ Anderer Ort“ lässt sich jetzt zwischen Kästchen und Datei umschalten. Wählt man eine der hochgeladenen BSX-Dateien und enthält sie das Teil in der Farbe, wird es beim Abschluss in dieser Datei abgezogen; sonst steht es mit dem Dateinamen unter „von Hand abziehen“. Server und Demo verhalten sich mit dem echten Bestand und den zwei Dateien gleich."
         }
       ]
     }
