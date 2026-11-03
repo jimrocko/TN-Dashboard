@@ -200,6 +200,10 @@
         {
           "titel": "Ort vor „Fertig gebaut“ wählen",
           "text": "In der Teileliste einer Figur im Bauplan ist der Ort jedes Teils jetzt ein Aufklappmenü. Es zeigt alle Kästchen und Dateien, in denen dasselbe Teil in der Farbe noch frei liegt, mit der freien Menge. Ein umgestellter Ort wird orange markiert, und „Fertig gebaut“ legt die Figur mit den gewählten Orten in die Sammlung. Getestet mit dem echten Bestand auf iPad und Handy."
+        },
+        {
+          "titel": "Fehlteil direkt abziehen",
+          "text": "In der Teileliste des Minifig-Finders hat jede Quelle den Knopf „Fehlt“. Man gibt ein, wie viele Teile am Ort fehlen, und kann das Kästchen mit einem Haken zum Nachzählen vormerken. Die Menge wird sofort im Bestand abgezogen und als Korrektur in die BrickLink-Übertragung gelegt; das Fenster „Zu BrickLink übertragen“ öffnet sich direkt. Bei einer BSX-Datei wird die Menge in der Datei abgezogen. Danach rechnet der Bauplan neu."
         }
       ]
     }

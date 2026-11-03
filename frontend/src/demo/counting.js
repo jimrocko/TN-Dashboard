@@ -1,7 +1,7 @@
 // Zählen im Demo-Backend: Vormerkungen aus Meldungen und Zählliste des Tages. Gleiche Regeln wie api/lib/Counting.php.
 import { DemoError, now } from './backend.js'
 
-export const REASONS = { missing: 'Fehlteil gemeldet', wrong_quantity: 'Restmenge stimmt nicht', wrong_location: 'Lagerort stimmt nicht' }
+export const REASONS = { missing: 'Fehlteil gemeldet', wrong_quantity: 'Restmenge stimmt nicht', wrong_location: 'Lagerort stimmt nicht', minifig: 'Fehlteil im Minifig-Finder' }
 export const DEFAULT_SIZE = 5
 
 const st8 = (db) => (db.counting ??= { requests: [], daily: {}, size: null, nextRequest: 1 })
@@ -28,6 +28,12 @@ export function requestFromReport(db, itemId, type, reportId, userId) {
   if (!loc) return
   const c = st8(db)
   c.requests.push({ id: c.nextRequest++, location_id: loc, reason: type, report_id: reportId, user_id: userId, created_at: now(), done_at: null })
+}
+
+// „Fehlt“ im Minifig-Finder: Kästchen vormerken (wie in Minifig::reportMissing)
+export function requestForLocation(db, locationId, reason, userId) {
+  const c = st8(db)
+  c.requests.push({ id: c.nextRequest++, location_id: locationId, reason, report_id: null, user_id: userId, created_at: now(), done_at: null })
 }
 
 export function markDone(db, locationId) {

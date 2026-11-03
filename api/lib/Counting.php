@@ -11,7 +11,7 @@ declare(strict_types=1);
  */
 final class Counting
 {
-    public const REASONS = ['missing' => 'Fehlteil gemeldet', 'wrong_quantity' => 'Restmenge stimmt nicht', 'wrong_location' => 'Lagerort stimmt nicht'];
+    public const REASONS = ['missing' => 'Fehlteil gemeldet', 'wrong_quantity' => 'Restmenge stimmt nicht', 'wrong_location' => 'Lagerort stimmt nicht', 'minifig' => 'Fehlteil im Minifig-Finder'];
     public const DEFAULT_SIZE = 5;
 
     public static function ensureSchema(): void

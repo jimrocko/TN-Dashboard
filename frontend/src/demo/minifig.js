@@ -3,6 +3,7 @@
 import seed from '../../../api/sql/demo-data.json'
 import { DemoError, now } from './backend.js'
 import { pyRound, cmpTuple, strCmp, kbnAdd } from './rules.js'
+import { requestForLocation } from './counting.js'
 import { zip, buildBsx, parseBsx, unzip } from '../utils/files.js'
 import { LIST_FILES, listCsv, listBsx, almostJointCsv, almostJointBsx, csv, eurCsv as eur } from '../utils/minifigExport.js'
 export { LIST_FILES, listCsv, listBsx }
@@ -911,6 +912,34 @@ function partLots(db, keys) {
   return out
 }
 
+// „Fehlt“ (wie Minifig::reportMissing)
+function reportMissing(db, inventoryId, n, count, me) {
+  const row = partRows(db).find((r) => r.inventory_id === inventoryId)
+  if (!row) throw new DemoError('Dieses Lot gibt es nicht mehr (oder es ist schon gesammelt). Die Liste wird neu berechnet.', 409)
+  if (!(n >= 1 && n <= row.quantity)) throw new DemoError(`Menge muss zwischen 1 und ${row.quantity} liegen.`, 422)
+  if (inventoryId >= BSX_BASE) {
+    if ((mfOf(db).builds ?? []).some((b) => b.status === 'export')) throw new DemoError('Gerade läuft der Abschluss der fertigen Figuren. Bitte danach.', 409)
+    const f = (mfOf(db).bsx ?? []).find((x) => x.id === Math.floor((inventoryId - BSX_BASE) / 100000))
+    const it = f?.items[(inventoryId - BSX_BASE) % 100000]
+    if (!it) throw new DemoError('Zeile nicht gefunden.', 409)
+    it.quantity = Math.max(0, it.quantity - n)
+    const alive = f.items.filter((r) => r.quantity > 0)
+    Object.assign(f, { lots: alive.length, parts: alive.reduce((t, r) => t + r.quantity, 0) })
+    return { kind: 'bsx', item_no: row.item_no, qty: n, where: row.file, bricklink: false }
+  }
+  const inv = db.inventory.find((i) => i.bl_inventory_id === inventoryId) ?? db.inventory.find((i) => i.id === inventoryId && (i.bl_inventory_id === null || i.bl_inventory_id === undefined))
+  if (!inv) throw new DemoError('Lot nicht gefunden.', 409)
+  const t = now()
+  const before = inv.qty
+  inv.qty = Math.max(0, inv.qty - n)
+  inv.updated_at = t
+  db.stocktakes.push({ id: db.nextStocktake++, location_id: inv.location_id, status: 'abgeschlossen', created_at: t, closed_at: t, closed_by_name: me.display_name,
+    items: [{ id: db.nextStItem++, inventory_id: inv.id, item_type: inv.item_type, item_no: inv.item_no, color_id: inv.color_id, color_name: inv.color_name, name: inv.name, expected: before, counted: inv.qty }],
+    bl_changes: [{ item_no: inv.item_no, color: inv.color_name, diff: -n, lot_id: inv.bl_lot_id ?? null, local_id: inv.id }], bl_done_at: null })
+  if (count) requestForLocation(db, inv.location_id, 'minifig', me.id)
+  return { kind: 'bestand', item_no: row.item_no, qty: n, where: row.remarks, bricklink: true, counted: !!count }
+}
+
 // Gewünschte Mengen je Lot prüfen und merken (wie Minifig::storedLots)
 function storedLots(db, want, avail) {
   const stored = []
@@ -1212,6 +1241,11 @@ export async function route(db, method, parts, params, body, requireUser, log, d
   if (method === 'POST' && r2 === 'builds') {
     const r = addBuild(db, body.minifig_no, Number(body.qty) || 1, body.lots, me)
     log(me.id, 'minifig_build_add', 'minifig', { figur: r.minifig_no, menge: r.qty, teile: r.parts })
+    return r
+  }
+  if (method === 'POST' && r2 === 'missing') {
+    const r = reportMissing(db, Number(body.inventory_id), Number(body.qty), !!body.count, me)
+    log(me.id, 'minifig_fehlteil', 'minifig', { teil: r.item_no, menge: r.qty, lagerort: r.where, zaehlen: !!r.counted })
     return r
   }
   if (method === 'GET' && r2 === 'part-lots') return { lots: partLots(db, String(params.keys ?? '').split(',').filter(Boolean)) }

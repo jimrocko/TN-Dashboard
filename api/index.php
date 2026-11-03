@@ -673,6 +673,20 @@ switch (true) {
         ActivityLog::log((int) $me['id'], 'minifig_build_add', 'minifig', ['figur' => $r['minifig_no'], 'menge' => $r['qty'], 'teile' => $r['parts']]);
         json_response($r);
 
+    case $route === 'minifig/missing' && $method === 'POST':
+        // „Fehlt“: Menge sofort abziehen (Lager → BrickLink-Übertragung, BSX → in der Datei)
+        $me = require_user();
+        $in = request_json();
+        try {
+            $r = Minifig::reportMissing((int) ($in['inventory_id'] ?? 0), (int) ($in['qty'] ?? 0), !empty($in['count']), (int) $me['id']);
+        } catch (InvalidArgumentException $e) {
+            json_error($e->getMessage(), 422);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 409);
+        }
+        ActivityLog::log((int) $me['id'], 'minifig_fehlteil', 'minifig', ['teil' => $r['item_no'], 'menge' => $r['qty'], 'lagerort' => $r['where'], 'zaehlen' => !empty($r['counted'])]);
+        json_response($r);
+
     case $route === 'minifig/part-lots' && $method === 'GET':
         require_user();
         json_response(['lots' => Minifig::partLots(array_filter(explode(',', (string) ($_GET['keys'] ?? ''))))]);

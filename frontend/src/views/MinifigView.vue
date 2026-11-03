@@ -11,6 +11,7 @@ import { num, eur, dateTime, htmlText } from '../utils/format'
 import { LIST_FILES, listCsv, listBsx, almostJointCsv, almostJointBsx } from '../utils/minifigExport'
 import { saveBlob, zip } from '../utils/files'
 import { openZoom } from '../utils/imageZoom'
+import BrickLinkExport from '../components/BrickLinkExport.vue'
 import { copyText, BRICKLINK_XML_URL, buildNewFiguresXml } from '../utils/bricklinkXml'
 
 // Minifig-Finder: gleiche Auswertung wie das bisherige Programm. Abrufe bei BrickLink (Teile prüfen, Stücklisten laden,
@@ -179,6 +180,21 @@ const saveLots = () => run('Wird gespeichert', async () => {
   lotEdit.value = null
   await loadAll()
   return `Teile von ${e.minifig_no} geändert. Die BrickLink-Datei zieht jetzt bei den neuen Kästchen ab.`
+})
+// „Fehlt“: Teil liegt nicht (in dieser Menge) am Ort → sofort abziehen (Lager: BrickLink-Übertragung, Datei: in der Datei)
+const miss = ref(null)
+const blExport = ref(null)
+const openMissing = ({ part, src, inventory_id }) => {
+  const id = inventory_id ?? src.inventory_id
+  miss.value = { part, id, where: src.file || src.remarks || '–', file: inventory_id === src.inventory_id ? !!src.file : id >= 800000000, qty: src.quantity, count: true }
+}
+const saveMissing = () => run('Wird abgezogen', async () => {
+  const m = miss.value
+  const r = await api.post('minifig/missing', { inventory_id: m.id, qty: Number(m.qty), count: !m.file && m.count })
+  miss.value = null
+  await loadAll()
+  if (r.bricklink) await blExport.value?.refresh({ popup: true })
+  return r.bricklink ? `${r.qty}× ${r.item_no} aus ${r.where} abgezogen. Bitte jetzt zu BrickLink übertragen.` : `${r.qty}× ${r.item_no} in ${r.where} abgezogen.`
 })
 const expo = ref(null)
 const applyBsx = ref([])
@@ -730,8 +746,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   </template><template v-else>–</template></td>
                 <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide" :data-fig="r.minifig_no">
-                  <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" choose :swaps="swaps[r.minifig_no] ?? {}" @swap="setSwap(r.minifig_no, $event)" />
-                  <MinifigParts v-else v-model:open="openFigs[r.minifig_no]" :row="withLinks(r)" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" />
+                  <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" choose :swaps="swaps[r.minifig_no] ?? {}" @swap="setSwap(r.minifig_no, $event)" @missing="openMissing" />
+                  <MinifigParts v-else v-model:open="openFigs[r.minifig_no]" :row="withLinks(r)" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" @missing="openMissing" />
                   <div v-if="r.aj" class="toolbar rej">
                     <button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>
                   </div>
@@ -790,6 +806,20 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         <button class="btn btn-primary" :disabled="dl2.list !== 'zip' && !dlCount" @click="doDownload"><Download :size="16" /> Herunterladen</button>
       </template>
     </TnDialog>
+
+    <TnDialog v-if="miss" :title="`Fehlt: ${miss.part.item_no}`" @close="miss = null">
+      <div class="partcell"><PartImage :no="miss.part.item_no" :color="miss.part.color_id" :size="48" :name="miss.part.item_name" :color-name="miss.part.color_name" /><div>
+        <strong class="mono">{{ miss.part.item_no }}</strong> · {{ miss.part.color_name || `Farbe ${miss.part.color_id}` }}<div class="small muted">{{ htmlText(miss.part.item_name) }}</div></div></div>
+      <label class="field"><span>Wie viele fehlen in <strong>{{ miss.where }}</strong>?</span>
+        <input v-model.number="miss.qty" class="input qty" type="number" min="1" inputmode="numeric" /></label>
+      <label v-if="!miss.file" class="misscheck"><input v-model="miss.count" type="checkbox" /> Kästchen {{ miss.where }} zum Nachzählen vormerken („Heute zählen“)</label>
+      <p class="small muted">{{ miss.file ? 'Die Menge wird direkt in der Datei abgezogen.' : 'Die Menge wird sofort im Bestand abgezogen. Danach kommt das Fenster „Zu BrickLink übertragen“.' }}</p>
+      <template #actions>
+        <button class="btn" @click="miss = null">Abbrechen</button>
+        <button class="btn btn-primary" :disabled="busy || !(miss.qty >= 1)" @click="saveMissing">Abziehen</button>
+      </template>
+    </TnDialog>
+    <BrickLinkExport ref="blExport" />
 
     <TnDialog v-if="lotEdit" :title="`Teile ändern · ${lotEdit.minifig_no}`" wide @close="lotEdit = null">
       <p class="small muted">Aus welchem Kästchen hast du jedes Teil genommen? Die Menge je Teil muss gleich bleiben. Die BrickLink-Datei zieht danach bei den gewählten Lots ab.</p>
@@ -902,6 +932,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 </template>
 
 <style scoped>
+.misscheck { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.misscheck input { width: 20px; height: 20px; }
 .lotopt .ownbox { width: 150px; }
 .okc { color: var(--ok); }
 .lotpart { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }

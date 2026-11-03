@@ -1521,6 +1521,56 @@ final class Minifig
         return $out;
     }
 
+    /**
+     * „Fehlt“ (Wunsch des Inhabers, Sitzung 8): Teil liegt nicht (in dieser Menge) am Ort. Lager-Lot: Menge sofort abziehen und als
+     * abgeschlossene Inventur-Korrektur speichern (kommt wie jede Inventur in die BrickLink-Übertragung). BSX-Zeile: in der Datei abziehen.
+     * $count: Kästchen zusätzlich für „Heute zählen“ vormerken.
+     */
+    public static function reportMissing(int $inventoryId, int $n, bool $count, int $userId): array
+    {
+        self::ensureSchema();
+        $row = null;
+        foreach (self::partRows() as $r) if ((int) $r['inventory_id'] === $inventoryId) { $row = $r; break; }
+        if (!$row) throw new RuntimeException('Dieses Lot gibt es nicht mehr (oder es ist schon gesammelt). Die Liste wird neu berechnet.');
+        if ($n < 1 || $n > (int) $row['quantity']) throw new InvalidArgumentException('Menge muss zwischen 1 und ' . (int) $row['quantity'] . ' liegen.');
+        if ($inventoryId >= self::BSX_BASE) {
+            if (self::buildExportActive()) throw new RuntimeException('Gerade läuft der Abschluss der fertigen Figuren. Bitte danach.');
+            $fid = intdiv($inventoryId - self::BSX_BASE, 100000);
+            $line = ($inventoryId - self::BSX_BASE) % 100000;
+            $items = json_decode((string) q('SELECT items_json FROM {minifig_bsx} WHERE id = ?', [$fid])->fetchColumn(), true) ?: [];
+            if (!isset($items[$line])) throw new RuntimeException('Zeile nicht gefunden.');
+            $items[$line]['quantity'] = max(0, (int) $items[$line]['quantity'] - $n);
+            $alive = array_filter($items, fn ($r) => (int) $r['quantity'] > 0);
+            q('UPDATE {minifig_bsx} SET items_json = ?, lots = ?, parts = ? WHERE id = ?',
+                [json_encode($items, JSON_UNESCAPED_UNICODE), count($alive), array_sum(array_column($alive, 'quantity')), $fid]);
+            return ['kind' => 'bsx', 'item_no' => $row['item_no'], 'qty' => $n, 'where' => (string) $row['file'], 'bricklink' => false];
+        }
+        $inv = q('SELECT id, location_id, qty, bl_lot_id, item_no, color_name, name FROM {inventory} WHERE bl_inventory_id = ?', [$inventoryId])->fetch()
+            ?: q('SELECT id, location_id, qty, bl_lot_id, item_no, color_name, name FROM {inventory} WHERE id = ? AND bl_inventory_id IS NULL', [$inventoryId])->fetch();
+        if (!$inv) throw new RuntimeException('Lot nicht gefunden.');
+        BrickLinkSync::ensureSchema();
+        Counting::ensureSchema();
+        $t = now();
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            q('UPDATE {inventory} SET qty = ?, updated_at = ? WHERE id = ?', [max(0, (int) $inv['qty'] - $n), $t, $inv['id']]);
+            $corr = [['item_no' => $inv['item_no'], 'color' => $inv['color_name'], 'diff' => -$n,
+                'lot_id' => $inv['bl_lot_id'] !== null ? (int) $inv['bl_lot_id'] : null, 'local_id' => (int) $inv['id']]];
+            q("INSERT INTO {stocktakes} (location_id, status, created_at, closed_at, closed_by, bl_changes) VALUES (?, 'abgeschlossen', ?, ?, ?, ?)",
+                [(int) $inv['location_id'], $t, $t, $userId, json_encode($corr, JSON_UNESCAPED_UNICODE)]);
+            $sid = (int) $pdo->lastInsertId();
+            q('INSERT INTO {stocktake_items} (stocktake_id, inventory_id, item_no, color_name, name, expected, counted) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$sid, $inv['id'], $inv['item_no'], $inv['color_name'] ?? '', $inv['name'] ?? $inv['item_no'], (int) $inv['qty'], max(0, (int) $inv['qty'] - $n)]);
+            if ($count) q('INSERT INTO {count_requests} (location_id, reason, report_id, user_id, created_at) VALUES (?, ?, NULL, ?, ?)', [(int) $inv['location_id'], 'minifig', $userId, $t]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return ['kind' => 'bestand', 'item_no' => $row['item_no'], 'qty' => $n, 'where' => (string) $row['remarks'], 'bricklink' => true, 'counted' => $count];
+    }
+
     /** Gewünschte Mengen je Lot gegen verfügbare Lots prüfen und alles merken, was für die Dateien nötig ist. */
     private static function storedLots(array $want, array $avail): array
     {

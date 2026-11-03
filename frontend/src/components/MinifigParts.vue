@@ -13,7 +13,7 @@ import { api } from '../api'
 // choose: Ort je Quelle per Aufklappmenü umstellen (nur Bauplan, vor „Fertig gebaut“); swaps = gewählte Lots {"Teil|Farbe|Lot": neues Lot}
 const props = defineProps({ row: Object, open: Boolean, copies: { type: Number, default: 1 }, upTo: { type: Number, default: 0 }, choose: Boolean, swaps: { type: Object, default: () => ({}) } })
 // open: von außen steuerbar (Tipp auf Figurennummer/-name in der Liste klappt auf und zu)
-const emit = defineEmits(['update:open', 'swap'])
+const emit = defineEmits(['update:open', 'swap', 'missing'])
 const shown = ref(props.open)
 watch(() => props.open, (v) => { shown.value = v })
 const toggled = (v) => { shown.value = v; if (v !== props.open) emit('update:open', v) }
@@ -94,6 +94,7 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <template v-else-if="s.remarks"><span v-if="s.file" class="mono">{{ s.remarks }}</span><LocationTag v-else :code="s.remarks" /></template>
               <span v-else class="warnc">{{ s.file ? '–' : 'Lagerort fehlt' }}</span>
               <template v-if="s.description"><span class="lbl">Bemerkung:</span><span>{{ htmlText(s.description) }}</span></template>
+              <button type="button" class="btn btn-ghost btn-sm fehlt" :title="`${p.item_no} fehlt hier – Menge abziehen`" @click="emit('missing', { part: p, src: s, inventory_id: chosen(p, s) })">Fehlt</button>
             </div>
             <div v-if="!p.sources.length && !(p.shortfall > 0)" class="small warnc">Kein aktuelles Lot vorhanden</div>
           </div>
@@ -116,6 +117,7 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 .src.many { border-left: 3px solid var(--warn); padding-left: 6px; }
 .srcqty { color: var(--warn); }
 .ortwahl { max-width: 260px; }
+.fehlt { color: var(--danger); padding: 0 8px; height: 26px; }
 .ortwahl.changed { border-color: var(--warn); color: var(--warn); }
 .src { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; }
 .lbl { color: var(--text-3); }
