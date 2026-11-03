@@ -196,6 +196,10 @@
         {
           "titel": "Eigener Ort aus einer Datei",
           "text": "Bei „+ Anderer Ort“ lässt sich jetzt zwischen Kästchen und Datei umschalten. Wählt man eine der hochgeladenen BSX-Dateien und enthält sie das Teil in der Farbe, wird es beim Abschluss in dieser Datei abgezogen; sonst steht es mit dem Dateinamen unter „von Hand abziehen“. Server und Demo verhalten sich mit dem echten Bestand und den zwei Dateien gleich."
+        },
+        {
+          "titel": "Ort vor „Fertig gebaut“ wählen",
+          "text": "In der Teileliste einer Figur im Bauplan ist der Ort jedes Teils jetzt ein Aufklappmenü. Es zeigt alle Kästchen und Dateien, in denen dasselbe Teil in der Farbe noch frei liegt, mit der freien Menge. Ein umgestellter Ort wird orange markiert, und „Fertig gebaut“ legt die Figur mit den gewählten Orten in die Sammlung. Getestet mit dem echten Bestand auf iPad und Handy."
         }
       ]
     }

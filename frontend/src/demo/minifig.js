@@ -894,6 +894,23 @@ function builds(db) {
   }
 }
 
+// Freie Orte je Teil+Farbe (wie Minifig::partLots)
+function partLots(db, keys) {
+  const want = new Map()
+  for (const k of keys.slice(0, 300)) {
+    const i = k.lastIndexOf('|')
+    if (i < 0) continue
+    want.set(key(k.slice(0, i), Number(k.slice(i + 1))), k)
+  }
+  const out = Object.fromEntries([...want.values()].map((k) => [k, []]))
+  for (const r of partRows(db)) {
+    const k = want.get(key(r.item_no, r.color_id))
+    if (k === undefined) continue
+    out[k].push({ inventory_id: r.inventory_id, remarks: r.remarks ?? '', file: r.file ?? '', condition: r.new_or_used ?? '', available: r.quantity })
+  }
+  return out
+}
+
 // Gewünschte Mengen je Lot prüfen und merken (wie Minifig::storedLots)
 function storedLots(db, want, avail) {
   const stored = []
@@ -1197,6 +1214,7 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     log(me.id, 'minifig_build_add', 'minifig', { figur: r.minifig_no, menge: r.qty, teile: r.parts })
     return r
   }
+  if (method === 'GET' && r2 === 'part-lots') return { lots: partLots(db, String(params.keys ?? '').split(',').filter(Boolean)) }
   if (method === 'GET' && /^builds\/\d+\/lots$/.test(r2)) {
     const r = buildOptions(db, Number(parts[2]))
     if (!r) throw new DemoError('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409)

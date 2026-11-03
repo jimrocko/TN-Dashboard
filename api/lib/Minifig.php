@@ -1499,6 +1499,28 @@ final class Minifig
         return ['id' => $id, 'minifig_no' => $no, 'name' => $name, 'qty' => $qty, 'parts' => array_sum($want)];
     }
 
+    /**
+     * Freie Orte je Teil+Farbe (Aufklappmenü in der Teileliste vor „Fertig gebaut“, Wunsch des Inhabers Sitzung 8).
+     * $keys = ["Teil|Farbe", …]; Menge = Rest nach der Sammlung „Fertige Figuren“.
+     */
+    public static function partLots(array $keys): array
+    {
+        $want = [];
+        foreach (array_slice($keys, 0, 300) as $k) {
+            $i = strrpos((string) $k, '|');
+            if ($i === false) continue;
+            $want[self::key(substr($k, 0, $i), (int) substr($k, $i + 1))] = (string) $k;
+        }
+        $out = array_fill_keys(array_values($want), []);
+        foreach (self::partRows() as $r) {
+            $k = $want[self::key((string) $r['item_no'], (int) $r['color_id'])] ?? null;
+            if ($k === null) continue;
+            $out[$k][] = ['inventory_id' => (int) $r['inventory_id'], 'remarks' => (string) ($r['remarks'] ?? ''), 'file' => (string) ($r['file'] ?? ''),
+                'condition' => (string) ($r['new_or_used'] ?? ''), 'available' => (int) $r['quantity']];
+        }
+        return $out;
+    }
+
     /** Gewünschte Mengen je Lot gegen verfügbare Lots prüfen und alles merken, was für die Dateien nötig ist. */
     private static function storedLots(array $want, array $avail): array
     {

@@ -609,6 +609,7 @@ p('Jede Figur hat eine Nummer, zeigt Figurenwert, Wert der Lagerteile, Vorteil u
 abb('minifig-liste', 'Reiter „Bauplan“ mit Knopf „Fertig gebaut“')
 unter('Fertig gebaut, abziehen und einlagern')
 schritte([
+    'Hat man ein Teil aus einem anderen Kästchen oder einer anderen Datei genommen, stellt man das vorher in „Teile & Lagerorte“ im Aufklappmenü hinter „Remarks“ um; dort stehen alle Orte, an denen das Teil in der Farbe noch frei liegt. '
     'Figur zusammensuchen und bei der Figur auf <b>Fertig gebaut</b> tippen. Die Anzahl ist mit der Zahl aus dem Bauplan vorausgefüllt '
     '(Knopf z. B. „2× fertig gebaut“) und lässt sich verkleinern. Die Figur kommt in die gemeinsame Sammlung „Fertige Figuren“; ihre '
     'Teile sind sofort aus der Rechnung heraus. Der Bauplan bleibt dabei stabil: Gesammelte Figuren zählen als erledigt, die übrigen '

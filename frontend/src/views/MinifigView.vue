@@ -116,6 +116,9 @@ const moveFile = (i, d) => {
 const buildQty = ref({})
 // Anzahl für „Fertig gebaut“: vorausgefüllt mit der noch offenen Zahl im Bauplan (vorher leer = 1, Rückmeldung des Inhabers)
 const qtyOf = (r) => Math.max(1, Math.min(r.buildable_qty || 1, Number(buildQty.value[r.minifig_no]) || r.buildable_qty || 1))
+// Orte, die vor „Fertig gebaut“ per Aufklappmenü umgestellt wurden (nur auf diesem Gerät, bis zum Neuladen)
+const swaps = ref({})
+const setSwap = (no, { key, to }) => { swaps.value = { ...swaps.value, [no]: { ...(swaps.value[no] ?? {}), [key]: to } } }
 const builtOf = (no) => res.value?.built_counts?.[no] ?? 0
 const excludedSet = computed(() => new Set([...(res.value?.joint_excluded ?? []), ...(res.value?.almost_joint_excluded ?? [])].map((x) => x.minifig_no)))
 // Tipp auf Figurennummer/-name: Teileliste auf- und zuklappen (Listen mit Teileliste) bzw. Großansicht mit BrickLink-Link
@@ -135,9 +138,16 @@ const markBuilt = (r) => run(`${r.minifig_no} wird in die Sammlung gelegt`, asyn
   const k = qtyOf(r)
   // Die Teileliste des Bauplans enthält alle geplanten Kopien hintereinander (je Kopie eine Zeile pro Teilegruppe)
   const lots = new Map()
-  for (const p of (r.pick_list ?? []).slice(0, k * r.required_groups)) for (const s of p.sources ?? []) lots.set(s.inventory_id, (lots.get(s.inventory_id) ?? 0) + s.quantity)
+  // gewählte Orte aus dem Aufklappmenü der Teileliste übernehmen
+  const sw = swaps.value[r.minifig_no] ?? {}
+  for (const p of (r.pick_list ?? []).slice(0, k * r.required_groups)) for (const s of p.sources ?? []) {
+    const id = sw[`${p.item_no}|${p.color_id}|${s.inventory_id}`] ?? s.inventory_id
+    lots.set(id, (lots.get(id) ?? 0) + s.quantity)
+  }
   try {
     await api.post('minifig/builds', { minifig_no: r.minifig_no, qty: k, lots: [...lots].map(([inventory_id, quantity]) => ({ inventory_id, quantity })) })
+    const { [r.minifig_no]: _done, ...rest } = swaps.value
+    swaps.value = rest
   } finally { await loadAll() }
   return `${k}× ${r.minifig_no} liegt in „Fertige Figuren“. Die Teile sind in der Rechnung schon abgezogen.`
 })
@@ -720,7 +730,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   </template><template v-else>–</template></td>
                 <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
                 <td class="wide" :data-fig="r.minifig_no">
-                  <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" />
+                  <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" choose :swaps="swaps[r.minifig_no] ?? {}" @swap="setSwap(r.minifig_no, $event)" />
                   <MinifigParts v-else v-model:open="openFigs[r.minifig_no]" :row="withLinks(r)" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" />
                   <div v-if="r.aj" class="toolbar rej">
                     <button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>

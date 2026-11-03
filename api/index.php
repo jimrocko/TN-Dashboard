@@ -673,6 +673,10 @@ switch (true) {
         ActivityLog::log((int) $me['id'], 'minifig_build_add', 'minifig', ['figur' => $r['minifig_no'], 'menge' => $r['qty'], 'teile' => $r['parts']]);
         json_response($r);
 
+    case $route === 'minifig/part-lots' && $method === 'GET':
+        require_user();
+        json_response(['lots' => Minifig::partLots(array_filter(explode(',', (string) ($_GET['keys'] ?? ''))))]);
+
     case preg_match('#^minifig/builds/(\d+)/lots$#', $route, $m) === 1 && $method === 'GET':
         require_user();
         $r = Minifig::buildOptions((int) $m[1]);
