@@ -9,6 +9,8 @@ export const useAuth = defineStore('auth', {
     isStaff: (s) => ['lehrer', 'admin'].includes(s.user?.role),
     // Dev-Bereich: Lehrer und Teilnehmer mit Dev-Rolle (vom Lehrer vergeben). Kein zusätzlicher Code.
     canDev: (s) => !!s.user?.can_dev,
+    // Berechtigungen je Teilnehmer (Lehrer-Ansicht → Berechtigungen); Lehrer dürfen immer alles
+    can: (s) => (key) => ['lehrer', 'admin'].includes(s.user?.role) || s.user?.perms?.[key] !== false,
     roleLabel: (s) => ({ teilnehmer: 'Teilnehmer', lehrer: 'Lehrer', admin: 'Admin' })[s.user?.role] ?? '',
   },
   actions: {

@@ -167,6 +167,7 @@ async function act(fn) {
 const label = (x) => `${x.item_no} ${x.color_name || ''} · ${x.location || '–'}`.replace(/\s+/g, ' ')
 // Gewünschter Zustand wird mitgeschickt: eine Wiederholung (schlechtes WLAN) ändert nichts doppelt
 const tap = (x) => {
+  if (!auth.can('pick_picken')) { notice.value = 'Zum Picken fehlt dir die Berechtigung. Frag deinen Lehrer.'; return }
   if (claimMode.value) return act(() => api.post(`picking/items/${x.id}/claim`, { claimed: x.claim_picker_id !== auth.user?.id }, `Markieren ${label(x)}`))
   if (detail.value.order.completed) return
   if (x.picked && x.picker_id !== auth.user?.id) {
@@ -250,11 +251,11 @@ const letter = ref(false)
             <div class="muted small">Bisher gepickt von: {{ detail.picker_names.length ? detail.picker_names.join(', ') : 'noch niemand' }}</div>
           </div>
           <div class="toolbar">
-            <button class="btn" :class="{ 'btn-primary': claimMode }" :aria-pressed="claimMode" :disabled="detail.order.completed" @click="claimMode = !claimMode">
+            <button v-perm="'pick_picken'" class="btn" :class="{ 'btn-primary': claimMode }" :aria-pressed="claimMode" :disabled="detail.order.completed" @click="claimMode = !claimMode">
               <Check :size="16" /> {{ claimMode ? 'Fertig' : 'Markieren' }}
             </button>
-            <button v-if="detail.order.completed" class="btn" :disabled="busy" @click="reopen">Bestellung ändern</button>
-            <button v-else-if="detail.items.length && pickedCount === detail.items.length" class="btn btn-primary" :disabled="busy" @click="complete">Bestellung abschließen</button>
+            <button v-perm="'pick_abschliessen'" v-if="detail.order.completed" class="btn" :disabled="busy" @click="reopen">Bestellung ändern</button>
+            <button v-perm="'pick_abschliessen'" v-else-if="detail.items.length && pickedCount === detail.items.length" class="btn btn-primary" :disabled="busy" @click="complete">Bestellung abschließen</button>
           </div>
         </div>
         <div class="summary">
@@ -283,8 +284,8 @@ const letter = ref(false)
             </button>
           </div>
           <template v-if="zoneInfo && !detail.order.completed">
-            <button v-if="zoneInfo.free" class="btn btn-sm btn-primary" :disabled="busy" @click="takeZone()">Bereich {{ zone }} übernehmen ({{ zoneInfo.free }})</button>
-            <button v-else-if="zoneInfo.mine" class="btn btn-sm" :disabled="busy" @click="takeZone(true)">Meine Vormerkungen in {{ zone }} aufheben</button>
+            <button v-perm="'pick_picken'" v-if="zoneInfo.free" class="btn btn-sm btn-primary" :disabled="busy" @click="takeZone()">Bereich {{ zone }} übernehmen ({{ zoneInfo.free }})</button>
+            <button v-perm="'pick_picken'" v-else-if="zoneInfo.mine" class="btn btn-sm" :disabled="busy" @click="takeZone(true)">Meine Vormerkungen in {{ zone }} aufheben</button>
           </template>
         </div>
       </section>
@@ -306,12 +307,12 @@ const letter = ref(false)
                 <span v-else-if="x.claim_picker_name" class="faint"> · vorgemerkt: {{ x.claim_picker_name }}</span>
               </div>
               <div v-if="x.reports.length" class="reports">
-                <button v-for="r in x.reports" :key="r.id" class="chip" :title="r.pending ? 'Wartet auf Verbindung' : 'Meldung schließen'" @click.stop="resolve(r)">{{ reportLabel(r) }}<span v-if="r.user_name" class="by"> · {{ r.user_name }}</span> <X v-if="!r.pending" :size="12" /><span v-else class="by">· wartet</span></button>
+                <button v-perm="'pick_melden'" v-for="r in x.reports" :key="r.id" class="chip" :title="r.pending ? 'Wartet auf Verbindung' : 'Meldung schließen'" @click.stop="resolve(r)">{{ reportLabel(r) }}<span v-if="r.user_name" class="by"> · {{ r.user_name }}</span> <X v-if="!r.pending" :size="12" /><span v-else class="by">· wartet</span></button>
               </div>
             </div>
             <div class="loc">{{ x.location || '–' }}</div>
             <div class="qty">{{ x.quantity }}<small>Rest: {{ x.remaining_stock ?? 0 }}</small></div>
-            <button class="report" :title="`Problem melden: ${x.item_name || x.item_no}`" @click.stop="openReport(x)">
+            <button v-perm="'pick_melden'" class="report" :title="`Problem melden: ${x.item_name || x.item_no}`" @click.stop="openReport(x)">
               <CircleAlert :size="18" /><span v-if="x.report_count" class="badge">{{ x.report_count }}</span>
             </button>
           </div>

@@ -128,7 +128,7 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <template v-else-if="s.remarks"><span v-if="s.file" class="mono">{{ s.remarks }}</span><LocationTag v-else :code="s.remarks" /></template>
               <span v-else class="warnc">{{ s.file ? '–' : 'Lagerort fehlt' }}</span>
               <template v-if="s.description"><span class="lbl">Bemerkung:</span><span>{{ htmlText(s.description) }}</span></template>
-              <button type="button" class="btn btn-ghost btn-sm fehlt" :title="`${p.item_no} fehlt hier – Menge abziehen`" @click="emit('missing', { part: p, src: s, inventory_id: chosen(p, s) })">Fehlt</button>
+              <button v-perm="'minifig_fehlt'" type="button" class="btn btn-ghost btn-sm fehlt" :title="`${p.item_no} fehlt hier – Menge abziehen`" @click="emit('missing', { part: p, src: s, inventory_id: chosen(p, s) })">Fehlt</button>
             </div>
             <div v-if="!p.sources.length && !(p.shortfall > 0)" class="small warnc">Kein aktuelles Lot vorhanden</div>
           </div>

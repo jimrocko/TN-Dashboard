@@ -117,8 +117,8 @@ async function finish(done) {
         </div>
       </div>
       <div class="steps">
-        <button class="btn btn-primary big" type="button" :disabled="busy" @click="finish(true)"><Check :size="20" /><span><b>Ja, ist eingefügt</b></span></button>
-        <button class="btn big2" type="button" :disabled="busy" @click="finish(false)">Nein, verwerfen</button>
+        <button v-perm="'bricklink_uebertragen'" class="btn btn-primary big" type="button" :disabled="busy" @click="finish(true)"><Check :size="20" /><span><b>Ja, ist eingefügt</b></span></button>
+        <button v-perm="'bricklink_uebertragen'" class="btn big2" type="button" :disabled="busy" @click="finish(false)">Nein, verwerfen</button>
       </div>
       <div v-if="files.length" class="files">
         <button v-for="(f, i) in files" :key="i" class="btn btn-sm again" type="button" @click="copyAndOpen(i)">
@@ -141,10 +141,10 @@ async function finish(done) {
       </div>
       <div class="steps">
         <template v-if="changes">
-          <button v-for="(f, i) in files" :key="i" class="btn big" :class="{ 'btn-primary': i === 0 }" type="button" @click="start(i)">
+          <button v-perm="'bricklink_uebertragen'" v-for="(f, i) in files" :key="i" class="btn big" :class="{ 'btn-primary': i === 0 }" type="button" @click="start(i)">
             <Upload :size="20" /><span><b>{{ files.length > 1 ? `${i + 1}. ` : '' }}{{ fileLabel(f) }} kopieren</b> · BrickLink öffnen</span>
           </button>
-          <button v-if="!files.length" class="btn btn-primary big" type="button" @click="start()"><Check :size="20" /><span><b>Nichts einzufügen</b> · abschließen</span></button>
+          <button v-perm="'bricklink_uebertragen'" v-if="!files.length" class="btn btn-primary big" type="button" @click="start()"><Check :size="20" /><span><b>Nichts einzufügen</b> · abschließen</span></button>
         </template>
         <span v-else-if="!error" class="faint small">Änderungen werden geladen …</span>
       </div>

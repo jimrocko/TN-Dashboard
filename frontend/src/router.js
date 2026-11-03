@@ -78,6 +78,10 @@ router.beforeEach(async (to) => {
   if (to.meta.staff && !auth.isStaff) return '/'
   if (to.meta.xpOnly && useSettings().style !== 'xp') return '/'
   if (to.meta.dev && !auth.canDev) return '/'
+  // Bereich gesperrt (Berechtigung „Bereiche sehen“)
+  // (nur die Bereichsseiten selbst; Teile- und Lagerort-Seite bleiben offen, sie werden von überall verlinkt)
+  const mod = ['inventar', 'umlagern', 'inventur', 'analyse', 'pickliste', 'minifig'].find((m) => to.path === `/${m}` || to.path.startsWith(`/${m}/`))
+  if (mod && !auth.can(`see_${mod}`)) return '/'
 })
 
 // Jeder Modulaufruf landet im Protokoll (nur beim Wechsel des Moduls, nicht bei jedem Filter).

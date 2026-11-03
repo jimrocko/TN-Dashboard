@@ -1,6 +1,7 @@
 // Demo-Backend: ersetzt die PHP-API im Browser, damit die App ohne Server ausprobiert werden kann.
 // Daten liegen nur im Browser (localStorage, sonst im Arbeitsspeicher).
 // Gleiche Beispieldaten und gleiche Regeln wie api/lib/Shop.php.
+import { PERM_LABEL, cleanPerms, permForRoute } from '../utils/permissions.js'
 import seed from '../../../api/sql/demo-data.json'
 import * as shop from './shop.js'
 import { predict } from '../utils/brickognize.js'
@@ -81,7 +82,14 @@ function save(db) {
   try { localStorage.setItem(KEY, JSON.stringify(db)) } catch { /* nur im Arbeitsspeicher */ }
 }
 
-const pub = (u, db) => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role, last_seen: u.last_seen, can_dev: devRoutes.devAllowed(db, u) })
+// Berechtigungen wie Perm in api/lib/Perm.php: Lehrer alles, sonst eigener Eintrag oder Standard für neue
+const permsOf = (db, u) => (['lehrer', 'admin'].includes(u.role) ? cleanPerms({}) : cleanPerms((db.perms ?? {})[u.id] ?? db.permDefaults ?? {}))
+const permDiff = (a, b) => {
+  const on = [], off = []
+  for (const k of Object.keys(PERM_LABEL)) if (a[k] !== b[k]) (b[k] ? on : off).push(PERM_LABEL[k])
+  return [on.length ? `erlaubt: ${on.join(', ')}` : '', off.length ? `gesperrt: ${off.join(', ')}` : ''].filter(Boolean).join('; ')
+}
+const pub = (u, db) => ({ id: u.id, username: u.username, display_name: u.display_name, role: u.role, last_seen: u.last_seen, can_dev: devRoutes.devAllowed(db, u), perms: permsOf(db, u) })
 const isStaff = (u) => ['lehrer', 'admin'].includes(u.role)
 
 function log(db, userId, action, module = null, details = null) {
@@ -158,6 +166,37 @@ async function recognize(form) {
 
 function dispatch(db, method, route, params, body) {
   const parts = route.split('/')
+  // Berechtigung für Schreib-Routen (wie require_perm in api/index.php)
+  const permKey = permForRoute(method, parts)
+  if (permKey && !permsOf(db, requireUser(db))[permKey]) throw new DemoError(`Dafür hast du keine Berechtigung (${PERM_LABEL[permKey]}). Frag deinen Lehrer.`, 403)
+  if (method === 'GET' && route === 'permissions') {
+    const me = requireUser(db)
+    if (!isStaff(me)) throw new DemoError('Nur für Lehrer', 403)
+    return {
+      keys: Object.entries(PERM_LABEL).map(([key, label]) => ({ key, label })),
+      defaults: cleanPerms(db.permDefaults ?? {}),
+      users: db.users.filter((u) => u.active !== false && !isStaff(u)).sort((a, b) => a.display_name.localeCompare(b.display_name, 'de'))
+        .map((u) => ({ id: u.id, username: u.username, display_name: u.display_name, perms: permsOf(db, u), custom: !!(db.perms ?? {})[u.id], dev_access: devRoutes.devAllowed(db, u) })),
+    }
+  }
+  if (method === 'POST' && route === 'permissions/defaults') {
+    const me = requireUser(db)
+    if (!isStaff(me)) throw new DemoError('Nur für Lehrer', 403)
+    const old = cleanPerms(db.permDefaults ?? {})
+    db.permDefaults = cleanPerms(body.perms ?? {})
+    log(db, me.id, 'permissions_default', null, { aenderung: permDiff(old, db.permDefaults) })
+    return { defaults: db.permDefaults }
+  }
+  if (method === 'POST' && parts[0] === 'users' && /^\d+$/.test(parts[1] ?? '') && parts[2] === 'permissions') {
+    const me = requireUser(db)
+    if (!isStaff(me)) throw new DemoError('Nur für Lehrer', 403)
+    const target = db.users.find((u) => u.id === Number(parts[1]) && u.active !== false)
+    if (!target || isStaff(target)) throw new DemoError('Nur für Teilnehmer', 400)
+    const old = permsOf(db, target)
+    ;(db.perms ??= {})[target.id] = cleanPerms(body.perms ?? {})
+    log(db, me.id, 'permissions', null, { konto: target.username, aenderung: permDiff(old, db.perms[target.id]) })
+    return { perms: db.perms[target.id] }
+  }
   switch (`${method} ${route}`) {
     case 'POST auth/login': {
       const u = db.users.find((x) => x.username === String(body.username ?? '').trim() && x.active !== false)

@@ -275,16 +275,16 @@ const teacherList = [
     target: () => panel('Teilnehmer'), wait: 'next', go: '/lehrer',
   },
   {
-    say: 'Tipp auf Max Mustermann, dann siehst du nur sein Protokoll.',
+    say: 'Tipp auf Max Mustermann, dann siehst du nur seinen Verlauf.',
     target: () => byText('tr.clickable', 'Max Mustermann'), wait: 'click', go: '/lehrer',
   },
   {
-    say: 'Rechts steht jetzt alles, was Max gemacht hat: wann, was, in welchem Bereich, mit Details wie Teil, Menge und Lagerort. Jede Umlagerung, jede Inventur, jeder Auftragsschritt.',
-    target: () => panel('Protokoll'), wait: 'next', go: '/lehrer',
+    say: 'Rechts steht jetzt in ganzen Sätzen, was Max gemacht hat, nach Tagen sortiert: zum Beispiel „hat 3× 3001 von G101 nach G205 umgelagert“. „Wichtiges“ blendet Kleinkram wie Anmelden aus, „Alles“ zeigt jeden Klick.',
+    target: () => panel('Verlauf'), wait: 'next', go: '/lehrer',
   },
   {
-    say: 'Mit „CSV“ lädst du das Protokoll als Tabelle herunter, zum Beispiel für Excel oder für die Notenbesprechung. „Alle anzeigen“ oben in der Liste zeigt wieder alle zusammen.',
-    target: () => panel('Protokoll')?.querySelector('.panel-head .btn') ?? null, wait: 'next', go: '/lehrer',
+    say: 'Mit „CSV“ lädst du den Verlauf als Tabelle herunter, zum Beispiel für Excel oder für die Notenbesprechung. „Alle anzeigen“ oben in der Liste zeigt wieder alle zusammen.',
+    target: () => panel('Verlauf')?.querySelector('.panel-head .btn') ?? null, wait: 'next', go: '/lehrer',
   },
   // Schüler verwalten
   {
@@ -300,6 +300,10 @@ const teacherList = [
     chapter: 'Schüler löschen',
     say: 'Verlässt jemand den Kurs, löschst du sein Konto mit dem Papierkorb ganz rechts. Probier es mit dem Konto, das du gerade angelegt hast: Papierkorb und dann „Ja“. Gelöschte Konten können sich nicht mehr anmelden, ihr Protokoll bleibt aber erhalten.',
     target: () => newestUserRow(), hint: 'Papierkorb, dann „Ja“', wait: { api: /^POST users\/\d+\/delete$/ }, go: '/lehrer',
+  },
+  {
+    say: 'Unter „Berechtigungen“ legst du fest, wer was darf: Tipp auf einen Namen und setz oder entfern die Haken, zum Beispiel „Inventur abschließen“ oder „Fehlt (Bestand abziehen)“. Ohne Haken ist der Knopf weg. „Standard für neue Teilnehmer“ gilt für alle, die du nicht extra einstellst.',
+    target: () => panel('Berechtigungen'), wait: 'next', go: '/lehrer',
   },
   {
     chapter: 'Dev-Rolle',

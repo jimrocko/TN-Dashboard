@@ -28,6 +28,7 @@ function public_user(array $u): array
         'role'         => $u['role'],
         'last_seen'    => $u['last_seen'] ?? null,
         'can_dev'      => Dev::allowed($u),
+        'perms'        => Perm::of($u),
     ];
 }
 
@@ -61,6 +62,16 @@ function require_staff(): array
     $user = require_user();
     if (!in_array($user['role'], ROLES_STAFF, true)) {
         json_error('Nur für Lehrer', 403);
+    }
+    return $user;
+}
+
+/** Angemeldet und Berechtigung vorhanden (Lehrer immer), sonst 403. */
+function require_perm(string $key): array
+{
+    $user = require_user();
+    if (!Perm::can($user, $key)) {
+        json_error('Dafür hast du keine Berechtigung (' . (Perm::KEYS[$key][1] ?? $key) . '). Frag deinen Lehrer.', 403);
     }
     return $user;
 }

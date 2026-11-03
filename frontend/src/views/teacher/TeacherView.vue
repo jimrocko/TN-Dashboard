@@ -6,11 +6,13 @@ import ActivityTable from '../../components/ActivityTable.vue'
 import ShopDataPanel from './ShopDataPanel.vue'
 import PickSettingsPanel from './PickSettingsPanel.vue'
 import CountSettingsPanel from './CountSettingsPanel.vue'
+import PermissionsPanel from './PermissionsPanel.vue'
 import { api, apiUrl, IS_DEMO } from '../../api'
 import { dateTime } from '../../utils/format'
 import { handbuchUrl } from '../../tutorial/help'
 
 const users = ref([])
+const permPanel = ref(null)
 const selected = ref(null)
 const activity = ref([])
 const form = ref({ username: '', display_name: '', password: '' })
@@ -44,6 +46,7 @@ async function toggleDev(u) {
   try {
     await api.post(`users/${u.id}/dev`, { enabled: !u.dev_access })
     u.dev_access = !u.dev_access
+    permPanel.value?.load()
   } catch (e) { devErr.value = e.message }
 }
 // Konto löschen: erst Rückfrage in der Zeile, dann deaktivieren (Protokoll bleibt erhalten).
@@ -166,13 +169,15 @@ onMounted(async () => { await loadUsers(); await select(null) })
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Protokoll: {{ selected ? selected.display_name : 'alle Teilnehmer' }}</h2>
+          <h2>Verlauf: {{ selected ? selected.display_name : 'alle Teilnehmer' }}</h2>
           <a v-if="!IS_DEMO" class="btn btn-sm" :href="csvUrl()"><Download :size="15" /> CSV</a>
           <button v-else class="btn btn-sm" @click="demoCsv"><Download :size="15" /> CSV</button>
         </div>
         <ActivityTable :rows="activity" :show-user="!selected" />
       </section>
     </div>
+
+    <PermissionsPanel ref="permPanel" @changed="loadUsers(); select(selected)" />
 
     <div class="grid-2">
       <ShopDataPanel />

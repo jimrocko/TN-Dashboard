@@ -506,8 +506,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   <td><div class="partcell"><PartImage :no="b.minifig_no" type="MINIFIG" :size="40" :name="b.name" /><div><button type="button" class="figname" title="Bild und BrickLink-Link" @click="figZoom(b)"><strong class="mono">{{ b.minifig_no }}</strong><span class="small">{{ htmlText(b.name) }}</span></button></div></div></td>
                   <td class="num"><strong>{{ b.qty }}×</strong></td><td class="num">{{ num(b.parts) }}</td>
                   <td class="small">{{ b.user_name || '–' }}<div class="faint">{{ dateTime(b.created_at) }}</div></td>
-                  <td class="num nowrap"><template v-if="b.status === 'open'"><button class="btn btn-ghost btn-sm" :disabled="busy" :title="`Teile von ${b.minifig_no} aus anderen Kästchen nehmen`" @click="openLots(b)"><Pencil :size="15" /> Teile ändern</button>
-                    <button class="btn btn-ghost btn-sm" :disabled="busy" :title="`${b.minifig_no} aus der Sammlung nehmen`" @click="removeBuild(b)"><Trash2 :size="15" /></button></template></td>
+                  <td class="num nowrap"><template v-if="b.status === 'open'"><button v-perm="'minifig_bauen'" class="btn btn-ghost btn-sm" :disabled="busy" :title="`Teile von ${b.minifig_no} aus anderen Kästchen nehmen`" @click="openLots(b)"><Pencil :size="15" /> Teile ändern</button>
+                    <button v-perm="'minifig_bauen'" class="btn btn-ghost btn-sm" :disabled="busy" :title="`${b.minifig_no} aus der Sammlung nehmen`" @click="removeBuild(b)"><Trash2 :size="15" /></button></template></td>
                 </tr>
               </tbody>
             </table>
@@ -515,7 +515,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <p v-if="bd.export" class="small warnc">Abschluss läuft (gestartet von {{ bd.export.by || '–' }}, {{ dateTime(bd.export.at) }}). Erst bestätigen oder verwerfen, dann geht es weiter.</p>
           <p v-else-if="bd.transfer_open" class="small warnc">Beim Umlagern ist gerade eine BrickLink-Übertragung offen. Die bitte zuerst abschließen, dann geht „Sammlung abschließen“.</p>
           <div class="toolbar">
-            <button class="btn btn-primary" :disabled="busy || (!bd.export && (bd.transfer_open || !builds.length))" @click="startExport">
+            <button v-perm="'minifig_abschluss'" class="btn btn-primary" :disabled="busy || (!bd.export && (bd.transfer_open || !builds.length))" @click="startExport">
               <PackageCheck :size="16" /> {{ bd.export ? 'Abschluss fortsetzen' : 'Sammlung abschließen' }}</button>
           </div>
         </div>
@@ -734,8 +734,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                     <select v-if="(jointMap.get(r.minifig_no).buildable_qty || 1) > 1" :value="qtyOf(jointMap.get(r.minifig_no))" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`" @change="buildQty[r.minifig_no] = Number($event.target.value)">
                       <option v-for="n in jointMap.get(r.minifig_no).buildable_qty" :key="n" :value="n">{{ n }}×</option>
                     </select>
-                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> {{ qtyOf(jointMap.get(r.minifig_no)) > 1 ? `${qtyOf(jointMap.get(r.minifig_no))}× fertig gebaut` : 'Fertig gebaut' }}</button>
-                    <button class="btn btn-sm" :disabled="busy" title="Aus dem Bauplan nehmen, die Teile werden für andere Figuren frei" @click="decide(r.minifig_no, 'exclude', 'not_build')">Nicht bauen</button>
+                    <button v-perm="'minifig_bauen'" class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> {{ qtyOf(jointMap.get(r.minifig_no)) > 1 ? `${qtyOf(jointMap.get(r.minifig_no))}× fertig gebaut` : 'Fertig gebaut' }}</button>
+                    <button v-perm="'minifig_bauen'" class="btn btn-sm" :disabled="busy" title="Aus dem Bauplan nehmen, die Teile werden für andere Figuren frei" @click="decide(r.minifig_no, 'exclude', 'not_build')">Nicht bauen</button>
                   </div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
                 <td class="num">{{ eur(r.parts_value) }}</td>
@@ -749,7 +749,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" choose :swaps="swaps[r.minifig_no] ?? {}" @swap="setSwap(r.minifig_no, $event)" @missing="openMissing" />
                   <MinifigParts v-else v-model:open="openFigs[r.minifig_no]" :row="withLinks(r)" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" @missing="openMissing" />
                   <div v-if="r.aj" class="toolbar rej">
-                    <button v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>
+                    <button v-perm="'minifig_bauen'" v-for="(l, k) in REASONS" :key="k" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'exclude', k)">{{ k === 'not_build' ? 'Nicht bauen' : `Nicht bauen · ${l}` }}</button>
                   </div>
                 </td>
               </tr>
@@ -769,7 +769,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <table class="table"><tbody>
               <tr v-for="r in res.joint_excluded" :key="r.minifig_no">
                 <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" :name="r.name" /><button type="button" class="figname" title="Bild und BrickLink-Link" @click="figZoom(r)"><strong class="mono">{{ r.minifig_no }}</strong><span class="small">{{ htmlText(r.name) }}</span></button></div></td>
-                <td class="num"><button class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
+                <td class="num"><button v-perm="'minifig_bauen'" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
               </tr>
             </tbody></table>
           </div>
@@ -780,7 +780,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <table class="table"><tbody>
               <tr v-for="r in res.almost_joint_excluded" :key="r.minifig_no">
                 <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" :name="r.name" /><button type="button" class="figname" title="Bild und BrickLink-Link" @click="figZoom(r)"><strong class="mono">{{ r.minifig_no }}</strong><span class="small">{{ htmlText(r.name) }}</span></button></div></td><td>{{ REASONS[r.reason] ?? 'Nicht bauen' }}</td>
-                <td class="num"><button class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
+                <td class="num"><button v-perm="'minifig_bauen'" class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
               </tr>
             </tbody></table>
           </div>

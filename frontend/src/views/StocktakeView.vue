@@ -100,7 +100,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
           <option value="" disabled>Lagerort wählen</option>
           <option v-for="l in locations" :key="l.id" :value="l.id" :disabled="openLocations.has(l.code)">{{ l.code }} · {{ l.lots }} Lots</option>
         </select>
-        <button class="btn btn-primary" :disabled="busy || !newLoc">Inventur starten</button>
+        <button v-perm="'inventur_zaehlen'" class="btn btn-primary" :disabled="busy || !newLoc">Inventur starten</button>
       </form>
     </PageHead>
     <p v-if="msg" class="success">{{ msg }}</p>
@@ -122,7 +122,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
           <ul v-if="x.requests.length" class="reqs small">
             <li v-for="(r, k) in x.requests" :key="k">{{ r.label }}<template v-if="r.by"> · {{ r.by }}</template> · {{ dateTime(r.at) }}</li>
           </ul>
-          <button v-if="!x.done" class="btn btn-sm" :class="{ 'btn-primary': !x.open_stocktake }" :disabled="busy" @click="startToday(x)">
+          <button v-perm="'inventur_zaehlen'" v-if="!x.done" class="btn btn-sm" :class="{ 'btn-primary': !x.open_stocktake }" :disabled="busy" @click="startToday(x)">
             {{ x.open_stocktake ? 'Weiterzählen' : 'Starten' }}</button>
         </div>
       </div>
@@ -157,7 +157,7 @@ const diffText = (i) => (i.counted === null ? '' : i.counted - i.expected > 0 ? 
               <template v-if="current.status !== 'offen'"> · abgeschlossen {{ dateTime(current.closed_at) }}<template v-if="current.closed_by_name"> von {{ current.closed_by_name }}</template></template>
             </div>
           </div>
-          <button v-if="current.status === 'offen'" class="btn btn-primary btn-sm" :disabled="busy || !progress" @click="close">Abschließen</button>
+          <button v-perm="'inventur_abschliessen'" v-if="current.status === 'offen'" class="btn btn-primary btn-sm" :disabled="busy || !progress" @click="close">Abschließen</button>
         </div>
         <div class="table-wrap">
           <table class="table">

@@ -26,6 +26,7 @@ require __DIR__ . '/lib/Sync.php';
 require __DIR__ . '/lib/Picking.php';
 require __DIR__ . '/lib/Minifig.php';
 require __DIR__ . '/lib/Counting.php';
+require __DIR__ . '/lib/Perm.php';
 
 set_exception_handler(function (Throwable $e) {
     error_log('[tn-dashboard] ' . $e);
@@ -193,7 +194,7 @@ switch (true) {
         $o ? json_response(['order' => $o]) : json_error('Auftrag nicht gefunden', 404);
 
     case count($parts) === 3 && $parts[0] === 'orders' && ctype_digit($parts[1]) && $parts[2] === 'status' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('pick_abschliessen');
         $status = (string) (request_json()['status'] ?? '');
         Shop::setOrderStatus((int) $parts[1], $status);
         $o = Shop::order((int) $parts[1]);
@@ -211,7 +212,7 @@ switch (true) {
         json_response(['transfers' => Shop::transfers((int) ($_GET['limit'] ?? 30))]);
 
     case $route === 'transfers' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('umlagern_buchen');
         $in = request_json();
         $r = Shop::transfer((int) ($in['lot_id'] ?? 0), (int) ($in['to_location_id'] ?? 0), (int) ($in['qty'] ?? 0), (int) $me['id'],
             isset($in['expect_location_id']) ? (int) $in['expect_location_id'] : null, isset($in['expect_qty']) ? (int) $in['expect_qty'] : null);
@@ -231,7 +232,7 @@ switch (true) {
 
     case $route === 'bricklink/start' && $method === 'POST':
         // Übertragung starten (Bestand wurde kopiert). Es darf immer nur eine offen sein.
-        $me = require_user();
+        $me = require_perm('bricklink_uebertragen');
         $in = request_json();
         $e = BrickLinkSync::start((array) ($in['ids'] ?? []), (int) $me['id'], (array) ($in['stocktake_ids'] ?? []));
         ActivityLog::log((int) $me['id'], 'bricklink_export_start', 'umlagern', ['umlagerungen' => count($e['transfer_ids']), 'inventuren' => count($e['stocktake_ids'])]);
@@ -239,7 +240,7 @@ switch (true) {
 
     case $route === 'bricklink/finish' && $method === 'POST':
         // Offene Übertragung abschließen: eingefügt (done = true) oder verworfen. Darf jeder.
-        $me = require_user();
+        $me = require_perm('bricklink_uebertragen');
         $in = request_json();
         $n = BrickLinkSync::finish((int) ($in['id'] ?? 0), !empty($in['done']));
         if (!empty($in['done'])) OllieSync::markExported(); // Ollies alter Stand kennt die Änderungen noch nicht
@@ -288,7 +289,7 @@ switch (true) {
         json_response(['size' => $n]);
 
     case $route === 'stocktakes' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('inventur_zaehlen');
         $id = Shop::createStocktake((int) (request_json()['location_id'] ?? 0));
         $s = Shop::stocktake($id);
         ActivityLog::log((int) $me['id'], 'stocktake_created', 'inventur', ['lagerort' => $s['location_code']]);
@@ -300,14 +301,14 @@ switch (true) {
         $s ? json_response(['stocktake' => $s]) : json_error('Prüfung nicht gefunden', 404);
 
     case count($parts) === 3 && $parts[0] === 'stocktakes' && ctype_digit($parts[1]) && $parts[2] === 'count' && $method === 'POST':
-        require_user();
+        require_perm('inventur_zaehlen');
         $in = request_json();
         $counted = ($in['counted'] ?? null) === null || $in['counted'] === '' ? null : (int) $in['counted'];
         Shop::count((int) $parts[1], (int) ($in['item_id'] ?? 0), $counted);
         json_response(['ok' => true]);
 
     case count($parts) === 3 && $parts[0] === 'stocktakes' && ctype_digit($parts[1]) && $parts[2] === 'close' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('inventur_abschliessen');
         $r = Shop::closeStocktake((int) $parts[1], (int) $me['id']);
         ActivityLog::log((int) $me['id'], 'stocktake_closed', 'inventur', ['lagerort' => $r['location'], 'korrekturen' => count($r['corrections'])]);
         json_response($r);
@@ -576,7 +577,7 @@ switch (true) {
         json_response(Picking::orderRevision((int) $parts[2]));
 
     case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'orders' && ctype_digit($parts[2]) && in_array($parts[3], ['complete', 'reopen'], true) && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('pick_abschliessen');
         $id = (int) $parts[2];
         $r = $parts[3] === 'complete' ? Picking::complete($id) : Picking::reopen($id);
         $no = q('SELECT order_no FROM {orders} WHERE id = ?', [$id])->fetchColumn();
@@ -584,7 +585,7 @@ switch (true) {
         json_response($r);
 
     case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'items' && ctype_digit($parts[2]) && in_array($parts[3], ['toggle', 'claim', 'reports'], true) && $method === 'POST':
-        $me = require_user();
+        $me = require_perm(['toggle' => 'pick_picken', 'claim' => 'pick_picken', 'reports' => 'pick_melden'][$parts[3]]);
         $item = (int) $parts[2];
         $info = q('SELECT x.item_no, x.color_name, x.qty, o.order_no FROM {order_items} x JOIN {orders} o ON o.id = x.order_id WHERE x.id = ?', [$item])->fetch() ?: [];
         $details = ['auftrag' => $info['order_no'] ?? null, 'teil' => trim(($info['item_no'] ?? '') . ' ' . ($info['color_name'] ?? '')), 'menge' => (int) ($info['qty'] ?? 0)];
@@ -605,7 +606,7 @@ switch (true) {
         json_response($r);
 
     case count($parts) === 4 && $parts[0] === 'picking' && $parts[1] === 'reports' && ctype_digit($parts[2]) && $parts[3] === 'resolve' && $method === 'POST':
-        require_user();
+        require_perm('pick_melden');
         json_response(Picking::resolve((int) $parts[2]));
 
     case $route === 'picking/location-order' && $method === 'GET':
@@ -642,14 +643,14 @@ switch (true) {
 
     case $route === 'minifig/source' && $method === 'POST':
         // Woher die Teile kommen: bestand | beides | bsx (gilt für alle, wie der Bestand selbst)
-        $me = require_user();
+        $me = require_perm('minifig_einstellungen');
         $src = Minifig::setStockSource((string) (request_json()['source'] ?? ''));
         ActivityLog::log((int) $me['id'], 'minifig_source', 'minifig', ['quelle' => $src]);
         json_response(['source' => $src]);
 
     case $route === 'minifig/priority' && $method === 'POST':
         // Welche Quelle zuerst (Lager oder BSX-Dateien) und Reihenfolge der BSX-Dateien (gilt für alle)
-        $me = require_user();
+        $me = require_perm('minifig_einstellungen');
         $in = request_json();
         try { $r = Minifig::setPriority((string) ($in['priority'] ?? ''), (array) ($in['bsx_order'] ?? [])); } catch (InvalidArgumentException $e) { json_error($e->getMessage(), 422); }
         ActivityLog::log((int) $me['id'], 'minifig_priority', 'minifig', ['zuerst' => $r['priority']]);
@@ -661,7 +662,7 @@ switch (true) {
 
     case $route === 'minifig/builds' && $method === 'POST':
         // „Fertig gebaut“: Figur in die gemeinsame Sammlung legen (Teile sind dann in der Rechnung abgezogen)
-        $me = require_user();
+        $me = require_perm('minifig_bauen');
         $in = request_json();
         try {
             $r = Minifig::addBuild((string) ($in['minifig_no'] ?? ''), (int) ($in['qty'] ?? 1), (array) ($in['lots'] ?? []), (int) $me['id']);
@@ -675,7 +676,7 @@ switch (true) {
 
     case $route === 'minifig/missing' && $method === 'POST':
         // „Fehlt“: Menge sofort abziehen (Lager → BrickLink-Übertragung, BSX → in der Datei)
-        $me = require_user();
+        $me = require_perm('minifig_fehlt');
         $in = request_json();
         try {
             $r = Minifig::reportMissing((int) ($in['inventory_id'] ?? 0), (int) ($in['qty'] ?? 0), !empty($in['count']), (int) $me['id']);
@@ -686,6 +687,35 @@ switch (true) {
         }
         ActivityLog::log((int) $me['id'], 'minifig_fehlteil', 'minifig', ['teil' => $r['item_no'], 'menge' => $r['qty'], 'lagerort' => $r['where'], 'zaehlen' => !empty($r['counted'])]);
         json_response($r);
+
+    case $route === 'permissions' && $method === 'GET':
+        // Berechtigungen (nur Lehrer): Rechte-Liste, Standard für neue, je Teilnehmer
+        require_staff();
+        Perm::ensureSchema();
+        $dev = q('SELECT user_id FROM {dev_access}')->fetchAll(PDO::FETCH_COLUMN);
+        $users = [];
+        foreach (q("SELECT * FROM {users} WHERE active = 1 AND role NOT IN ('lehrer', 'admin') ORDER BY display_name")->fetchAll() as $u) {
+            $users[] = ['id' => (int) $u['id'], 'username' => $u['username'], 'display_name' => $u['display_name'], 'perms' => Perm::of($u),
+                'custom' => Perm::custom((int) $u['id']), 'dev_access' => in_array($u['id'], $dev)];
+        }
+        json_response(['keys' => array_map(fn ($k, $v) => ['key' => $k, 'group' => $v[0], 'label' => $v[1]], array_keys(Perm::KEYS), Perm::KEYS),
+            'defaults' => Perm::defaults(), 'users' => $users]);
+
+    case $route === 'permissions/defaults' && $method === 'POST':
+        $staff = require_staff();
+        $old = Perm::defaults();
+        $new = Perm::setDefaults((array) (request_json()['perms'] ?? []));
+        ActivityLog::log((int) $staff['id'], 'permissions_default', null, ['aenderung' => Perm::diffText($old, $new)]);
+        json_response(['defaults' => $new]);
+
+    case preg_match('#^users/(\d+)/permissions$#', $route, $m) === 1 && $method === 'POST':
+        $staff = require_staff();
+        $target = q("SELECT * FROM {users} WHERE id = ? AND active = 1", [(int) $m[1]])->fetch();
+        if (!$target || in_array($target['role'], ROLES_STAFF, true)) json_error('Nur für Teilnehmer', 400);
+        $old = Perm::of($target);
+        $new = Perm::setFor((int) $target['id'], (array) (request_json()['perms'] ?? []));
+        ActivityLog::log((int) $staff['id'], 'permissions', null, ['konto' => $target['username'], 'aenderung' => Perm::diffText($old, $new)]);
+        json_response(['perms' => $new]);
 
     case $route === 'minifig/part-lots' && $method === 'GET':
         require_user();
@@ -699,7 +729,7 @@ switch (true) {
 
     case preg_match('#^minifig/builds/(\d+)/lots$#', $route, $m) === 1 && $method === 'POST':
         // Teile einer gesammelten Figur aus anderen Kästchen/Lots nehmen
-        $me = require_user();
+        $me = require_perm('minifig_bauen');
         try {
             $r = Minifig::updateBuildLots((int) $m[1], (array) (request_json()['lots'] ?? []));
         } catch (InvalidArgumentException $e) {
@@ -711,7 +741,7 @@ switch (true) {
         json_response($r);
 
     case preg_match('#^minifig/builds/(\d+)/delete$#', $route, $m) === 1 && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('minifig_bauen');
         $b = Minifig::deleteBuild((int) $m[1]);
         if ($b === null) json_error('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409);
         ActivityLog::log((int) $me['id'], 'minifig_build_delete', 'minifig', ['figur' => $b['minifig_no'], 'menge' => (int) $b['qty']]);
@@ -719,7 +749,7 @@ switch (true) {
 
     case $route === 'minifig/builds/start' && $method === 'POST':
         // „Sammlung abschließen“: BrickLink-Datei (Minus-Mengen je Lot) und geänderte BSX-Dateien
-        $me = require_user();
+        $me = require_perm('minifig_abschluss');
         $active = Minifig::buildExportActive();
         $r = Minifig::startBuildExport((int) $me['id']);
         if (!$active) ActivityLog::log((int) $me['id'], 'minifig_build_export_start', 'minifig', ['figuren' => count($r['builds']), 'lots' => $r['bricklink_lots']]);
@@ -731,7 +761,7 @@ switch (true) {
         send_file($content, $name, 'application/xml');
 
     case $route === 'minifig/builds/finish' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('minifig_abschluss');
         $in = request_json();
         $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []), (array) ($in['store'] ?? []));
         ActivityLog::log((int) $me['id'], $r['done'] ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig',
@@ -743,14 +773,14 @@ switch (true) {
         json_response(['files' => Minifig::bsxFiles()]);
 
     case $route === 'minifig/bsx' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('minifig_dateien');
         [$content, $name] = upload_body();
         try { $r = Minifig::addBsx($content, $name, (int) $me['id']); } catch (RuntimeException $e) { json_error($e->getMessage(), 422); }
         ActivityLog::log((int) $me['id'], 'minifig_bsx_add', 'minifig', ['datei' => $r['name'], 'lots' => $r['lots']]);
         json_response($r);
 
     case preg_match('#^minifig/bsx/(\d+)/delete$#', $route, $m) === 1 && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('minifig_dateien');
         $name = Minifig::deleteBsx((int) $m[1]);
         if ($name === null) json_error('Datei nicht gefunden', 404);
         ActivityLog::log((int) $me['id'], 'minifig_bsx_delete', 'minifig', ['datei' => $name]);
@@ -777,7 +807,7 @@ switch (true) {
         json_response($r);
 
     case $route === 'minifig/decision' && $method === 'POST':
-        $me = require_user();
+        $me = require_perm('minifig_bauen');
         $in = request_json();
         $r = Minifig::decide((string) ($in['minifig_no'] ?? ''), (string) ($in['action'] ?? ''), (string) ($in['reason'] ?? ''));
         ActivityLog::log((int) $me['id'], 'minifig_decision', 'minifig', ['figur' => $r['minifig_no'], 'aktion' => $r['action'], 'grund' => $r['reason']]);

@@ -1,9 +1,14 @@
 <script setup>
+import { computed } from 'vue'
+import { useAuth as useAuthPerm } from '../stores/auth'
 import { onMounted, ref } from 'vue'
 import GlobalSearch from '../components/GlobalSearch.vue'
 import ModuleTile from '../components/ModuleTile.vue'
 import HelpButton from '../components/HelpButton.vue'
-import { homeModules } from '../modules'
+import { homeModules as allHomeModules } from '../modules'
+// Bereiche ohne Berechtigung „sehen“ ausblenden
+const permAuth = useAuthPerm()
+const homeModules = computed(() => allHomeModules.filter((m) => !['inventar', 'umlagern', 'inventur', 'analyse', 'pickliste', 'minifig'].includes(m.id) || permAuth.can(`see_${m.id}`)))
 import { api } from '../api'
 
 const data = ref(null)

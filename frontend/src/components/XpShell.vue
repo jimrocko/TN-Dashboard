@@ -2,7 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, History, Settings, GraduationCap, Code2, Power, LogOut } from 'lucide-vue-next'
-import { modules, homeModules, moduleById } from '../modules'
+import { modules, homeModules as allHomeModules, moduleById } from '../modules'
+// Bereiche ohne Berechtigung „sehen“ ausblenden
+const permAuth = useAuth()
+const homeModules = computed(() => allHomeModules.filter((m) => !['inventar', 'umlagern', 'inventur', 'analyse', 'pickliste', 'minifig'].includes(m.id) || permAuth.can(`see_${m.id}`)))
 import { pageTitle } from '../router'
 import { useAuth } from '../stores/auth'
 import { windowKey } from '../utils/windowing'

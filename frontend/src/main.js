@@ -16,4 +16,8 @@ const app = createApp(App).use(createPinia())
 const settings = useSettings()
 settings.init()
 if (!IS_TUTORIAL) listenKonami(settings)
+// v-perm="'schluessel'": Knopf ausblenden, wenn die Berechtigung fehlt (Lehrer-Ansicht → Berechtigungen)
+import { useAuth } from './stores/auth'
+const permShow = (el, b) => { el.style.display = useAuth().can(b.value) ? '' : 'none' }
+app.directive('perm', { mounted: permShow, updated: permShow })
 app.use(router).mount('#app')

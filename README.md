@@ -151,7 +151,7 @@ Bestand nach Kategorie, volle Regalplätze, Mischkisten, Engpässe, Aufträge na
 
 ## Lehrer-Ansicht
 
-Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), das Protokoll aller oder einzelner Teilnehmer ansehen, als CSV exportieren und die Dev-Rolle vergeben. **Lager aus BrickLink übernehmen** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen. Oben rechts öffnet **Handbuch (PDF)** das ausführliche Handbuch in einem neuen Tab.
+Teilnehmer anlegen und löschen (das Protokoll bleibt erhalten), den Verlauf aller oder einzelner Teilnehmer in ganzen Sätzen ansehen (nach Tagen, „Wichtiges“ oder „Alles“, Filter nach Bereich), als CSV exportieren und unter **Berechtigungen** je Teilnehmer per Haken festlegen, was er darf (Bereiche sehen, umlagern, Inventur, picken, „Fehlt“, Sammlung abschließen, BrickLink-Übertragung, Dev-Bereich). **Lager aus BrickLink übernehmen** holt alle Lots aus dem BrickLink-Shop mit Lot-IDs und Lagerort (aus den Remarks), damit Umlagerungen per Knopf zurück zu BrickLink gehen. Oben rechts öffnet **Handbuch (PDF)** das ausführliche Handbuch in einem neuen Tab.
 
 <p align="center"><img src="docs/images/lehrer-ansicht.png" alt="Lehrer-Ansicht mit Teilnehmern und Protokoll" width="720"></p>
 

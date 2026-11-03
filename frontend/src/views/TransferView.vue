@@ -204,7 +204,7 @@ onMounted(async () => {
             <div class="ghead">
               <div class="gtitle"><span class="faint">Nach</span> <LocationTag :code="g.code" class="big" />
                 <span class="faint small">{{ g.rows.length === 1 ? '1 Lot' : `${g.rows.length} Lots` }}<template v-if="g.already.size"> · schon da: {{ [...g.already].join(', ') }}</template></span></div>
-              <button v-if="g.rows.length > 1" class="btn btn-sm btn-primary" :disabled="busy" @click="bookMany(g.rows)">Alle übernehmen</button>
+              <button v-perm="'umlagern_buchen'" v-if="g.rows.length > 1" class="btn btn-sm btn-primary" :disabled="busy" @click="bookMany(g.rows)">Alle übernehmen</button>
             </div>
             <div v-for="s in g.rows" :key="s.lot.id" class="sugrow">
               <PartImage :name="s.lot.name ?? s.lot.item_name" :color-name="s.lot.color_name" :no="s.lot.item_no" :color="s.lot.color_id" :type="s.lot.item_type" :size="44" />
@@ -215,7 +215,7 @@ onMounted(async () => {
               </div>
               <div class="from"><span class="faint small">aus</span> <LocationTag :code="s.lot.location_code" /></div>
               <div class="qty">{{ num(s.lot.qty) }}×</div>
-              <button class="btn btn-sm btn-take" :class="{ 'btn-primary': g.rows.length === 1 }" :disabled="busy" @click="book(s.lot, s.to_location_id, s.lot.qty)">Übernehmen</button>
+              <button v-perm="'umlagern_buchen'" class="btn btn-sm btn-take" :class="{ 'btn-primary': g.rows.length === 1 }" :disabled="busy" @click="book(s.lot, s.to_location_id, s.lot.qty)">Übernehmen</button>
             </div>
           </div>
         </div>
@@ -231,7 +231,7 @@ onMounted(async () => {
             </div>
             <div class="route"><LocationTag :code="s.lot.location_code" /> <ArrowRight :size="16" class="faint" /> <LocationTag :code="s.to_location_code" /></div>
             <div class="qty">{{ num(s.lot.qty) }}×</div>
-            <button class="btn btn-sm btn-take btn-primary" :disabled="busy" @click="book(s.lot, s.to_location_id, s.lot.qty)">Übernehmen</button>
+            <button v-perm="'umlagern_buchen'" class="btn btn-sm btn-take btn-primary" :disabled="busy" @click="book(s.lot, s.to_location_id, s.lot.qty)">Übernehmen</button>
           </div>
         </div>
 
@@ -280,7 +280,7 @@ onMounted(async () => {
               <input class="input" v-model.number="qty" type="number" min="1" :max="lot.qty" required inputmode="numeric" />
             </label>
           </div>
-          <button class="btn btn-primary" :disabled="busy || !to">Umbuchen</button>
+          <button v-perm="'umlagern_buchen'" class="btn btn-primary" :disabled="busy || !to">Umbuchen</button>
         </form>
         <p v-else-if="!lotResults.length" class="faint small">Wähle ein Lot aus, um es an einen anderen Lagerort zu buchen. Gleiches Teil am Ziel wird zusammengeführt.</p>
       </div>

@@ -337,7 +337,7 @@ liste([
     '<b>Analyse:</b> Kennzahlen zu Lager, Aufträgen und Mitarbeit.',
 ])
 p('Jede Aktion wird pro Person <b>protokolliert</b>. Die Lehrkraft kann so jederzeit nachvollziehen, wer was gemacht hat, und das '
-  'Protokoll als CSV-Datei exportieren.')
+  'Protokoll als CSV-Datei exportieren. Was Teilnehmer dürfen, legt die Lehrkraft unter „Berechtigungen“ fest.')
 
 abschnitt('Benutzergruppen und Rollen')
 p('Es gibt drei Rollen. Die Rolle wird beim Anlegen des Kontos festgelegt; die Dev-Rolle vergibt die Lehrkraft zusätzlich an einzelne '
@@ -705,7 +705,13 @@ p('Die Lehrer-Ansicht ist nur für Lehrkräfte sichtbar (Menü am eigenen Namen)
 liste([
     '<b>Handbuch (PDF)</b> oben rechts: öffnet dieses Handbuch in einem neuen Tab, zum Lesen, Speichern oder Drucken.',
     '<b>Teilnehmer</b>: Liste aller Konten mit Rolle, letzter Aktivität und Anzahl Aktionen. Ein Tipp auf einen Namen filtert das Protokoll.',
-    '<b>Protokoll</b> aller oder einzelner Teilnehmer mit Zeit, Aktion, Bereich und Details, exportierbar als <b>CSV</b>.',
+    '<b>Verlauf</b> aller oder einzelner Teilnehmer in ganzen Sätzen, nach Tagen geordnet (z. B. „Max hat 3× 3001 von G101 nach G205 umgelagert“), '
+    'mit Symbol je Bereich. „Wichtiges“ blendet Kleinkram wie Anmelden und Bereich öffnen aus, „Alles“ zeigt jeden Eintrag; dazu ein Filter nach Bereich. '
+    'Die Rohdaten gibt es weiter als <b>CSV</b>.',
+    '<b>Berechtigungen</b>: Je Teilnehmer ein aufklappbarer Eintrag mit Haken, gruppiert nach Bereichen sehen, Umlagern, Inventur, Pickliste, '
+    'Minifig-Finder und BrickLink, dazu der Dev-Bereich. Ohne Haken verschwindet der Bereich von der Startseite bzw. der Knopf, und der Server lehnt '
+    'die Aktion ab. „Standard für neue Teilnehmer“ gilt für alle ohne eigene Einstellung. Jede Änderung wird sofort gespeichert und steht im Verlauf. '
+    'Lehrkräfte dürfen immer alles.',
     '<b>Teilnehmer anlegen</b> (Benutzername, Anzeigename, Startpasswort mit mindestens sechs Zeichen).',
     '<b>Konto löschen</b> (Papierkorb mit Rückfrage): Das Konto wird deaktiviert, das Protokoll bleibt erhalten, der Benutzername wird frei.',
     '<b>Dev-Rolle</b> vergeben oder entziehen (Spalte „Dev“).',

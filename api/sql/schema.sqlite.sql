@@ -329,3 +329,9 @@ CREATE TABLE IF NOT EXISTS {p}sort_progress (
   open_count INTEGER NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS {p}permissions (
+  user_id INTEGER NOT NULL PRIMARY KEY,
+  perms_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
