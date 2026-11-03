@@ -894,17 +894,8 @@ function builds(db) {
   }
 }
 
-function addBuild(db, no, qty, lots, me) {
-  no = String(no ?? '').trim()
-  if (!no || !(qty >= 1)) throw new DemoError('Figur oder Anzahl fehlt', 422)
-  const want = new Map()
-  for (const l of lots ?? []) {
-    const id = Number(l.inventory_id)
-    const n = Number(l.quantity)
-    if (id > 0 && n > 0) want.set(id, (want.get(id) ?? 0) + n)
-  }
-  if (!want.size) throw new DemoError('Keine Teile angegeben', 422)
-  const avail = new Map(partRows(db).map((r) => [r.inventory_id, r]))
+// Gewünschte Mengen je Lot prüfen und merken (wie Minifig::storedLots)
+function storedLots(db, want, avail) {
   const stored = []
   for (const [id, n] of want) {
     const r = avail.get(id)
@@ -917,6 +908,66 @@ function addBuild(db, no, qty, lots, me) {
     }
     stored.push(l)
   }
+  return stored
+}
+
+// Teile einer gesammelten Figur umbuchen (wie Minifig::buildOptions / updateBuildLots)
+function buildOptions(db, id) {
+  const b = (mfOf(db).builds ?? []).find((x) => x.id === id && x.status === 'open')
+  if (!b) return null
+  const own = new Map()
+  for (const l of b.lots) own.set(l.inventory_id, (own.get(l.inventory_id) ?? 0) + l.quantity)
+  const rows = new Map()
+  for (const r of partRows(db, true)) { const k = key(r.item_no, r.color_id); if (!rows.has(k)) rows.set(k, []); rows.get(k).push(r) }
+  const free = new Map(partRows(db).map((r) => [r.inventory_id, r.quantity]))
+  const parts = new Map()
+  for (const l of b.lots) {
+    const k = key(l.item_no, l.color_id)
+    if (!parts.has(k)) parts.set(k, { item_no: l.item_no, item_name: l.item_name ?? '', color_id: l.color_id, color_name: l.color_name ?? '', need: 0, lots: [] })
+    parts.get(k).need += l.quantity
+  }
+  for (const [k, p] of parts) {
+    for (const r of rows.get(k) ?? []) {
+      const avail = (free.get(r.inventory_id) ?? 0) + (own.get(r.inventory_id) ?? 0)
+      if (avail <= 0) continue
+      p.lots.push({ inventory_id: r.inventory_id, remarks: r.remarks ?? '', file: r.file ?? '', condition: r.new_or_used ?? '', available: avail, used: own.get(r.inventory_id) ?? 0 })
+    }
+  }
+  return { id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, parts: [...parts.values()] }
+}
+function updateBuildLots(db, id, lots) {
+  const opt = buildOptions(db, id)
+  if (!opt) throw new DemoError('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409)
+  const want = new Map()
+  for (const l of lots ?? []) { const i = Number(l.inventory_id); const n = Number(l.quantity); if (i > 0 && n > 0) want.set(i, (want.get(i) ?? 0) + n) }
+  const byLot = new Map(partRows(db, true).map((r) => [r.inventory_id, r]))
+  const avail = new Map()
+  for (const p of opt.parts) {
+    let sum = 0
+    for (const o of p.lots) {
+      sum += want.get(o.inventory_id) ?? 0
+      if (byLot.has(o.inventory_id)) avail.set(o.inventory_id, { ...byLot.get(o.inventory_id), quantity: o.available })
+    }
+    if (sum !== p.need) throw new DemoError(`Für ${p.item_no} werden ${p.need} Stück gebraucht, eingetragen sind ${sum}.`, 422)
+  }
+  for (const i of want.keys()) if (!avail.has(i)) throw new DemoError('Dieses Lot passt nicht zur Figur.', 422)
+  const stored = storedLots(db, want, avail)
+  mfOf(db).builds.find((x) => x.id === id).lots = stored
+  return { id, minifig_no: opt.minifig_no, parts: [...want.values()].reduce((t, n) => t + n, 0) }
+}
+
+function addBuild(db, no, qty, lots, me) {
+  no = String(no ?? '').trim()
+  if (!no || !(qty >= 1)) throw new DemoError('Figur oder Anzahl fehlt', 422)
+  const want = new Map()
+  for (const l of lots ?? []) {
+    const id = Number(l.inventory_id)
+    const n = Number(l.quantity)
+    if (id > 0 && n > 0) want.set(id, (want.get(id) ?? 0) + n)
+  }
+  if (!want.size) throw new DemoError('Keine Teile angegeben', 422)
+  const avail = new Map(partRows(db).map((r) => [r.inventory_id, r]))
+  const stored = storedLots(db, want, avail)
   const mf = mfOf(db)
   mf.builds ??= []
   const name = catalogOf(mf).find((c) => c.minifig_no === no)?.name || no
@@ -1110,6 +1161,16 @@ export async function route(db, method, parts, params, body, requireUser, log, d
   if (method === 'POST' && r2 === 'builds') {
     const r = addBuild(db, body.minifig_no, Number(body.qty) || 1, body.lots, me)
     log(me.id, 'minifig_build_add', 'minifig', { figur: r.minifig_no, menge: r.qty, teile: r.parts })
+    return r
+  }
+  if (method === 'GET' && /^builds\/\d+\/lots$/.test(r2)) {
+    const r = buildOptions(db, Number(parts[2]))
+    if (!r) throw new DemoError('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409)
+    return r
+  }
+  if (method === 'POST' && /^builds\/\d+\/lots$/.test(r2)) {
+    const r = updateBuildLots(db, Number(parts[2]), body.lots)
+    log(me.id, 'minifig_build_lots', 'minifig', { figur: r.minifig_no, teile: r.parts })
     return r
   }
   if (method === 'POST' && /^builds\/\d+\/delete$/.test(r2)) {

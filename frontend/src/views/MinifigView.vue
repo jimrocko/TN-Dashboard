@@ -1,7 +1,7 @@
 <script setup>
 import PartImage from '../components/PartImage.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files, ArrowUp, ArrowDown, PackageCheck, Copy, X, CircleCheck } from 'lucide-vue-next'
+import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files, ArrowUp, ArrowDown, PackageCheck, Copy, X, CircleCheck, Pencil } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import MinifigParts from '../components/MinifigParts.vue'
 import TnDialog from '../components/TnDialog.vue'
@@ -145,6 +145,22 @@ const removeBuild = (b) => run('Figur wird aus der Sammlung genommen', async () 
   await api.post(`minifig/builds/${b.id}/delete`)
   await loadAll()
   return `${b.minifig_no} ist wieder aus der Sammlung raus.`
+})
+// „Teile ändern“: Teil aus einem anderen Kästchen/Lot genommen als vorgeschlagen (Wunsch des Inhabers, Sitzung 8)
+const lotEdit = ref(null)
+const openLots = (b) => run('Lots werden geladen', async () => {
+  const r = await api.get(`minifig/builds/${b.id}/lots`)
+  r.parts.forEach((p) => p.lots.forEach((l) => { l.take = l.used }))
+  lotEdit.value = r
+})
+const lotSum = (p) => p.lots.reduce((t, l) => t + (Number(l.take) || 0), 0)
+const lotOk = computed(() => lotEdit.value?.parts.every((p) => lotSum(p) === p.need && p.lots.every((l) => (Number(l.take) || 0) >= 0 && (Number(l.take) || 0) <= l.available)))
+const saveLots = () => run('Wird gespeichert', async () => {
+  const e = lotEdit.value
+  await api.post(`minifig/builds/${e.id}/lots`, { lots: e.parts.flatMap((p) => p.lots.filter((l) => Number(l.take) > 0).map((l) => ({ inventory_id: l.inventory_id, quantity: Number(l.take) }))) })
+  lotEdit.value = null
+  await loadAll()
+  return `Teile von ${e.minifig_no} geändert. Die BrickLink-Datei zieht jetzt bei den neuen Kästchen ab.`
 })
 const expo = ref(null)
 const applyBsx = ref([])
@@ -456,7 +472,8 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   <td><div class="partcell"><PartImage :no="b.minifig_no" type="MINIFIG" :size="40" :name="b.name" /><div><button type="button" class="figname" title="Bild und BrickLink-Link" @click="figZoom(b)"><strong class="mono">{{ b.minifig_no }}</strong><span class="small">{{ htmlText(b.name) }}</span></button></div></div></td>
                   <td class="num"><strong>{{ b.qty }}×</strong></td><td class="num">{{ num(b.parts) }}</td>
                   <td class="small">{{ b.user_name || '–' }}<div class="faint">{{ dateTime(b.created_at) }}</div></td>
-                  <td class="num"><button v-if="b.status === 'open'" class="btn btn-ghost btn-sm" :disabled="busy" :title="`${b.minifig_no} aus der Sammlung nehmen`" @click="removeBuild(b)"><Trash2 :size="15" /></button></td>
+                  <td class="num nowrap"><template v-if="b.status === 'open'"><button class="btn btn-ghost btn-sm" :disabled="busy" :title="`Teile von ${b.minifig_no} aus anderen Kästchen nehmen`" @click="openLots(b)"><Pencil :size="15" /> Teile ändern</button>
+                    <button class="btn btn-ghost btn-sm" :disabled="busy" :title="`${b.minifig_no} aus der Sammlung nehmen`" @click="removeBuild(b)"><Trash2 :size="15" /></button></template></td>
                 </tr>
               </tbody>
             </table>
@@ -756,6 +773,24 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
       </template>
     </TnDialog>
 
+    <TnDialog v-if="lotEdit" :title="`Teile ändern · ${lotEdit.minifig_no}`" wide @close="lotEdit = null">
+      <p class="small muted">Aus welchem Kästchen hast du jedes Teil genommen? Die Menge je Teil muss gleich bleiben. Die BrickLink-Datei zieht danach bei den gewählten Lots ab.</p>
+      <div v-for="p in lotEdit.parts" :key="`${p.item_no}|${p.color_id}`" class="lotpart" :class="{ bad: lotSum(p) !== p.need }">
+        <div class="partcell"><PartImage :no="p.item_no" :color="p.color_id" :size="36" :name="p.item_name" :color-name="p.color_name" /><div>
+          <strong class="mono">{{ p.item_no }}</strong> · {{ p.color_name || `Farbe ${p.color_id}` }}<div class="small muted">{{ htmlText(p.item_name) }}</div></div>
+          <span class="pill" :class="lotSum(p) === p.need ? 'ok' : 'danger'">{{ lotSum(p) }} / {{ p.need }}</span></div>
+        <div v-for="l in p.lots" :key="l.inventory_id" class="lotopt">
+          <input v-model.number="l.take" class="input qty" type="number" min="0" :max="l.available" inputmode="numeric" :aria-label="`Menge aus ${l.remarks || l.file}`" />
+          <span class="mono strong">{{ l.file ? l.file : (l.remarks || 'ohne Lagerort') }}</span><span v-if="l.file && l.remarks" class="small faint">{{ l.remarks }}</span>
+          <span class="small faint">{{ l.available }} da<template v-if="l.condition"> · {{ l.condition === 'N' ? 'neu' : 'gebr.' }}</template> · Lot {{ l.inventory_id }}</span>
+        </div>
+      </div>
+      <template #actions>
+        <button class="btn" @click="lotEdit = null">Abbrechen</button>
+        <button class="btn btn-primary" :disabled="busy || !lotOk" @click="saveLots">Speichern</button>
+      </template>
+    </TnDialog>
+
     <TnDialog v-if="expo" title="Sammlung abschließen" wide @close="expo = null">
       <p>{{ figs(expo.builds.reduce((t, b) => t + b.qty, 0)) }} fertig gebaut ({{ expo.builds.length === 1 ? '1 Eintrag' : `${num(expo.builds.length)} Einträge` }}).</p>
       <section v-if="expo.xml" class="step">
@@ -831,6 +866,12 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 </template>
 
 <style scoped>
+.lotpart { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.lotpart.bad { border-color: var(--danger); }
+.lotpart > .partcell .pill { margin-left: auto; }
+.lotopt { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-left: 46px; }
+.lotopt .qty { width: 64px; }
+@media (max-width: 600px) { .lotopt { padding-left: 0; } }
 .box.there { border-color: var(--ok); }
 .exists { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; color: var(--ok); }
 .exbox { white-space: nowrap; padding: 1px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); background: transparent; color: var(--ok); font: inherit; cursor: pointer; }

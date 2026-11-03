@@ -1486,21 +1486,7 @@ final class Minifig
         try {
             $avail = [];
             foreach (self::partRows() as $r) $avail[(int) $r['inventory_id']] = $r;
-            $stored = [];
-            foreach ($want as $id => $n) {
-                $r = $avail[$id] ?? null;
-                if (!$r || $r['quantity'] < $n) throw new RuntimeException('Ein Teil ist nicht mehr in dieser Menge da (vielleicht hat jemand anderes es gerade gesammelt). Die Liste wird neu berechnet.');
-                $l = ['inventory_id' => $id, 'quantity' => $n, 'item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => $r['color_id'],
-                    'color_name' => $r['color_name'], 'remarks' => (string) ($r['remarks'] ?? ''), 'condition' => (string) ($r['new_or_used'] ?? '')];
-                if ($id >= self::BSX_BASE) {
-                    $l += ['kind' => 'bsx', 'bsx_id' => intdiv($id - self::BSX_BASE, 100000), 'line' => ($id - self::BSX_BASE) % 100000, 'file' => $r['file'] ?? ''];
-                } else {
-                    $inv = q('SELECT id, bl_inventory_id FROM {inventory} WHERE bl_inventory_id = ?', [$id])->fetch()
-                        ?: q('SELECT id, bl_inventory_id FROM {inventory} WHERE id = ? AND bl_inventory_id IS NULL', [$id])->fetch();
-                    $l += ['kind' => 'bestand', 'local_id' => $inv ? (int) $inv['id'] : null, 'bl_lot_id' => $inv && $inv['bl_inventory_id'] !== null ? (int) $inv['bl_inventory_id'] : null];
-                }
-                $stored[] = $l;
-            }
+            $stored = self::storedLots($want, $avail);
             $name = (string) (q('SELECT name FROM {minifig_catalog} WHERE minifig_no = ?', [$no])->fetchColumn() ?: $no);
             q("INSERT INTO {minifig_builds} (minifig_no, name, qty, lots_json, status, user_id, created_at) VALUES (?, ?, ?, ?, 'open', ?, ?)",
                 [$no, $name, $qty, json_encode($stored, JSON_UNESCAPED_UNICODE), $userId, now()]);
@@ -1511,6 +1497,99 @@ final class Minifig
             throw $e;
         }
         return ['id' => $id, 'minifig_no' => $no, 'name' => $name, 'qty' => $qty, 'parts' => array_sum($want)];
+    }
+
+    /** Gewünschte Mengen je Lot gegen verfügbare Lots prüfen und alles merken, was für die Dateien nötig ist. */
+    private static function storedLots(array $want, array $avail): array
+    {
+        $stored = [];
+        foreach ($want as $id => $n) {
+            $r = $avail[$id] ?? null;
+            if (!$r || $r['quantity'] < $n) throw new RuntimeException('Ein Teil ist nicht mehr in dieser Menge da (vielleicht hat jemand anderes es gerade gesammelt). Die Liste wird neu berechnet.');
+            $l = ['inventory_id' => $id, 'quantity' => $n, 'item_no' => $r['item_no'], 'item_name' => $r['item_name'], 'color_id' => $r['color_id'],
+                'color_name' => $r['color_name'], 'remarks' => (string) ($r['remarks'] ?? ''), 'condition' => (string) ($r['new_or_used'] ?? '')];
+            if ($id >= self::BSX_BASE) {
+                $l += ['kind' => 'bsx', 'bsx_id' => intdiv($id - self::BSX_BASE, 100000), 'line' => ($id - self::BSX_BASE) % 100000, 'file' => $r['file'] ?? ''];
+            } else {
+                $inv = q('SELECT id, bl_inventory_id FROM {inventory} WHERE bl_inventory_id = ?', [$id])->fetch()
+                    ?: q('SELECT id, bl_inventory_id FROM {inventory} WHERE id = ? AND bl_inventory_id IS NULL', [$id])->fetch();
+                $l += ['kind' => 'bestand', 'local_id' => $inv ? (int) $inv['id'] : null, 'bl_lot_id' => $inv && $inv['bl_inventory_id'] !== null ? (int) $inv['bl_inventory_id'] : null];
+            }
+            $stored[] = $l;
+        }
+        return $stored;
+    }
+
+    /**
+     * Teile einer gesammelten Figur umbuchen (Wunsch des Inhabers, Sitzung 8: „statt aus FT48 aus FG03 genommen“).
+     * Je Teil+Farbe alle Lots zur Auswahl; verfügbar = Rest nach allen Sammlungen + was diese Figur dort schon belegt.
+     */
+    public static function buildOptions(int $id): ?array
+    {
+        self::ensureSchema();
+        $b = q("SELECT id, minifig_no, name, qty, lots_json FROM {minifig_builds} WHERE id = ? AND status = 'open'", [$id])->fetch();
+        if (!$b) return null;
+        $mine = json_decode((string) $b['lots_json'], true) ?: [];
+        $own = [];
+        foreach ($mine as $l) $own[(int) $l['inventory_id']] = ($own[(int) $l['inventory_id']] ?? 0) + (int) $l['quantity'];
+        $rows = [];
+        foreach (self::partRows(true) as $r) $rows[self::key((string) $r['item_no'], (int) $r['color_id'])][] = $r;
+        $free = [];
+        foreach (self::partRows() as $r) $free[(int) $r['inventory_id']] = (int) $r['quantity'];
+        $parts = [];
+        foreach ($mine as $l) {
+            $k = self::key((string) $l['item_no'], (int) $l['color_id']);
+            $parts[$k] ??= ['item_no' => $l['item_no'], 'item_name' => $l['item_name'] ?? '', 'color_id' => (int) $l['color_id'], 'color_name' => $l['color_name'] ?? '', 'need' => 0, 'lots' => []];
+            $parts[$k]['need'] += (int) $l['quantity'];
+        }
+        foreach ($parts as $k => &$p) {
+            foreach ($rows[$k] ?? [] as $r) {
+                $iid = (int) $r['inventory_id'];
+                $avail = ($free[$iid] ?? 0) + ($own[$iid] ?? 0);
+                if ($avail <= 0) continue;
+                $p['lots'][] = ['inventory_id' => $iid, 'remarks' => (string) ($r['remarks'] ?? ''), 'file' => (string) ($r['file'] ?? ''),
+                    'condition' => (string) ($r['new_or_used'] ?? ''), 'available' => $avail, 'used' => $own[$iid] ?? 0];
+            }
+        }
+        unset($p);
+        return ['id' => (int) $b['id'], 'minifig_no' => $b['minifig_no'], 'name' => $b['name'], 'qty' => (int) $b['qty'], 'parts' => array_values($parts)];
+    }
+
+    /** Neue Aufteilung speichern: je Teil+Farbe muss die Menge gleich bleiben, jedes Lot muss reichen. */
+    public static function updateBuildLots(int $id, array $lots): array
+    {
+        $opt = self::buildOptions($id);
+        if (!$opt) throw new RuntimeException('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss');
+        $want = [];
+        foreach ($lots as $l) {
+            $iid = (int) ($l['inventory_id'] ?? 0);
+            $n = (int) ($l['quantity'] ?? 0);
+            if ($iid > 0 && $n > 0) $want[$iid] = ($want[$iid] ?? 0) + $n;
+        }
+        $avail = [];
+        $byLot = [];
+        foreach (self::partRows(true) as $r) $byLot[(int) $r['inventory_id']] = $r;
+        foreach ($opt['parts'] as $p) {
+            $sum = 0;
+            foreach ($p['lots'] as $o) {
+                $iid = $o['inventory_id'];
+                $sum += $want[$iid] ?? 0;
+                if (isset($byLot[$iid])) $avail[$iid] = ['quantity' => $o['available']] + $byLot[$iid];
+            }
+            if ($sum !== $p['need']) throw new InvalidArgumentException("Für {$p['item_no']} werden {$p['need']} Stück gebraucht, eingetragen sind $sum.");
+        }
+        foreach ($want as $iid => $n) if (!isset($avail[$iid])) throw new InvalidArgumentException('Dieses Lot passt nicht zur Figur.');
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $stored = self::storedLots($want, $avail);
+            q("UPDATE {minifig_builds} SET lots_json = ? WHERE id = ? AND status = 'open'", [json_encode($stored, JSON_UNESCAPED_UNICODE), $id]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return ['id' => $id, 'minifig_no' => $opt['minifig_no'], 'parts' => array_sum($want)];
     }
 
     /** Figur wieder aus der Sammlung nehmen (nicht, solange der Abschluss läuft). */

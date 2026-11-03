@@ -184,6 +184,10 @@
         {
           "titel": "Vorhandene Figuren beim Einlagern",
           "text": "Im Schritt „Figuren einlagern“ ist das Kästchen vorausgewählt, in dem dieselbe Figur schon liegt, auch wenn sie dort mit anderem Zustand liegt. Ein grünes Zeichen „Schon da“ zeigt Menge und Kästchen; antippen übernimmt das Kästchen. Neue Figuren sind mit „neu im Lager“ gekennzeichnet."
+        },
+        {
+          "titel": "Teile ändern",
+          "text": "In der Sammlung „Fertige Figuren“ hat jede Figur den Knopf „Teile ändern“. Hat man ein Teil aus einem anderen Kästchen genommen als vorgeschlagen, verteilt man dort die Menge je Teil auf die richtigen Lots; die Summe je Teil muss gleich bleiben, und die App prüft, ob dort genug liegt. Die BrickLink-Datei zieht danach bei den gewählten Lots ab. Server und Demo verhalten sich mit dem echten Bestand gleich."
         }
       ]
     }

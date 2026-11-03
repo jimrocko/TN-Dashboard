@@ -673,6 +673,25 @@ switch (true) {
         ActivityLog::log((int) $me['id'], 'minifig_build_add', 'minifig', ['figur' => $r['minifig_no'], 'menge' => $r['qty'], 'teile' => $r['parts']]);
         json_response($r);
 
+    case preg_match('#^minifig/builds/(\d+)/lots$#', $route, $m) === 1 && $method === 'GET':
+        require_user();
+        $r = Minifig::buildOptions((int) $m[1]);
+        if ($r === null) json_error('Figur nicht (mehr) in der Sammlung oder gerade im Abschluss', 409);
+        json_response($r);
+
+    case preg_match('#^minifig/builds/(\d+)/lots$#', $route, $m) === 1 && $method === 'POST':
+        // Teile einer gesammelten Figur aus anderen Kästchen/Lots nehmen
+        $me = require_user();
+        try {
+            $r = Minifig::updateBuildLots((int) $m[1], (array) (request_json()['lots'] ?? []));
+        } catch (InvalidArgumentException $e) {
+            json_error($e->getMessage(), 422);
+        } catch (RuntimeException $e) {
+            json_error($e->getMessage(), 409);
+        }
+        ActivityLog::log((int) $me['id'], 'minifig_build_lots', 'minifig', ['figur' => $r['minifig_no'], 'teile' => $r['parts']]);
+        json_response($r);
+
     case preg_match('#^minifig/builds/(\d+)/delete$#', $route, $m) === 1 && $method === 'POST':
         $me = require_user();
         $b = Minifig::deleteBuild((int) $m[1]);
