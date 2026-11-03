@@ -51,7 +51,7 @@ const choices = (p, s) => {
   const list = opts.value[pkey(p)] ?? []
   return list.some((l) => l.inventory_id === s.inventory_id) ? list : [{ inventory_id: s.inventory_id, remarks: s.remarks, file: s.file, available: s.quantity, condition: s.new_or_used }, ...list]
 }
-const shownName = (p, s) => { const l = choices(p, s).find((x) => x.inventory_id === chosen(p, s)); return l?.file || l?.remarks || s.remarks || '–' }
+const shownName = (p, s) => { const l = choices(p, s).find((x) => x.inventory_id === chosen(p, s)); return l?.remarks || s.remarks || l?.file || '–' }
 const chosen = (p, s) => props.swaps[`${pkey(p)}|${s.inventory_id}`] ?? s.inventory_id
 const per = (p) => Math.round(p.quantity / Math.max(1, props.copies))
 const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
