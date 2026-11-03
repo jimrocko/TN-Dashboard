@@ -51,6 +51,7 @@ const choices = (p, s) => {
   const list = opts.value[pkey(p)] ?? []
   return list.some((l) => l.inventory_id === s.inventory_id) ? list : [{ inventory_id: s.inventory_id, remarks: s.remarks, file: s.file, available: s.quantity, condition: s.new_or_used }, ...list]
 }
+const shownName = (p, s) => { const l = choices(p, s).find((x) => x.inventory_id === chosen(p, s)); return l?.file || l?.remarks || s.remarks || '–' }
 const chosen = (p, s) => props.swaps[`${pkey(p)}|${s.inventory_id}`] ?? s.inventory_id
 const per = (p) => Math.round(p.quantity / Math.max(1, props.copies))
 const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
@@ -87,10 +88,14 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <span v-if="cond(s.new_or_used)" class="faint">{{ cond(s.new_or_used) }}</span>
               <span v-if="s.file" class="tag">Datei: {{ s.file }}</span>
               <span class="lbl">Remarks:</span>
-              <select v-if="choose && opts[pkey(p)]" class="select select-sm ortwahl" :class="{ changed: chosen(p, s) !== s.inventory_id }" :value="chosen(p, s)"
-                :aria-label="`Ort für ${p.item_no}`" @change="emit('swap', { key: `${pkey(p)}|${s.inventory_id}`, to: Number($event.target.value) })">
-                <option v-for="l in choices(p, s)" :key="l.inventory_id" :value="l.inventory_id">{{ srcLabel(l) }}</option>
-              </select>
+              <!-- Aussehen wie vorher (Schild mit Kästchen bzw. Dateiname); ein Tipp öffnet das Menü mit den freien Orten -->
+              <span v-if="choose && opts[pkey(p)]" class="ortpick" :class="{ changed: chosen(p, s) !== s.inventory_id }">
+                <span class="tag mono">{{ shownName(p, s) }}</span><span class="caret" aria-hidden="true">▾</span>
+                <select :value="chosen(p, s)" :aria-label="`Ort für ${p.item_no} wählen`"
+                  @change="emit('swap', { key: `${pkey(p)}|${s.inventory_id}`, to: Number($event.target.value) })">
+                  <option v-for="l in choices(p, s)" :key="l.inventory_id" :value="l.inventory_id">{{ srcLabel(l) }}</option>
+                </select>
+              </span>
               <template v-else-if="s.remarks"><span v-if="s.file" class="mono">{{ s.remarks }}</span><LocationTag v-else :code="s.remarks" /></template>
               <span v-else class="warnc">{{ s.file ? '–' : 'Lagerort fehlt' }}</span>
               <template v-if="s.description"><span class="lbl">Bemerkung:</span><span>{{ htmlText(s.description) }}</span></template>
@@ -116,9 +121,11 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 .need strong { color: var(--text); }
 .src.many { border-left: 3px solid var(--warn); padding-left: 6px; }
 .srcqty { color: var(--warn); }
-.ortwahl { max-width: 260px; }
+.ortpick { position: relative; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.ortpick .caret { font-size: 0.75rem; color: var(--text-3); }
+.ortpick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.ortpick.changed .tag { border-color: var(--warn); color: var(--warn); }
 .fehlt { color: var(--danger); padding: 0 8px; height: 26px; }
-.ortwahl.changed { border-color: var(--warn); color: var(--warn); }
 .src { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; }
 .lbl { color: var(--text-3); }
 .tag { padding: 0 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
