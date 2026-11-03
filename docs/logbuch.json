@@ -168,6 +168,24 @@
           "text": "Im Minifig-Finder waren hohe Figurenbilder oben und unten abgeschnitten, und man konnte sie nicht vergrößern. Die Bilder passen jetzt immer ganz in ihren Rahmen. Jedes Teile- und Figurenbild in der App öffnet beim Antippen eine Großansicht mit Nummer und Name, dazu die Knöpfe „Teile-Seite öffnen“ und „Bei BrickLink ansehen“. Steht das Bild in einer anklickbaren Zeile, öffnet sich nur die Großansicht. Im Minifig-Finder klappt ein Tipp auf Nummer oder Name einer Figur die Teileliste auf; auf dem Handy springt die Ansicht dorthin. Auch die Fehlteile in der Liste „Blockiert“ führen jetzt zur Teile-Seite."
         }
       ]
+    },
+    "2026-11-03": {
+      "kurz": "Minifig-Finder: stabiler Bauplan, „Nicht bauen“, vorhandene Figuren beim Einlagern",
+      "zusammenfassung": "Der gemeinsame Bauplan im Minifig-Finder verschiebt sich nach „Fertig gebaut“ nicht mehr, Figuren lassen sich aus dem Bauplan ausschließen, und beim Einlagern fertiger Figuren schlägt die App das Kästchen vor, in dem dieselbe Figur schon liegt.",
+      "themen": [
+        {
+          "titel": "Stabiler Bauplan",
+          "text": "Eine Figur, die einzeln öfter baubar war als im gemeinsamen Bauplan vorgesehen, tauchte nach „Fertig gebaut“ wieder im Plan auf, weil die Rechnung ihr beim Neurechnen erneut zuerst Teile gab. Jetzt rechnet der Bauplan mit dem Bestand samt der gesammelten Figuren und zählt diese als erledigt. Die gebaute Figur verschwindet, alle anderen Figuren behalten ihre Teile. In „Einzeln baubar“ und „Alle“ steht sie weiter, wenn der Rest noch reicht, mit dem Hinweis „schon gebaut“. Die Anzahl bei „Fertig gebaut“ ist jetzt mit der Zahl aus dem Bauplan vorausgefüllt; vorher war das Feld leer und es wurde nur eine Figur gezählt. Server und Demo liefern mit dem echten Bestand und zwei BSX-Dateien dieselben Ergebnisse."
+        },
+        {
+          "titel": "Nicht bauen im Bauplan",
+          "text": "Neben „Fertig gebaut“ gibt es „Nicht bauen“. Die Figur fliegt aus dem gemeinsamen Bauplan, ihre Teile werden für andere Figuren frei. Unter dem Bauplan stehen die ausgeschlossenen Figuren eingeklappt mit „Wieder zulassen“."
+        },
+        {
+          "titel": "Vorhandene Figuren beim Einlagern",
+          "text": "Im Schritt „Figuren einlagern“ ist das Kästchen vorausgewählt, in dem dieselbe Figur schon liegt, auch wenn sie dort mit anderem Zustand liegt. Ein grünes Zeichen „Schon da“ zeigt Menge und Kästchen; antippen übernimmt das Kästchen. Neue Figuren sind mit „neu im Lager“ gekennzeichnet."
+        }
+      ]
     }
   },
   "commit_texte": {

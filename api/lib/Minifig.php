@@ -128,7 +128,7 @@ final class Minifig
      * Bei Prio „Lager zuerst“ und ohne gesammelte Figuren genau wie im Original. Gesammelte, noch nicht hochgeladene Figuren
      * („Fertige Figuren“) sind schon abgezogen, damit ihre Teile nicht ein zweites Mal verplant werden.
      */
-    private static function partRows(): array
+    private static function partRows(bool $withBuilds = false): array
     {
         self::ensureSchema();
         $src = self::stockSource();
@@ -144,7 +144,7 @@ final class Minifig
             }
         }
         if ($src !== 'bestand') $rows = array_merge($rows, self::bsxRows());
-        $used = self::reservedByBuilds();
+        $used = $withBuilds ? [] : self::reservedByBuilds();
         if ($used) {
             $rows = array_values(array_filter(array_map(function ($r) use ($used) {
                 $r['quantity'] -= $used[$r['inventory_id']] ?? 0;
@@ -173,10 +173,11 @@ final class Minifig
         return $scope === 'all' ? $rows : array_values(array_filter($rows, fn ($r) => self::isCore((string) $r['item_name'])));
     }
 
-    public static function stock(): array
+    /** Bestand je Teil+Farbe. $withBuilds: Teile der Sammlung „Fertige Figuren“ zählen noch mit (für den stabilen Bauplan). */
+    public static function stock(bool $withBuilds = false): array
     {
         $out = [];
-        foreach (self::partRows() as $r) {
+        foreach (self::partRows($withBuilds) as $r) {
             $k = self::key($r['item_no'], $r['color_id']);
             $out[$k] = ($out[$k] ?? 0) + $r['quantity'];
         }
@@ -777,7 +778,37 @@ final class Minifig
         return $t;
     }
 
-    /** Ausschlüsse für „Gemeinsam ergänzbar“ (Nicht bauen). */
+    /** Gesammelte, noch nicht hochgeladene Figuren je Nummer (Sammlung „Fertige Figuren“). */
+    private static function builtCounts(): array
+    {
+        $out = [];
+        foreach (q("SELECT minifig_no, qty FROM {minifig_builds} WHERE status IN ('open', 'export')")->fetchAll() as $r) {
+            $out[(string) $r['minifig_no']] = ($out[(string) $r['minifig_no']] ?? 0) + (int) $r['qty'];
+        }
+        return $out;
+    }
+
+    /**
+     * Stabiler Bauplan (Wunsch des Inhabers, Sitzung 8): Der Plan wird mit dem Bestand samt Sammlung gerechnet, danach zählen
+     * gesammelte Figuren als erledigte Kopien. Sonst bekäme eine schon gebaute Figur beim Neurechnen wieder zuerst Teile und
+     * nähme sie anderen Figuren weg. Die erledigten Kopien stehen vorne in „reserved“ (je Kopie eine Zeile pro Teilegruppe).
+     */
+    private static function trimBuilt(array $joint, array $built): array
+    {
+        $out = [];
+        foreach ($joint as $f) {
+            $b = (int) ($built[(string) $f['minifig_no']] ?? 0);
+            if ($b <= 0) { $out[] = $f; continue; }
+            $plan = (int) ($f['buildable_qty'] ?: 1);
+            if ($b >= $plan) continue;
+            $f['buildable_qty'] = $plan - $b;
+            $f['reserved'] = array_slice($f['reserved'], $b * (int) $f['required_groups']);
+            $out[] = $f;
+        }
+        return $out;
+    }
+
+    /** Ausschlüsse „Nicht bauen“ (Gemeinsam ergänzbar und gemeinsamer Bauplan). */
     private static function exclusions(): array
     {
         $out = [];
@@ -785,16 +816,12 @@ final class Minifig
         return $out;
     }
 
-    /** Komplette lokale Auswertung (keine API). */
-    public static function analyze(int $limit = 500): array
+    /** Jede Figur des Katalogs gegen einen Bestand prüfen. $onlyBuildable: nur baubare (für den Bauplan mit Sammlung). */
+    private static function evaluate(array $catalog, array $stock, array $prices, bool $onlyBuildable): array
     {
-        self::ensureBundledCatalog();
-        $stock = self::stock();
-        $lots = self::lots();
-        $prices = self::prices();
         $rows = $buildableInternal = [];
         $underMin = 0;
-        foreach (q('SELECT minifig_no, name, subset_json FROM {minifig_catalog} WHERE subset_json IS NOT NULL ORDER BY seq, minifig_no')->fetchAll() as $fig) {
+        foreach ($catalog as $fig) {
             $raw = json_decode((string) $fig['subset_json'], true);
             if (!is_array($raw)) continue;
             $groups = self::groups($raw);
@@ -809,6 +836,8 @@ final class Minifig
                 $missing = [];
                 $present = count($groups);
                 $buildQty = self::maxBuildableCopies($groups, $stock);
+            } elseif ($onlyBuildable) {
+                continue;
             } else {
                 [$req, $missing] = self::chooseRequirements($groups, $stock);
                 $present = count($groups) - count($missing);
@@ -825,6 +854,18 @@ final class Minifig
             $rows[] = $row;
             if ($row['buildable_qty'] > 0) $buildableInternal[] = $row + ['groups' => $groups];
         }
+        return [$rows, $buildableInternal, $underMin];
+    }
+
+    /** Komplette lokale Auswertung (keine API). */
+    public static function analyze(int $limit = 500): array
+    {
+        self::ensureBundledCatalog();
+        $stock = self::stock();
+        $lots = self::lots();
+        $prices = self::prices();
+        $catalog = q('SELECT minifig_no, name, subset_json FROM {minifig_catalog} WHERE subset_json IS NOT NULL ORDER BY seq, minifig_no')->fetchAll();
+        [$rows, $buildableInternal, $underMin] = self::evaluate($catalog, $stock, $prices, false);
         usort($rows, fn ($a, $b) => [$b['buildable_qty'] > 0, -$b['missing_count'], $b['completeness']] <=> [$a['buildable_qty'] > 0, -$a['missing_count'], $a['completeness']]);
         $buildable = array_values(array_filter($rows, fn ($r) => $r['buildable_qty'] > 0));
         $almostAll = array_values(array_filter($rows, fn ($r) => $r['buildable_qty'] === 0 && $r['missing_count'] === 1));
@@ -837,15 +878,28 @@ final class Minifig
         };
         $buildable = array_map($finish, $buildable);
         $almost = array_map($finish, $almost);
-        [$jointRaw, $conflicts] = self::jointPlan($buildableInternal, $stock);
-        $residual = self::remainingAfterJoint($stock, $jointRaw);
         $excl = self::exclusions();
+        $built = self::builtCounts();
+        // „Nicht bauen“ gilt auch im gemeinsamen Bauplan; mit Sammlung wird der Plan auf dem Bestand samt Sammlung gerechnet (trimBuilt)
+        $planCands = $buildableInternal;
+        $planStock = $stock;
+        if ($built) {
+            $planStock = self::stock(true);
+            [, $planCands] = self::evaluate($catalog, $planStock, $prices, true);
+        }
+        $planCands = array_values(array_filter($planCands, fn ($r) => !isset($excl[(string) $r['minifig_no']])));
+        [$jointRaw, $conflicts] = self::jointPlan($planCands, $planStock);
+        if ($built) $jointRaw = self::trimBuilt($jointRaw, $built);
+        $residual = self::remainingAfterJoint($stock, $jointRaw);
         $ajCands = array_values(array_filter($almostInternal, fn ($r) => !isset($excl[(string) $r['minifig_no']])));
         [$ajRaw, $ajBlocked] = self::almostJointPlan($ajCands, $residual);
         $almostByNo = array_column($almost, null, 'minifig_no');
-        $excluded = [];
+        $buildByNo = array_column($buildable, null, 'minifig_no');
+        $excluded = $jointExcluded = [];
         foreach ($excl as $no => $d) {
-            if (isset($almostByNo[$no])) $excluded[] = ['minifig_no' => (string) $no, 'name' => $almostByNo[$no]['name'], 'reason' => $d['reason'] ?: 'not_build', 'decided_at' => $d['decided_at']];
+            $e = ['minifig_no' => (string) $no, 'reason' => $d['reason'] ?: 'not_build', 'decided_at' => $d['decided_at']];
+            if (isset($almostByNo[$no])) $excluded[] = ['name' => $almostByNo[$no]['name']] + $e;
+            elseif (isset($buildByNo[$no])) $jointExcluded[] = ['name' => $buildByNo[$no]['name']] + $e;
         }
         $joint = self::attachPickLists($jointRaw, $lots);
         $almostJoint = self::attachAlmostJointPickLists($jointRaw, $ajRaw, $lots);
@@ -868,7 +922,7 @@ final class Minifig
             'joint_conflicts' => array_slice($conflicts, 0, $limit), 'joint_buildable_count' => array_sum(array_map(fn ($r) => (int) ($r['buildable_qty'] ?: 1), $joint)),
             'joint_buildable_distinct_count' => count($joint), 'joint_conflict_count' => count($conflicts),
             'almost_joint_buildable' => array_slice($almostJoint, 0, $limit), 'almost_joint_buildable_count' => count($almostJoint),
-            'almost_joint_blocked_count' => count($ajBlocked), 'almost_joint_excluded' => $excluded, 'almost_joint_excluded_count' => count($excluded),
+            'almost_joint_blocked_count' => count($ajBlocked), 'almost_joint_excluded' => $excluded, 'almost_joint_excluded_count' => count($excluded), 'joint_excluded' => $jointExcluded, 'built_counts' => (object) $built,
             'individual_buildable_count' => count($buildable), 'almost_count' => count($almost),
             'almost_without_cost_count' => count($almostAll) - count($almost), 'under_min_parts_count' => $underMin,
             'almost' => array_slice($almost, 0, $limit), 'all_count' => count($rows),
@@ -1535,17 +1589,32 @@ final class Minifig
         foreach (q("SELECT id, minifig_no, name, qty FROM {minifig_builds} WHERE status = 'export' ORDER BY id")->fetchAll() as $b) {
             $p = $prices[(string) $b['minifig_no']]['price'] ?? null;
             $out[] = ['build_id' => (int) $b['id'], 'minifig_no' => $b['minifig_no'], 'name' => $b['name'], 'qty' => (int) $b['qty'], 'condition' => 'U',
-                'price' => $p === null ? null : round((float) $p, 2), 'location' => ['U' => self::figureBox((string) $b['minifig_no'], 'U'), 'N' => self::figureBox((string) $b['minifig_no'], 'N')]];
+                'price' => $p === null ? null : round((float) $p, 2), 'location' => ['U' => self::figureBox((string) $b['minifig_no'], 'U'), 'N' => self::figureBox((string) $b['minifig_no'], 'N')],
+                'existing' => self::figureExisting((string) $b['minifig_no'])];
         }
         return $out;
     }
 
+    /** Wo dieselbe Figur schon liegt: Kästchen mit Menge und Zustand, natürlich sortiert (Anzeige „schon vorhanden“). */
+    private static function figureExisting(string $no): array
+    {
+        $rows = q("SELECT l.code, SUM(i.qty) AS qty, MAX(COALESCE(i.new_or_used, i.bl_condition, '')) AS cond FROM {inventory} i JOIN {locations} l ON l.id = i.location_id
+            WHERE UPPER(i.item_type) = 'MINIFIG' AND i.item_no = ? AND i.qty > 0 GROUP BY l.code", [$no])->fetchAll();
+        usort($rows, fn ($a, $b) => strnatcasecmp((string) $a['code'], (string) $b['code']));
+        return array_map(fn ($r) => ['code' => (string) $r['code'], 'qty' => (int) $r['qty'], 'condition' => (string) $r['cond']], $rows);
+    }
+
+    /**
+     * Kästchen-Vorschlag: wo dieselbe Figur schon liegt (passender Bereich FG/FN zuerst, sonst irgendein Kästchen mit ihr,
+     * Wunsch des Inhabers Sitzung 8), sonst das FG- bzw. FN-Kästchen mit den wenigsten Lots.
+     */
     private static function figureBox(string $no, string $cond): ?string
     {
         $re = '/^' . ($cond === 'N' ? 'FN' : 'FG') . '\d+$/i';
-        $same = array_values(array_filter(q("SELECT DISTINCT l.code FROM {inventory} i JOIN {locations} l ON l.id = i.location_id
-            WHERE UPPER(i.item_type) = 'MINIFIG' AND i.item_no = ?", [$no])->fetchAll(PDO::FETCH_COLUMN), fn ($c) => preg_match($re, (string) $c)));
-        if ($same) { usort($same, 'strnatcasecmp'); return $same[0]; }
+        $all = array_column(self::figureExisting($no), 'code');
+        $same = array_values(array_filter($all, fn ($c) => preg_match($re, (string) $c)));
+        if ($same) return $same[0];
+        if ($all) return $all[0];
         $rows = array_values(array_filter(q('SELECT l.code, COUNT(i.id) AS n FROM {locations} l LEFT JOIN {inventory} i ON i.location_id = l.id GROUP BY l.id, l.code')->fetchAll(),
             fn ($r) => preg_match($re, (string) $r['code'])));
         usort($rows, fn ($a, $b) => (int) $a['n'] <=> (int) $b['n'] ?: strnatcasecmp($a['code'], $b['code']));

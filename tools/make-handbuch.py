@@ -609,12 +609,17 @@ p('Jede Figur hat eine Nummer, zeigt Figurenwert, Wert der Lagerteile, Vorteil u
 abb('minifig-liste', 'Reiter „Bauplan“ mit Knopf „Fertig gebaut“')
 unter('Fertig gebaut, abziehen und einlagern')
 schritte([
-    'Figur zusammensuchen und bei der Figur auf <b>Fertig gebaut</b> tippen (Anzahl wählbar). Sie kommt in die gemeinsame Sammlung '
-    '„Fertige Figuren“; ihre Teile sind sofort aus der Rechnung heraus.',
+    'Figur zusammensuchen und bei der Figur auf <b>Fertig gebaut</b> tippen. Die Anzahl ist mit der Zahl aus dem Bauplan vorausgefüllt '
+    '(Knopf z. B. „2× fertig gebaut“) und lässt sich verkleinern. Die Figur kommt in die gemeinsame Sammlung „Fertige Figuren“; ihre '
+    'Teile sind sofort aus der Rechnung heraus. Der Bauplan bleibt dabei stabil: Gesammelte Figuren zählen als erledigt, die übrigen '
+    'Figuren behalten ihre Teile. In „Einzeln baubar“ und „Alle“ steht die Figur weiter, wenn der Rest noch reicht, mit dem Hinweis „schon gebaut“.',
+    '<b>Nicht bauen</b> nimmt eine Figur aus dem Bauplan; ihre Teile werden für andere Figuren frei. Unter dem Bauplan steht eingeklappt '
+    '„Nicht bauen (n)“ mit <b>Wieder zulassen</b>.',
     'Am Ende tippt eine Person auf <b>Sammlung abschließen</b>. Es entsteht eine Datei für BrickLink mit Minus-Mengen je Lot '
     '(einfügen unter „Upload/Update Inventory“; Lots, die dabei leer werden, werden gelöscht, weil BrickLink keine Menge 0 annimmt) und, falls Teile aus BSX-Dateien stammen, die geänderten Dateien.',
     'Im Schritt <b>Figuren einlagern</b> werden Zustand (gebraucht → FG, neu → FN), Preis (Vorschlag aus den Figurenpreisen) und '
-    'Kästchen geprüft. Eine zweite Datei legt die Figuren bei BrickLink als neue Lots an.',
+    'Kästchen geprüft. Liegt dieselbe Figur schon im Lager, ist ihr Kästchen vorausgewählt und grün markiert; darunter steht '
+    '„Schon da“ mit Menge und Kästchen (antippen übernimmt es), sonst „neu im Lager“. Eine zweite Datei legt die Figuren bei BrickLink als neue Lots an.',
     'Nach <b>Ja, ist hochgeladen</b> werden die Teile im Bestand abgezogen und die Figuren als neue Lots eingetragen.',
 ])
 

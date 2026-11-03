@@ -42,7 +42,7 @@ const topics = {
       { say: 'Die Zahlen oben zeigen, was geht: sofort baubar, alle zusammen baubar, 1 Teil fehlt, blockiert. Antippen springt zur passenden Liste.', target: () => q('main .kpis') },
       { say: 'Alle Figuren stehen in einer Liste mit Reitern. „Bauplan“ verteilt die Teile so, dass keins doppelt verplant ist. „1 Teil fehlt“ und „Fehlteile“ zeigen, was sich nachzukaufen lohnt.', target: () => q('main .mflist .tabs') },
       { say: '„Teile & Lagerorte“ klappt auf, welche Teile eine Figur braucht und in welchem Kästchen oder welcher Datei sie liegen.', target: () => q('main .mflist details.figdetails summary') },
-      { say: 'Figur zusammengesucht? „Fertig gebaut“ legt sie in die gemeinsame Sammlung „Fertige Figuren“. Am Ende schließt einer die Sammlung ab: Datei für BrickLink, geänderte BSX-Dateien, und die Figuren werden als neue Lots eingelagert.', target: () => byText('main .mflist .btn', 'Fertig gebaut') },
+      { say: 'Figur zusammengesucht? „Fertig gebaut“ legt sie in die gemeinsame Sammlung „Fertige Figuren“, „Nicht bauen“ nimmt sie aus dem Bauplan. Am Ende schließt einer die Sammlung ab: Datei für BrickLink, geänderte BSX-Dateien, und die Figuren werden als neue Lots eingelagert.', target: () => byText('main .mflist .btn', 'Fertig gebaut') },
       { say: 'Mit „Herunterladen …“ holst du eine Liste als CSV oder BrickStore-Datei, auch nur Nr. 1 bis 20. Unter „Technik“ stehen Figurenkatalog, Preise und Abrufe.', target: () => byText('main .mflist .btn', 'Herunterladen') },
       end('Zusammenbauen und abschließen nicht vergessen!'),
     ],

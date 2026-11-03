@@ -1,7 +1,7 @@
 <script setup>
 import PartImage from '../components/PartImage.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files, ArrowUp, ArrowDown, PackageCheck, Copy, X } from 'lucide-vue-next'
+import { Download, Upload, RefreshCw, Search, Trash2, Warehouse, FileStack, Files, ArrowUp, ArrowDown, PackageCheck, Copy, X, CircleCheck } from 'lucide-vue-next'
 import PageHead from '../components/PageHead.vue'
 import MinifigParts from '../components/MinifigParts.vue'
 import TnDialog from '../components/TnDialog.vue'
@@ -114,6 +114,10 @@ const moveFile = (i, d) => {
 
 // ---- Fertige Figuren: gemeinsame Sammlung, erst am Ende einmal zu BrickLink (Wunsch des Inhabers) ----
 const buildQty = ref({})
+// Anzahl für „Fertig gebaut“: vorausgefüllt mit der noch offenen Zahl im Bauplan (vorher leer = 1, Rückmeldung des Inhabers)
+const qtyOf = (r) => Math.max(1, Math.min(r.buildable_qty || 1, Number(buildQty.value[r.minifig_no]) || r.buildable_qty || 1))
+const builtOf = (no) => res.value?.built_counts?.[no] ?? 0
+const excludedSet = computed(() => new Set([...(res.value?.joint_excluded ?? []), ...(res.value?.almost_joint_excluded ?? [])].map((x) => x.minifig_no)))
 // Tipp auf Figurennummer/-name: Teileliste auf- und zuklappen (Listen mit Teileliste) bzw. Großansicht mit BrickLink-Link
 const openFigs = ref({})
 const toggleFig = async (no) => {
@@ -128,7 +132,7 @@ const figs = (n) => `${num(n)} ${n === 1 ? 'Figur' : 'Figuren'}`
 const builds = computed(() => bd.value?.builds ?? [])
 const buildCount = computed(() => builds.value.reduce((t, b) => t + b.qty, 0))
 const markBuilt = (r) => run(`${r.minifig_no} wird in die Sammlung gelegt`, async () => {
-  const k = Math.max(1, Math.min(r.buildable_qty || 1, Number(buildQty.value[r.minifig_no]) || 1))
+  const k = qtyOf(r)
   // Die Teileliste des Bauplans enthält alle geplanten Kopien hintereinander (je Kopie eine Zeile pro Teilegruppe)
   const lots = new Map()
   for (const p of (r.pick_list ?? []).slice(0, k * r.required_groups)) for (const s of p.sources ?? []) lots.set(s.inventory_id, (lots.get(s.inventory_id) ?? 0) + s.quantity)
@@ -147,6 +151,9 @@ const applyBsx = ref([])
 const copied = ref(false)
 // „Figuren einlagern“: fertige Figuren als neue Lots (Vorschlag vom Server: gebraucht → FG, neu → FN, Preis aus den Figurenpreisen)
 const storeRows = ref([])
+// Figur liegt schon im Lager: Kästchen ist vorausgewählt und grün markiert (Wunsch des Inhabers, Sitzung 8)
+const sameCode = (a, b) => String(a ?? '').trim().toUpperCase() === String(b ?? '').trim().toUpperCase()
+const isThere = (r) => (r.existing ?? []).some((e) => sameCode(r.location, e.code))
 const storeCopied = ref(false)
 const storeOn = computed(() => storeRows.value.filter((r) => r.on && String(r.location).trim()))
 const storeXml = computed(() => buildNewFiguresXml(storeOn.value.map((r) => ({ ...r, location: String(r.location).trim() }))))
@@ -668,13 +675,16 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                     <span v-else-if="r.rank === 'buildable'" class="qtybadge">{{ r.buildable_qty }}× baubar</span>
                     <span v-if="tab === 'plan' && r.individual_buildable_qty > (r.buildable_qty || 1)" class="small faint">einzeln max. {{ r.individual_buildable_qty }}×</span>
                     <span v-if="tab !== 'plan'" class="pill" :class="r.rank === 'almost' ? 'warn' : 'ok'">{{ statusLabel(r) }}</span>
+                    <span v-if="builtOf(r.minifig_no)" class="pill">schon {{ builtOf(r.minifig_no) }}× gebaut</span>
+                    <span v-if="tab !== 'plan' && excludedSet.has(r.minifig_no)" class="pill danger">nicht bauen</span>
                     <span v-if="r.completeness !== undefined" class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</span>
                   </div>
                   <div v-if="jointMap.get(r.minifig_no)" class="built">
-                    <select v-if="(jointMap.get(r.minifig_no).buildable_qty || 1) > 1" v-model.number="buildQty[r.minifig_no]" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`">
+                    <select v-if="(jointMap.get(r.minifig_no).buildable_qty || 1) > 1" :value="qtyOf(jointMap.get(r.minifig_no))" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`" @change="buildQty[r.minifig_no] = Number($event.target.value)">
                       <option v-for="n in jointMap.get(r.minifig_no).buildable_qty" :key="n" :value="n">{{ n }}×</option>
                     </select>
-                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> Fertig gebaut</button>
+                    <button class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> {{ qtyOf(jointMap.get(r.minifig_no)) > 1 ? `${qtyOf(jointMap.get(r.minifig_no))}× fertig gebaut` : 'Fertig gebaut' }}</button>
+                    <button class="btn btn-sm" :disabled="busy" title="Aus dem Bauplan nehmen, die Teile werden für andere Figuren frei" @click="decide(r.minifig_no, 'exclude', 'not_build')">Nicht bauen</button>
                   </div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
                 <td class="num">{{ eur(r.parts_value) }}</td>
@@ -702,6 +712,17 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
           <span class="small">Seite {{ page }} / {{ pages }}</span>
           <button class="btn btn-sm" :disabled="page >= pages" @click="page++">›</button>
         </div>
+        <details v-if="tab === 'plan' && res.joint_excluded?.length" class="excl">
+          <summary class="small"><strong>Nicht bauen ({{ res.joint_excluded.length }})</strong> · ihre Teile sind für andere Figuren im Bauplan frei</summary>
+          <div class="table-wrap">
+            <table class="table"><tbody>
+              <tr v-for="r in res.joint_excluded" :key="r.minifig_no">
+                <td><div class="partcell"><PartImage :no="r.minifig_no" type="MINIFIG" :size="32" :name="r.name" /><button type="button" class="figname" title="Bild und BrickLink-Link" @click="figZoom(r)"><strong class="mono">{{ r.minifig_no }}</strong><span class="small">{{ htmlText(r.name) }}</span></button></div></td>
+                <td class="num"><button class="btn btn-sm" :disabled="busy" @click="decide(r.minifig_no, 'allow')">Wieder zulassen</button></td>
+              </tr>
+            </tbody></table>
+          </div>
+        </details>
         <details v-if="tab === 'ergaenzbar' && res.almost_joint_excluded.length" class="excl">
           <summary class="small"><strong>Ausgeschlossen ({{ res.almost_joint_excluded.length }})</strong> · ihre Teile sind für andere Figuren wieder frei</summary>
           <div class="table-wrap">
@@ -774,7 +795,12 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                   <button type="button" :class="{ on: r.condition === 'N' }" role="radio" :aria-checked="r.condition === 'N'" :disabled="!r.on" @click="setCond(r, 'N')">neu</button>
                 </div></td>
                 <td class="num"><input v-model="r.price" class="input price" type="number" min="0" step="0.01" inputmode="decimal" :disabled="!r.on" :aria-label="`Preis ${r.minifig_no}`" /></td>
-                <td><input v-model="r.location" class="input box" :placeholder="r.condition === 'N' ? 'z. B. FN3' : 'z. B. FG3'" :disabled="!r.on" :aria-label="`Kästchen ${r.minifig_no}`" @input="r.locEdited = true" /></td>
+                <td><input v-model="r.location" class="input box" :class="{ there: isThere(r) }" :placeholder="r.condition === 'N' ? 'z. B. FN3' : 'z. B. FG3'" :disabled="!r.on" :aria-label="`Kästchen ${r.minifig_no}`" @input="r.locEdited = true" />
+                  <div v-if="r.existing?.length" class="exists small">
+                    <CircleCheck :size="14" /><span>Schon da:</span>
+                    <button v-for="e in r.existing" :key="e.code" type="button" class="exbox" :class="{ on: sameCode(r.location, e.code) }" :disabled="!r.on" :title="`In ${e.code} legen`" @click="r.location = e.code; r.locEdited = true">{{ e.qty }}× {{ e.code }}<template v-if="e.condition"> · {{ e.condition === 'N' ? 'neu' : 'gebr.' }}</template></button>
+                  </div>
+                  <div v-else class="small faint">neu im Lager</div></td>
               </tr>
             </tbody>
           </table>
@@ -805,6 +831,10 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
 </template>
 
 <style scoped>
+.box.there { border-color: var(--ok); }
+.exists { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; color: var(--ok); }
+.exbox { white-space: nowrap; padding: 1px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); background: transparent; color: var(--ok); font: inherit; cursor: pointer; }
+.exbox.on { background: color-mix(in srgb, var(--ok) 18%, transparent); font-weight: 600; }
 .figname { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 1px; color: inherit; border-radius: 4px; }
 .figname:hover strong, .figname:focus-visible strong { color: var(--accent-text); text-decoration: underline; }
 .figname:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

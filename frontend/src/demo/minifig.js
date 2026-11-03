@@ -115,7 +115,7 @@ function reservedByBuilds(db) {
 }
 
 /** Alle Teile-Lots der gewählten Quelle, sortiert nach Teil, Farbe, Lot-Nr. (wie Minifig::partRows). */
-function partRows(db) {
+function partRows(db, withBuilds = false) {
   const src = sourceOf(db)
   let rows = []
   if (src !== 'bsx') {
@@ -124,7 +124,7 @@ function partRows(db) {
         quantity: i.qty, new_or_used: i.new_or_used ?? '', remarks: locCode(db, i.location_id), description: i.description ?? null, stock_room_id: '', _rank: 0 }))
   }
   if (src !== 'bestand') rows = rows.concat(bsxRows(db))
-  const used = reservedByBuilds(db)
+  const used = withBuilds ? new Map() : reservedByBuilds(db)
   if (used.size) rows = rows.map((r) => ({ ...r, quantity: r.quantity - (used.get(r.inventory_id) ?? 0) })).filter((r) => r.quantity > 0)
   // Prio: Lager = Rang 0, BSX-Dateien 1, 2, …; bei „BSX zuerst“ das Lager ans Ende (wie Minifig::partRows)
   const bsxFirst = priorityOf(db) === 'bsx'
@@ -146,9 +146,10 @@ function variants(db, scope = 'core') {
   return scope === 'all' ? rows : rows.filter((r) => isCore(r.item_name))
 }
 
-function stock(db) {
+// withBuilds: Teile der Sammlung „Fertige Figuren“ zählen noch mit (stabiler Bauplan, wie Minifig::stock)
+function stock(db, withBuilds = false) {
   const out = new Map()
-  for (const i of partRows(db)) out.set(key(i.item_no, i.color_id), (out.get(key(i.item_no, i.color_id)) ?? 0) + i.quantity)
+  for (const i of partRows(db, withBuilds)) out.set(key(i.item_no, i.color_id), (out.get(key(i.item_no, i.color_id)) ?? 0) + i.quantity)
   return out
 }
 
@@ -568,16 +569,13 @@ function missingFrequency(almost) {
 
 const bomPartCount = (gs) => gs.reduce((t, alts) => { const qs = alts.map((r) => r.quantity).filter((q) => q > 0); return t + (qs.length ? Math.min(...qs) : 0) }, 0)
 
-export function analyze(db, limit = 500) {
-  const mf = mfOf(db)
-  const st = stock(db)
-  const lots = lotsOf(db)
-  const pr = prices(db)
+// Jede Figur des Katalogs gegen einen Bestand prüfen (wie Minifig::evaluate); onlyBuildable: nur baubare
+function evaluate(catalog, st, pr, onlyBuildable) {
   const rows = []
   const buildableInternal = []
   let underMin = 0
   // Reihenfolge wie im Original: so, wie die Figuren in den Katalog kamen
-  for (const fig of catalogOf(mf).filter((c) => c.subset)) {
+  for (const fig of catalog) {
     const gs = groups(fig.subset)
     if (!gs.length) continue
     const bom = bomPartCount(gs)
@@ -590,6 +588,8 @@ export function analyze(db, limit = 500) {
       missing = []
       present = gs.length
       buildQty = maxBuildableCopies(gs, st)
+    } else if (onlyBuildable) {
+      continue
     } else {
       [req, missing] = chooseRequirements(gs, st)
       present = gs.length - missing.length
@@ -603,6 +603,35 @@ export function analyze(db, limit = 500) {
     rows.push(row)
     if (row.buildable_qty > 0) buildableInternal.push({ ...row, groups: gs })
   }
+  return [rows, buildableInternal, underMin]
+}
+
+// Gesammelte, noch nicht hochgeladene Figuren je Nummer (wie Minifig::builtCounts)
+function builtCounts(db) {
+  const out = new Map()
+  for (const b of mfOf(db).builds ?? []) if (b.status === 'open' || b.status === 'export') out.set(b.minifig_no, (out.get(b.minifig_no) ?? 0) + b.qty)
+  return out
+}
+// Stabiler Bauplan: gesammelte Figuren zählen als erledigte Kopien (wie Minifig::trimBuilt)
+function trimBuilt(joint, built) {
+  const out = []
+  for (const f of joint) {
+    const b = built.get(String(f.minifig_no)) ?? 0
+    if (b <= 0) { out.push(f); continue }
+    const plan = f.buildable_qty || 1
+    if (b >= plan) continue
+    out.push({ ...f, buildable_qty: plan - b, reserved: f.reserved.slice(b * f.required_groups) })
+  }
+  return out
+}
+
+export function analyze(db, limit = 500) {
+  const mf = mfOf(db)
+  const st = stock(db)
+  const lots = lotsOf(db)
+  const pr = prices(db)
+  const catalog = catalogOf(mf).filter((c) => c.subset)
+  const [rows, buildableInternal, underMin] = evaluate(catalog, st, pr, false)
   rows.sort((a, b) => cmpTuple([b.buildable_qty > 0, -b.missing_count, b.completeness], [a.buildable_qty > 0, -a.missing_count, a.completeness]))
   const almostAll = rows.filter((r) => r.buildable_qty === 0 && r.missing_count === 1)
   const almostRaw = almostAll.filter((r) => r.completion_cost !== null)
@@ -610,13 +639,24 @@ export function analyze(db, limit = 500) {
   const finish = ({ _requirements, ...r }) => ({ ...r, pick_list: individualPick(_requirements, lots), ...urls(String(r.minifig_no)) })
   const buildable = rows.filter((r) => r.buildable_qty > 0).map(finish)
   const almost = almostRaw.map(finish)
-  const [jointRaw, conflicts] = jointPlan(buildableInternal, st)
-  const residual = remainingAfterJoint(st, jointRaw)
   const excl = Object.entries(mf.decisions).filter(([, d]) => d.decision === 'exclude')
   const exclSet = new Set(excl.map(([no]) => no))
+  const built = builtCounts(db)
+  // „Nicht bauen“ gilt auch im Bauplan; mit Sammlung Plan auf Bestand samt Sammlung (wie Minifig::analyze)
+  let planCands = buildableInternal
+  let planStock = st
+  if (built.size) {
+    planStock = stock(db, true)
+    planCands = evaluate(catalog, planStock, pr, true)[1]
+  }
+  let [jointRaw, conflicts] = jointPlan(planCands.filter((r) => !exclSet.has(String(r.minifig_no))), planStock)
+  if (built.size) jointRaw = trimBuilt(jointRaw, built)
+  const residual = remainingAfterJoint(st, jointRaw)
   const [ajRaw, ajBlocked] = almostJointPlan(almostInternal.filter((r) => !exclSet.has(String(r.minifig_no))), residual)
   const byNo = new Map(almost.map((r) => [r.minifig_no, r]))
   const excluded = excl.filter(([no]) => byNo.has(no)).map(([no, d]) => ({ minifig_no: no, name: byNo.get(no).name, reason: d.reason || 'not_build', decided_at: d.decided_at }))
+  const buildByNo = new Map(buildable.map((r) => [r.minifig_no, r]))
+  const jointExcluded = excl.filter(([no]) => !byNo.has(no) && buildByNo.has(no)).map(([no, d]) => ({ minifig_no: no, name: buildByNo.get(no).name, reason: d.reason || 'not_build', decided_at: d.decided_at }))
   const joint = attachPickLists(jointRaw, lots)
   const almostJoint = attachAlmostJointPickLists(jointRaw, ajRaw, lots)
   const freq = missingFrequency(almost)
@@ -631,7 +671,7 @@ export function analyze(db, limit = 500) {
     buildable: s(buildable), buildable_by_value: s(byValue), buildable_by_advantage: s(byAdv), almost_by_potential: s(byPot),
     missing_frequency: s(freq), joint_buildable: s(joint), joint_conflicts: s(conflicts), joint_buildable_count: joint.reduce((t, r) => t + (r.buildable_qty || 1), 0), joint_buildable_distinct_count: joint.length, joint_conflict_count: conflicts.length,
     almost_joint_buildable: s(almostJoint), almost_joint_buildable_count: almostJoint.length, almost_joint_blocked_count: ajBlocked.length,
-    almost_joint_excluded: excluded, almost_joint_excluded_count: excluded.length, individual_buildable_count: buildable.length, almost_count: almost.length,
+    almost_joint_excluded: excluded, almost_joint_excluded_count: excluded.length, joint_excluded: jointExcluded, built_counts: Object.fromEntries(built), individual_buildable_count: buildable.length, almost_count: almost.length,
     almost_without_cost_count: almostAll.length - almost.length, under_min_parts_count: underMin, almost: s(almost), all_count: rows.length,
     ...statusCounts(db),
   }
@@ -923,11 +963,27 @@ function buildExportFiles(db) {
 
 // „Figuren einlagern“: Vorschlag je Figur im Abschluss (wie Minifig::storeProposals)
 const natCmp = (a, b) => String(a).localeCompare(String(b), 'de', { numeric: true, sensitivity: 'base' })
+// Wo dieselbe Figur schon liegt (wie Minifig::figureExisting)
+function figureExisting(db, no) {
+  const m = new Map()
+  for (const i of db.inventory) {
+    if (String(i.item_type).toUpperCase() !== 'MINIFIG' || i.item_no !== no || !(i.qty > 0)) continue
+    const code = db.locations.find((l) => l.id === i.location_id)?.code
+    if (!code) continue
+    const e = m.get(code) ?? { code, qty: 0, condition: '' }
+    e.qty += i.qty
+    const c = i.new_or_used ?? i.bl_condition ?? ''
+    if (c > e.condition) e.condition = c
+    m.set(code, e)
+  }
+  return [...m.values()].sort((a, b) => natCmp(a.code, b.code))
+}
 function figureBox(db, no, cond) {
   const re = cond === 'N' ? /^FN\d+$/i : /^FG\d+$/i
-  const code = (id) => db.locations.find((l) => l.id === id)?.code ?? ''
-  const same = [...new Set(db.inventory.filter((i) => String(i.item_type).toUpperCase() === 'MINIFIG' && i.item_no === no).map((i) => code(i.location_id)))].filter((c) => re.test(c))
-  if (same.length) return same.sort(natCmp)[0]
+  const all = figureExisting(db, no).map((e) => e.code)
+  const same = all.filter((c) => re.test(c))
+  if (same.length) return same[0]
+  if (all.length) return all[0]
   const count = new Map()
   for (const i of db.inventory) count.set(i.location_id, (count.get(i.location_id) ?? 0) + 1)
   const rows = db.locations.filter((l) => re.test(l.code)).map((l) => ({ code: l.code, n: count.get(l.id) ?? 0 }))
@@ -939,7 +995,7 @@ function storeProposals(db) {
   return (mfOf(db).builds ?? []).filter((b) => b.status === 'export').sort((a, b) => a.id - b.id).map((b) => {
     const p = figs.get(b.minifig_no)?.price
     return { build_id: b.id, minifig_no: b.minifig_no, name: b.name, qty: b.qty, condition: 'U', price: p === undefined || p === null ? null : Math.round(p * 100) / 100,
-      location: { U: figureBox(db, b.minifig_no, 'U'), N: figureBox(db, b.minifig_no, 'N') } }
+      location: { U: figureBox(db, b.minifig_no, 'U'), N: figureBox(db, b.minifig_no, 'N') }, existing: figureExisting(db, b.minifig_no) }
   })
 }
 // Fertige Figuren als neue Lots in den Bestand, Lagerort bei Bedarf anlegen (wie Minifig::storeFigures)
