@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ExternalLink } from 'lucide-vue-next'
 import LocationTag from './LocationTag.vue'
 import PartImage from './PartImage.vue'
@@ -51,6 +51,25 @@ const choices = (p, s) => {
   const list = opts.value[pkey(p)] ?? []
   return list.some((l) => l.inventory_id === s.inventory_id) ? list : [{ inventory_id: s.inventory_id, remarks: s.remarks, file: s.file, available: s.quantity, condition: s.new_or_used }, ...list]
 }
+// Eigenes Menü (schöner und deutlicher als das Standard-Menü des Browsers)
+const menu = ref(null)
+// Menü so ausrichten, dass es nie über den Bildschirmrand ragt
+const menuPos = ref({})
+const toggleMenu = (e, k) => {
+  if (menu.value === k) { menu.value = null; return }
+  const r = e.currentTarget.getBoundingClientRect()
+  const box = (e.currentTarget.closest('.table-wrap, .panel') ?? document.body).getBoundingClientRect()
+  const lo = Math.max(8, box.left + 8), hi = Math.min(window.innerWidth - 8, box.right - 8)
+  const w = Math.min(340, hi - lo)
+  const left = Math.max(lo, Math.min(r.left, hi - w)) - r.left
+  menuPos.value = { left: `${left}px`, width: `${w}px` }
+  menu.value = k
+}
+const pick = (p, s, l) => { emit('swap', { key: `${pkey(p)}|${s.inventory_id}`, to: l.inventory_id }); menu.value = null }
+const closeMenu = () => { menu.value = null }
+const onKey = (e) => { if (e.key === 'Escape') closeMenu() }
+onMounted(() => { document.addEventListener('click', closeMenu); document.addEventListener('keydown', onKey) })
+onBeforeUnmount(() => { document.removeEventListener('click', closeMenu); document.removeEventListener('keydown', onKey) })
 const shownName = (p, s) => { const l = choices(p, s).find((x) => x.inventory_id === chosen(p, s)); return l?.remarks || s.remarks || l?.file || '–' }
 const chosen = (p, s) => props.swaps[`${pkey(p)}|${s.inventory_id}`] ?? s.inventory_id
 const per = (p) => Math.round(p.quantity / Math.max(1, props.copies))
@@ -88,13 +107,23 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
               <span v-if="cond(s.new_or_used)" class="faint">{{ cond(s.new_or_used) }}</span>
               <span v-if="s.file" class="tag">Datei: {{ s.file }}</span>
               <span class="lbl">Remarks:</span>
-              <!-- Aussehen wie vorher (Schild mit Kästchen bzw. Dateiname); ein Tipp öffnet das Menü mit den freien Orten -->
-              <span v-if="choose && opts[pkey(p)]" class="ortpick" :class="{ changed: chosen(p, s) !== s.inventory_id }">
-                <span class="tag mono">{{ shownName(p, s) }}</span><span class="caret" aria-hidden="true">▾</span>
-                <select :value="chosen(p, s)" :aria-label="`Ort für ${p.item_no} wählen`"
-                  @change="emit('swap', { key: `${pkey(p)}|${s.inventory_id}`, to: Number($event.target.value) })">
-                  <option v-for="l in choices(p, s)" :key="l.inventory_id" :value="l.inventory_id">{{ srcLabel(l) }}</option>
-                </select>
+              <!-- Aussehen wie vorher (Schild mit Remarks); ein Tipp öffnet ein eigenes Menü mit den freien Orten -->
+              <span v-if="choose && opts[pkey(p)]" class="ortpick" :class="{ changed: chosen(p, s) !== s.inventory_id, open: menu === `${pkey(p)}|${s.inventory_id}` }">
+                <button type="button" class="ortbtn" :aria-expanded="menu === `${pkey(p)}|${s.inventory_id}`" :aria-label="`Ort für ${p.item_no} wählen`"
+                  @click.stop="toggleMenu($event, `${pkey(p)}|${s.inventory_id}`)">
+                  <span class="tag mono">{{ shownName(p, s) }}</span><span class="caret" aria-hidden="true">▾</span>
+                </button>
+                <span v-if="menu === `${pkey(p)}|${s.inventory_id}`" class="ortmenu" :style="menuPos" role="listbox" @click.stop>
+                  <span class="ortmenu-head">Anderen Ort wählen · {{ p.item_no }}</span>
+                  <button v-for="l in choices(p, s)" :key="l.inventory_id" type="button" role="option" class="ortopt" :class="{ sel: l.inventory_id === chosen(p, s), orig: l.inventory_id === s.inventory_id }"
+                    :aria-selected="l.inventory_id === chosen(p, s)" @click="pick(p, s, l)">
+                    <span class="mark">{{ l.inventory_id === chosen(p, s) ? '✓' : '' }}</span>
+                    <span class="where"><strong class="mono">{{ l.remarks || l.file || 'ohne Lagerort' }}</strong><span v-if="l.file && l.remarks" class="small faint">{{ l.file }}</span></span>
+                    <span class="avail"><strong>{{ l.available }}</strong> da</span>
+                    <span v-if="l.condition" class="cond" :class="l.condition === 'N' ? 'n' : 'u'">{{ l.condition === 'N' ? 'neu' : 'gebr.' }}</span>
+                    <span v-if="l.inventory_id === s.inventory_id" class="small faint vorschlag">Vorschlag</span>
+                  </button>
+                </span>
               </span>
               <template v-else-if="s.remarks"><span v-if="s.file" class="mono">{{ s.remarks }}</span><LocationTag v-else :code="s.remarks" /></template>
               <span v-else class="warnc">{{ s.file ? '–' : 'Lagerort fehlt' }}</span>
@@ -122,8 +151,24 @@ const cond = (v) => (v === 'N' ? 'neu' : v === 'U' ? 'gebraucht' : v)
 .src.many { border-left: 3px solid var(--warn); padding-left: 6px; }
 .srcqty { color: var(--warn); }
 .ortpick { position: relative; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
-.ortpick .caret { font-size: 0.75rem; color: var(--text-3); }
-.ortpick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.ortbtn { all: unset; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border-radius: 6px; padding: 1px 2px; }
+.ortbtn .tag { border-color: var(--accent); }
+.ortbtn .caret { font-size: 0.8rem; color: var(--accent-text); }
+.ortbtn:focus-visible { outline: 2px solid var(--accent); }
+.ortpick.open .tag { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.ortmenu { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; max-height: 300px; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border-strong, var(--border)); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; padding: 4px; }
+.ortmenu-head { font-size: 0.75rem; color: var(--text-3); padding: 6px 8px 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ortopt { all: unset; display: grid; grid-template-columns: 16px 1fr auto auto; align-items: center; gap: 8px; padding: 9px 8px; border-radius: 6px; cursor: pointer; }
+.ortopt:hover, .ortopt:focus-visible { background: var(--surface-2); }
+.ortopt.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.ortopt .mark { color: var(--accent-text); font-weight: 700; }
+.ortopt .where { display: flex; flex-direction: column; min-width: 0; }
+.ortopt .avail { white-space: nowrap; }
+.ortopt .cond { font-size: 0.75rem; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border); }
+.ortopt .cond.n { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.ortopt .vorschlag { grid-column: 2 / -1; margin-top: -4px; }
 .ortpick.changed .tag { border-color: var(--warn); color: var(--warn); }
 .fehlt { color: var(--danger); padding: 0 8px; height: 26px; }
 .src { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; }
