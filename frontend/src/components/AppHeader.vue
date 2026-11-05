@@ -11,7 +11,11 @@ const route = useRoute()
 // Großer Titel mit Gruß nur auf der Startseite (Wunsch des Inhabers), mittig auf Höhe von Stein und Profil
 const isHome = computed(() => route.path === '/')
 const greeting = computed(() => { const h = new Date().getHours(); return h < 11 ? 'Guten Morgen' : h < 17 ? 'Hallo' : 'Guten Abend' })
-const firstName = computed(() => String(auth.user?.display_name ?? '').trim().split(/\s+/)[0])
+// Vorname; bei „Herr …“/„Frau …“ der ganze Name (sonst stand „Hallo, Herr!“ da)
+const firstName = computed(() => {
+  const n = String(auth.user?.display_name ?? '').trim()
+  return /^(herr|frau)\s/i.test(n) ? n : n.split(/\s+/)[0]
+})
 const open = ref(false)
 
 async function logout() {

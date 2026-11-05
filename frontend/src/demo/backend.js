@@ -92,6 +92,9 @@ function withSeedUsers(db) {
     db.dev ??= { access: [] }
     if (isDev && !db.dev.access.includes(su.id)) db.dev.access.push(su.id)
   }
+  // übrige Beispielkonten (lehrer, max, erika) ausblenden
+  const own = new Set(SEED_USERS.map((u) => u.id))
+  for (const u of db.users) if (!own.has(u.id) && ['lehrer', 'max', 'erika'].includes(u.username)) u.active = false
   db.nextUser = Math.max(db.nextUser ?? 1, ...db.users.map((x) => x.id + 1))
   return db
 }
