@@ -763,10 +763,14 @@ switch (true) {
     case $route === 'minifig/builds/finish' && $method === 'POST':
         $me = require_perm('minifig_abschluss');
         $in = request_json();
-        $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []), (array) ($in['store'] ?? []));
+        $r = Minifig::finishBuildExport(!empty($in['done']), (array) ($in['apply_bsx'] ?? []), (array) ($in['store'] ?? []), (int) $me['id']);
         ActivityLog::log((int) $me['id'], $r['done'] ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig',
             ['figuren' => $r['figures'], 'teile' => $r['parts'], 'lots' => $r['lots'], 'bsx' => count($r['bsx_files']), 'eingelagert' => $r['stored']]);
         json_response($r);
+
+    case $route === 'minifig/exports' && $method === 'GET':
+        require_user();
+        json_response(['exports' => Minifig::exportHistory()]);
 
     case $route === 'minifig/bsx' && $method === 'GET':
         require_user();

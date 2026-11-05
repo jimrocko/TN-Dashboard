@@ -455,7 +455,7 @@ final class Minifig
                 'minifig_no' => $row['minifig_no'], 'name' => $row['name'], 'required_groups' => $row['required_groups'], 'completeness' => 100,
                 'buildable_qty' => 1, 'individual_buildable_qty' => (int) ($row['buildable_qty'] ?: 1),
                 'figure_value' => $row['figure_value'], 'parts_value' => $row['parts_value'], 'economic_advantage' => $row['economic_advantage'],
-                'price_coverage_pct' => $row['price_coverage_pct'], 'allocation_slack' => $slack, 'reserved' => $req,
+                'price_coverage_pct' => $row['price_coverage_pct'], 'unpriced_parts' => $row['unpriced_parts'] ?? 0, 'figure_price_missing' => $row['figure_price_missing'] ?? false, 'missing_price_missing' => $row['missing_price_missing'] ?? false, 'allocation_slack' => $slack, 'reserved' => $req,
             ];
             $pending = array_values(array_filter($pending, fn ($r) => $r['minifig_no'] !== $row['minifig_no']));
         }
@@ -490,7 +490,7 @@ final class Minifig
             $conflicts[] = [
                 'minifig_no' => $row['minifig_no'], 'name' => $row['name'], 'required_groups' => $row['required_groups'],
                 'figure_value' => $row['figure_value'], 'parts_value' => $row['parts_value'], 'economic_advantage' => $row['economic_advantage'],
-                'price_coverage_pct' => $row['price_coverage_pct'],
+                'price_coverage_pct' => $row['price_coverage_pct'], 'unpriced_parts' => $row['unpriced_parts'] ?? 0, 'figure_price_missing' => $row['figure_price_missing'] ?? false, 'missing_price_missing' => $row['missing_price_missing'] ?? false,
                 'missing_after_reservations' => array_slice(self::missingAfterReservations($row['groups'], $remaining), 0, 5),
             ];
         }
@@ -564,7 +564,7 @@ final class Minifig
                 'minifig_no' => $row['minifig_no'], 'name' => $row['name'], 'required_groups' => $row['required_groups'],
                 'completeness' => $row['completeness'], 'figure_value' => $row['figure_value'], 'parts_value' => $row['parts_value'],
                 'completion_cost' => $row['completion_cost'], 'economic_advantage' => $row['economic_advantage'],
-                'price_coverage_pct' => $row['price_coverage_pct'], 'missing' => [$miss], 'allocation_slack' => $slack, 'reserved' => $reserved,
+                'price_coverage_pct' => $row['price_coverage_pct'], 'unpriced_parts' => $row['unpriced_parts'] ?? 0, 'figure_price_missing' => $row['figure_price_missing'] ?? false, 'missing_price_missing' => $row['missing_price_missing'] ?? false, 'missing' => [$miss], 'allocation_slack' => $slack, 'reserved' => $reserved,
             ];
             $pending = array_values(array_filter($pending, fn ($r) => $r['minifig_no'] !== $row['minifig_no']));
         }
@@ -742,6 +742,10 @@ final class Minifig
             'figure_price_source' => $figRef['source'] ?? null,
             'economic_advantage' => self::money($adv),
             'economic_advantage_before_fees' => self::money($adv),
+            // Warum kein Vorteil: Teile ohne Preis (Stückzahl), Figurenpreis fehlt, Preis für Fehlteil fehlt (nur Anzeige)
+            'unpriced_parts' => $total - $priced,
+            'figure_price_missing' => $figVal === null,
+            'missing_price_missing' => (bool) $row['missing_count'] && !$missComplete,
         ]);
     }
 
@@ -1869,10 +1873,13 @@ final class Minifig
      * Abschluss beenden. $done = bei BrickLink hochgeladen: Bestand im Dashboard abziehen, BSX-Dateien aus $applyBsx im Finder
      * ersetzen, Figuren gelten als erledigt. Sonst gehen die Figuren zurück in die Sammlung.
      */
-    public static function finishBuildExport(bool $done, array $applyBsx, array $store = []): array
+    public static function finishBuildExport(bool $done, array $applyBsx, array $store = [], int $userId = 0): array
     {
         self::ensureSchema();
+        self::ensureExportSchema();
         if (!self::buildExportActive()) json_error('Dieser Abschluss wurde schon beendet.', 409);
+        // Kopie des Abschluss-Fensters für „Frühere Abschlüsse“ (vor dem Abziehen, damit die Datei genau so aussieht wie im Fenster)
+        $snap = $done ? self::exportSnapshot($applyBsx, $store) : null;
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -1903,6 +1910,7 @@ final class Minifig
                 $stored = self::storeFigures($store);
                 $lotsChanged += $stored;
                 q("UPDATE {minifig_builds} SET status = 'done', done_at = ? WHERE status = 'export'", [now()]);
+                q('INSERT INTO {minifig_exports} (finished_at, user_id, data_json) VALUES (?, ?, ?)', [now(), $userId ?: null, json_encode($snap, JSON_UNESCAPED_UNICODE)]);
             } else {
                 q("UPDATE {minifig_builds} SET status = 'open', export_by = NULL, export_at = NULL WHERE status = 'export'");
             }
@@ -1914,6 +1922,53 @@ final class Minifig
         // Ollies Dashboard kennt den Abzug erst nach seinem nächsten Laden (wie nach „Ja, ist eingefügt“ beim Umlagern)
         if ($done && $lotsChanged) OllieSync::markExported();
         return ['done' => $done, 'figures' => $figs, 'parts' => $parts, 'lots' => $lotsChanged, 'bsx_files' => $files, 'stored' => $stored];
+    }
+
+    /** Tabelle für „Frühere Abschlüsse“ (Wunsch des Inhabers, Sitzung 8: Figuren-Datei vergessen hochzuladen). */
+    private static function ensureExportSchema(): void
+    {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        $sqlite = Schema::sqlite();
+        db()->exec('CREATE TABLE IF NOT EXISTS ' . t('minifig_exports') . ' (
+            id ' . ($sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT UNSIGNED AUTO_INCREMENT PRIMARY KEY') . ',
+            finished_at ' . ($sqlite ? 'TEXT' : 'DATETIME') . ' NOT NULL,
+            user_id ' . ($sqlite ? 'INTEGER' : 'INT UNSIGNED') . ' NULL,
+            data_json ' . ($sqlite ? 'TEXT' : 'MEDIUMTEXT') . ' NOT NULL
+        )' . ($sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
+    }
+
+    /** Was das Abschluss-Fenster gezeigt hat: Teile-Datei, „von Hand abziehen“, BSX-Dateien, Figuren und wie sie eingelagert wurden. */
+    private static function exportSnapshot(array $applyBsx, array $store): array
+    {
+        $f = self::buildExportFiles();
+        $figs = [];
+        foreach (q("SELECT id, minifig_no, name, qty FROM {minifig_builds} WHERE status = 'export' ORDER BY id")->fetchAll() as $b) {
+            $figs[(int) $b['id']] = ['minifig_no' => (string) $b['minifig_no'], 'name' => (string) $b['name'], 'qty' => (int) $b['qty']];
+        }
+        $stored = [];
+        foreach ($store as $st) {
+            $b = $figs[(int) ($st['build_id'] ?? 0)] ?? null;
+            if (!$b || trim((string) ($st['location'] ?? '')) === '') continue;
+            $stored[] = $b + ['condition' => ($st['condition'] ?? 'U') === 'N' ? 'N' : 'U', 'price' => round((float) ($st['price'] ?? 0), 3), 'location' => trim((string) $st['location'])];
+        }
+        $apply = array_map('intval', $applyBsx);
+        return ['xml' => $f['xml'], 'bricklink_lots' => $f['bricklink_lots'],
+            'without_lot' => array_map(fn ($l) => ['item_no' => $l['item_no'] ?? '', 'quantity' => (int) ($l['quantity'] ?? 0), 'remarks' => (string) ($l['remarks'] ?? ''), 'kind' => $l['kind'] ?? ''], $f['without_lot']),
+            'bsx_files' => array_map(fn ($x) => $x + ['applied' => in_array((int) $x['id'], $apply, true)], $f['bsx_files']),
+            'figures' => array_values($figs), 'stored' => $stored];
+    }
+
+    /** „Frühere Abschlüsse“: neueste zuerst, mit allem, was das Fenster gezeigt hat (nur zum Ansehen und erneut Kopieren). */
+    public static function exportHistory(int $limit = 50): array
+    {
+        self::ensureExportSchema();
+        $out = [];
+        foreach (q('SELECT e.id, e.finished_at, e.data_json, u.display_name FROM {minifig_exports} e LEFT JOIN {users} u ON u.id = e.user_id ORDER BY e.id DESC LIMIT ' . max(1, min(200, $limit)))->fetchAll() as $r) {
+            $out[] = ['id' => (int) $r['id'], 'finished_at' => $r['finished_at'], 'user_name' => $r['display_name']] + (json_decode((string) $r['data_json'], true) ?: []);
+        }
+        return $out;
     }
 
     // ---------------------------------------------------------------- Figurenkatalog ohne API (wie MinifigFinder Standalone)

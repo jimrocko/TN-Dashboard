@@ -218,6 +218,28 @@
           "text": "Das Protokoll heißt jetzt Verlauf und zeigt jede Aktion als Satz, zum Beispiel „Max hat 3× 3001 von G101 nach G205 umgelagert“, nach Tagen geordnet und mit Symbol je Bereich. „Wichtiges“ blendet Kleinkram wie Anmelden aus, ein Filter zeigt nur einen Bereich. Das gilt auch für „Meine Aktivitäten“."
         }
       ]
+    },
+    "2026-11-05": {
+      "kurz": "Minifig-Finder: frühere Abschlüsse, Fertig gebaut außerhalb des Bauplans; Stand-Backup der Demo",
+      "zusammenfassung": "Abgeschlossene Sammlungen fertiger Figuren lassen sich nachträglich ansehen, Dateien können erneut kopiert werden, und auch Figuren außerhalb des gemeinsamen Bauplans lassen sich als fertig gebaut markieren.",
+      "themen": [
+        {
+          "titel": "Frühere Abschlüsse",
+          "text": "Beim Abschluss der Sammlung war einmal die Datei mit den neuen Figuren nicht hochgeladen worden, und das Fenster war danach weg. Jetzt speichert jeder Abschluss bei „Ja, ist hochgeladen“ einen Schnappschuss: Teile-Datei, eingelagerte Figuren mit Zustand, Preis und Kästchen, Teile zum Abziehen von Hand, BSX-Dateien, Person und Zeit. Unter „Fertige Figuren“ steht eine aufklappbare Liste; „Fenster ansehen“ zeigt alles noch einmal und kopiert die Dateien erneut, ohne den Bestand nochmal zu verändern. Server und Demo gleich."
+        },
+        {
+          "titel": "Grund bei leerem Vorteil",
+          "text": "Steht beim Vorteil nur ein Strich, nennt die Liste jetzt den Grund, zum Beispiel fehlende Preise für einzelne Teile oder für die Figur. Die Rechnung bleibt wie im Vorbild-Programm."
+        },
+        {
+          "titel": "Fertig gebaut für jede baubare Figur",
+          "text": "Figuren mit negativem Vorteil standen oft nicht im gemeinsamen Bauplan, weil ihre Teile dort für bessere Figuren verplant waren, und hatten deshalb keinen Knopf. Jetzt lässt sich jede einzeln baubare Figur als fertig gebaut markieren; dann zählen die Lots aus ihrer eigenen Teileliste. Rückmeldungen erscheinen zusätzlich unten am Bildschirm, weil sie oben beim Klick weiter unten nicht zu sehen waren."
+        },
+        {
+          "titel": "Stand-Backup der Demo-Datei",
+          "text": "Die Demo-Datei speichert ihren Stand im Browser. In den Einstellungen gibt es jetzt „Backup speichern“ und „Backup laden“, damit Verlauf, Sammlungen und frühere Abschlüsse in eine neue Datei mitgenommen werden können."
+        }
+      ]
     }
   },
   "commit_texte": {

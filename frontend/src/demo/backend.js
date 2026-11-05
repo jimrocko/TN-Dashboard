@@ -342,3 +342,24 @@ export function resetDemo() {
   memory = null
   try { localStorage.removeItem(KEY) } catch { /* egal */ }
 }
+
+/**
+ * Stand-Backup nur für die Demo-Datei (Wunsch des Inhabers, Sitzung 8): Der ganze Stand liegt im Browser-Speicher
+ * und hängt an Datei und Browser. Eine neue HTML-Datei (anderer Ort/Name) startet deshalb leer. Mit dem Backup
+ * nimmt man Verlauf, Sammlungen, frühere Abschlüsse, BSX-Dateien usw. in die neue Datei mit.
+ */
+export function exportDemoState() {
+  const db = load()
+  return JSON.stringify({ tn_demo_backup: 1, key: KEY, saved_at: now(), db })
+}
+export function importDemoState(text) {
+  let data
+  try { data = JSON.parse(text) } catch { throw new DemoError('Das ist keine Backup-Datei (kein JSON).', 422) }
+  const db = data?.tn_demo_backup ? data.db : null
+  if (!db || !Array.isArray(db.users) || !Array.isArray(db.inventory) || !Array.isArray(db.log)) throw new DemoError('Das ist keine Backup-Datei vom TN Dashboard.', 422)
+  memory = db
+  try { localStorage.setItem(KEY, JSON.stringify(db)) } catch {
+    throw new DemoError('Der Browser-Speicher ist zu klein für dieses Backup. Der Stand gilt nur bis zum Neuladen.', 507)
+  }
+  return { saved_at: data.saved_at ?? null, lots: db.inventory.length, log: db.log.length }
+}

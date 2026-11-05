@@ -7,6 +7,8 @@ import { useAuth } from '../stores/auth'
 import { useSettings } from '../stores/settings'
 import { api, IS_DEMO, IS_TUTORIAL } from '../api'
 import { tutorialUrl } from '../tutorial/help'
+import { exportDemoState, importDemoState } from '../demo/backend.js'
+import { saveBlob } from '../utils/files'
 
 const auth = useAuth()
 const s = useSettings()
@@ -23,6 +25,28 @@ const themes = [
 const densities = [{ value: 'comfortable', label: 'Komfortabel' }, { value: 'compact', label: 'Kompakt' }]
 const fonts = [{ value: 'normal', label: 'Normal' }, { value: 'large', label: 'Groß' }]
 // Tutorial mit Klemmi (Wunsch des Inhabers): eigene Datei mit Übungsdaten, öffnet in neuem Tab (Adresse in help.js).
+// Stand-Backup nur in der Demo-Datei (Wunsch des Inhabers, Sitzung 8): Der Stand hängt am Browser-Speicher der Datei,
+// eine neue HTML-Datei startet sonst leer. Backup sichern, neue Datei öffnen, Backup laden.
+const backupMsg = ref('')
+const backupErr = ref('')
+function backupSave() {
+  backupErr.value = ''
+  const d = new Date()
+  const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}-${String(d.getMinutes()).padStart(2, '0')}`
+  saveBlob(new Blob([exportDemoState()], { type: 'application/json' }), `TN-Dashboard-Stand_${stamp}.json`)
+  backupMsg.value = 'Backup gespeichert. In der neuen HTML-Datei hier „Backup laden“ wählen.'
+}
+async function backupLoad(ev) {
+  const f = ev.target.files?.[0]
+  ev.target.value = ''
+  if (!f) return
+  backupErr.value = backupMsg.value = ''
+  if (!confirm('Den jetzigen Stand in dieser Datei durch das Backup ersetzen?')) return
+  try {
+    importDemoState(await f.text())
+    location.reload()
+  } catch (e) { backupErr.value = e.message }
+}
 const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
 </script>
 
@@ -80,6 +104,22 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
       </div>
     </section>
 
+    <section v-if="IS_DEMO && !IS_TUTORIAL" class="panel backup">
+      <div class="panel-head"><h2>Stand-Backup</h2><span class="faint small">nur in dieser Demo-Datei</span></div>
+      <div class="rows">
+        <div class="row">
+          <div><div class="k">Stand sichern und mitnehmen</div>
+            <div class="h">Alles, was du hier gemacht hast (Verlauf, fertige Figuren, frühere Abschlüsse, BSX-Dateien, Umlagerungen …), liegt nur im Browser-Speicher dieser Datei. Eine neue HTML-Datei startet leer. Vorher „Backup speichern“, dann in der neuen Datei „Backup laden“.</div></div>
+          <div class="btns">
+            <button class="btn" @click="backupSave">Backup speichern</button>
+            <label class="btn">Backup laden<input type="file" accept=".json,application/json" hidden @change="backupLoad" /></label>
+          </div>
+        </div>
+      </div>
+      <p v-if="backupMsg" class="success small pad">{{ backupMsg }}</p>
+      <p v-if="backupErr" class="error small pad">{{ backupErr }}</p>
+    </section>
+
     <section class="panel">
       <div class="panel-head"><h2>Verbindungen</h2></div>
       <div class="rows">
@@ -99,6 +139,8 @@ const motion = [{ value: false, label: 'An' }, { value: true, label: 'Aus' }]
 
 <style scoped>
 .narrow { max-width: 900px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.pad { padding: 0 var(--pad) 12px; margin: 0; }
 .inl { vertical-align: -2px; }
 .rows { display: flex; flex-direction: column; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px var(--pad); border-bottom: 1px solid var(--border); flex-wrap: wrap; }

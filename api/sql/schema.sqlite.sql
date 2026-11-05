@@ -335,3 +335,10 @@ CREATE TABLE IF NOT EXISTS {p}permissions (
   perms_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS {p}minifig_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  finished_at TEXT NOT NULL,
+  user_id INTEGER NULL,
+  data_json TEXT NOT NULL
+);

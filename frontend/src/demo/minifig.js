@@ -355,7 +355,7 @@ function jointPlan(cands, st) {
     sourceByNo.set(String(row.minifig_no), row)
     selected.push({ minifig_no: row.minifig_no, name: row.name, required_groups: row.required_groups, completeness: 100,
       buildable_qty: 1, individual_buildable_qty: row.buildable_qty || 1, figure_value: row.figure_value,
-      parts_value: row.parts_value, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, allocation_slack: slack, reserved: [...req] })
+      parts_value: row.parts_value, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, unpriced_parts: row.unpriced_parts ?? 0, figure_price_missing: row.figure_price_missing ?? false, missing_price_missing: row.missing_price_missing ?? false, allocation_slack: slack, reserved: [...req] })
     pending = pending.filter((r) => r.minifig_no !== row.minifig_no)
   }
   // Runde 2: zusätzliche Kopien aus dem echten Restbestand, erst wenn jede Figur ihre erste hat
@@ -379,7 +379,7 @@ function jointPlan(cands, st) {
   const sel = new Set(selected.map((r) => r.minifig_no))
   const conflicts = cands.filter((r) => !sel.has(r.minifig_no)).map((row) => ({
     minifig_no: row.minifig_no, name: row.name, required_groups: row.required_groups, figure_value: row.figure_value, parts_value: row.parts_value,
-    economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct,
+    economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, unpriced_parts: row.unpriced_parts ?? 0, figure_price_missing: row.figure_price_missing ?? false, missing_price_missing: row.missing_price_missing ?? false,
     missing_after_reservations: missingAfterReservations(row.groups, remaining).slice(0, 5),
   }))
   return [selected, conflicts]
@@ -433,7 +433,7 @@ function almostJointPlan(cands, residual) {
     const [, row, reserved, slack, miss] = best
     for (const r of reserved) remaining.set(key(r.item_no, r.color_id), (remaining.get(key(r.item_no, r.color_id)) ?? 0) - r.quantity)
     selected.push({ minifig_no: row.minifig_no, name: row.name, required_groups: row.required_groups, completeness: row.completeness, figure_value: row.figure_value,
-      parts_value: row.parts_value, completion_cost: row.completion_cost, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct,
+      parts_value: row.parts_value, completion_cost: row.completion_cost, economic_advantage: row.economic_advantage, price_coverage_pct: row.price_coverage_pct, unpriced_parts: row.unpriced_parts ?? 0, figure_price_missing: row.figure_price_missing ?? false, missing_price_missing: row.missing_price_missing ?? false,
       missing: [miss], allocation_slack: slack, reserved })
     pending = pending.filter((r) => r.minifig_no !== row.minifig_no)
   }
@@ -547,6 +547,8 @@ function priceEnrich(row, req, pr) {
     price_coverage_pct: total ? pyRound((100 * priced) / total) : 0,
     completion_cost: row.missing_count && missComplete ? money(missCost) : !row.missing_count ? 0 : null,
     figure_value: money(figVal), figure_price_source: figRef?.source ?? null, economic_advantage: money(adv), economic_advantage_before_fees: money(adv),
+    // Warum kein Vorteil (wie Minifig::priceEnrich)
+    unpriced_parts: total - priced, figure_price_missing: figVal === null, missing_price_missing: !!row.missing_count && !missComplete,
   }
 }
 
@@ -1162,9 +1164,30 @@ function bsxMinus(db, items, fileId) {
   return out
 }
 
-function finishBuildExport(db, done, applyBsx, store) {
+// Kopie des Abschluss-Fensters für „Frühere Abschlüsse“ (wie Minifig::exportSnapshot)
+function exportSnapshot(db, applyBsx, store) {
+  const f = buildExportFiles(db)
+  const figs = new Map(mfOf(db).builds.filter((b) => b.status === 'export').sort((a, b) => a.id - b.id).map((b) => [b.id, { minifig_no: b.minifig_no, name: b.name, qty: b.qty }]))
+  const stored = []
+  for (const st of store ?? []) {
+    const b = figs.get(Number(st.build_id))
+    if (!b || !String(st.location ?? '').trim()) continue
+    stored.push({ ...b, condition: st.condition === 'N' ? 'N' : 'U', price: Math.round((Number(st.price) || 0) * 1000) / 1000, location: String(st.location).trim() })
+  }
+  const apply = (applyBsx ?? []).map(Number)
+  return { xml: f.xml, bricklink_lots: f.bricklink_lots,
+    without_lot: f.without_lot.map((l) => ({ item_no: l.item_no ?? '', quantity: l.quantity ?? 0, remarks: l.remarks ?? '', kind: l.kind ?? '' })),
+    bsx_files: f.bsx_files.map((x) => ({ ...x, applied: apply.includes(x.id) })), figures: [...figs.values()], stored }
+}
+function exportHistory(db) {
+  return [...(mfOf(db).exports ?? [])].sort((a, b) => b.id - a.id).slice(0, 50)
+    .map(({ user_id, ...e }) => ({ ...e, user_name: db.users.find((u) => u.id === user_id)?.display_name ?? null }))
+}
+
+function finishBuildExport(db, done, applyBsx, store, me) {
   if (!exportActive(db)) throw new DemoError('Dieser Abschluss wurde schon beendet.', 409)
   const mf = mfOf(db)
+  const snap = done ? exportSnapshot(db, applyBsx, store) : null
   const figs = mf.builds.filter((b) => b.status === 'export').reduce((t, b) => t + b.qty, 0)
   let parts = 0
   let lotsChanged = 0
@@ -1193,6 +1216,8 @@ function finishBuildExport(db, done, applyBsx, store) {
     stored = storeFigures(db, store)
     lotsChanged += stored
     for (const b of mf.builds) if (b.status === 'export') { b.status = 'done'; b.done_at = now() }
+    mf.exports ??= []
+    mf.exports.push({ id: (mf.exports.at(-1)?.id ?? 0) + 1, finished_at: now(), user_id: me?.id ?? null, ...snap })
   } else {
     for (const b of mf.builds) if (b.status === 'export') { b.status = 'open'; b.export_by = null; b.export_at = null }
   }
@@ -1248,6 +1273,7 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     log(me.id, 'minifig_fehlteil', 'minifig', { teil: r.item_no, menge: r.qty, lagerort: r.where, zaehlen: !!r.counted })
     return r
   }
+  if (method === 'GET' && r2 === 'exports') return { exports: exportHistory(db) }
   if (method === 'GET' && r2 === 'part-lots') return { lots: partLots(db, String(params.keys ?? '').split(',').filter(Boolean)) }
   if (method === 'GET' && /^builds\/\d+\/lots$/.test(r2)) {
     const r = buildOptions(db, Number(parts[2]))
@@ -1288,7 +1314,7 @@ export async function route(db, method, parts, params, body, requireUser, log, d
     return file(`${f.name.replace(/\.bsx$/i, '')}-nach-figuren.bsx`, 'application/xml', buildBsx(items))
   }
   if (method === 'POST' && r2 === 'builds/finish') {
-    const r = finishBuildExport(db, !!body.done, body.apply_bsx, body.store)
+    const r = finishBuildExport(db, !!body.done, body.apply_bsx, body.store, me)
     log(me.id, r.done ? 'minifig_build_export_done' : 'minifig_build_export_verworfen', 'minifig', { figuren: r.figures, teile: r.parts, lots: r.lots, bsx: r.bsx_files.length, eingelagert: r.stored })
     return r
   }

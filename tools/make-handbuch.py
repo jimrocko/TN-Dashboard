@@ -627,6 +627,12 @@ schritte([
     'Kästchen geprüft. Liegt dieselbe Figur schon im Lager, ist ihr Kästchen vorausgewählt und grün markiert; darunter steht '
     '„Schon da“ mit Menge und Kästchen (antippen übernimmt es), sonst „neu im Lager“. Eine zweite Datei legt die Figuren bei BrickLink als neue Lots an.',
     'Nach <b>Ja, ist hochgeladen</b> werden die Teile im Bestand abgezogen und die Figuren als neue Lots eingetragen.',
+    'Unter „Fertige Figuren“ stehen eingeklappt die <b>Früheren Abschlüsse</b> (Datum, Person, Figuren). <b>Fenster ansehen</b> zeigt das '
+    'Abschluss-Fenster noch einmal nur zum Ansehen: eingelagerte Figuren mit Zustand, Preis und Kästchen, die Teile-Datei, „von Hand abziehen“ '
+    'und die BSX-Dateien. Wurde etwas vergessen (z. B. die Figuren-Datei), lässt sich die Datei dort erneut kopieren; im Bestand wird nichts nochmal abgezogen.',
+    '„Fertig gebaut“ gibt es auch bei Figuren, die einzeln baubar sind, aber nicht im gemeinsamen Bauplan stehen (z. B. mit Minus-Vorteil). '
+    'Dann zählen die Lots aus der eigenen Teileliste der Figur. Bleibt der „Vorteil“ leer, steht darunter der Grund, z. B. „Preis fehlt für 2 Teile“. '
+    'Rückmeldungen erscheinen zusätzlich unten am Bildschirm.',
 ])
 
 abschnitt('Analyse und Bestenliste')

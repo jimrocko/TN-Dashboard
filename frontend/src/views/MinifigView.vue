@@ -30,17 +30,39 @@ async function loadStatus() { st.value = await api.get('minifig/status') }
 async function loadResults() { res.value = await api.get('minifig/results', { limit: 10000 }) }
 async function loadPrices() { try { prices.value = await api.get('minifig/prices/status') } catch { /* optional */ } }
 const bd = ref(null)
-async function loadBuilds() { bd.value = await api.get('minifig/builds') }
+async function loadBuilds() {
+  const [b, e] = await Promise.all([api.get('minifig/builds'), api.get('minifig/exports').catch(() => ({ exports: [] }))])
+  bd.value = b
+  pastExports.value = e.exports ?? []
+}
+// „Frühere Abschlüsse“: Fenster nachträglich ansehen und Dateien nochmal kopieren (Wunsch des Inhabers, Sitzung 8)
+const pastExports = ref([])
+const past = ref(null)
+const pastCopied = ref('')
+const pastFigXml = (e) => buildNewFiguresXml(e.stored?.length ? e.stored : (e.figures ?? []).map((f) => ({ ...f, condition: 'U', price: 0, location: '' })))
+const copyPast = (kind) => {
+  copyText(kind === 'teile' ? past.value.xml : pastFigXml(past.value))
+  window.open(BRICKLINK_XML_URL, '_blank', 'noopener')
+  pastCopied.value = kind
+}
 async function loadAll() {
   err.value = ''
   try { await Promise.all([loadStatus(), loadResults(), loadPrices(), loadBuilds()]) } catch (e) { err.value = e.message }
 }
 
+const toast = ref(null)
+let toastTimer = null
+function showToast(text, bad = false) {
+  clearTimeout(toastTimer)
+  toast.value = text ? { text, bad } : null
+  if (text && !bad) toastTimer = setTimeout(() => { toast.value = null }, 6000)
+}
 async function run(label, fn) {
   busy.value = true
   err.value = ''
   msg.value = `${label} …`
-  try { msg.value = await fn() } catch (e) { err.value = e.message; msg.value = '' } finally { busy.value = false }
+  showToast(msg.value)
+  try { msg.value = await fn(); showToast(msg.value) } catch (e) { err.value = e.message; msg.value = ''; showToast(e.message, true) } finally { busy.value = false }
 }
 const clamp = (n) => Math.max(1, Math.min(1000, Math.trunc(Number(n)) || 1))
 const scan = () => run('Teile werden geprüft', async () => {
@@ -120,6 +142,12 @@ const qtyOf = (r) => Math.max(1, Math.min(r.buildable_qty || 1, Number(buildQty.
 // Orte, die vor „Fertig gebaut“ per Aufklappmenü umgestellt wurden (nur auf diesem Gerät, bis zum Neuladen)
 const swaps = ref({})
 const setSwap = (no, { key, to }) => { swaps.value = { ...swaps.value, [no]: { ...(swaps.value[no] ?? {}), [key]: to } } }
+// Warum „Vorteil“ leer bleibt (gleiche Regel wie Standalone: alle Teile brauchen einen Preis)
+const noAdvantage = (r) => [
+  r.figure_price_missing ? 'Figurenpreis fehlt' : '',
+  r.unpriced_parts ? `Preis fehlt für ${r.unpriced_parts} ${r.unpriced_parts === 1 ? 'Teil' : 'Teile'}` : '',
+  r.missing_price_missing ? 'Preis für Fehlteil fehlt' : '',
+].filter(Boolean).join(' · ') || 'Preis fehlt'
 const builtOf = (no) => res.value?.built_counts?.[no] ?? 0
 const excludedSet = computed(() => new Set([...(res.value?.joint_excluded ?? []), ...(res.value?.almost_joint_excluded ?? [])].map((x) => x.minifig_no)))
 // Tipp auf Figurennummer/-name: Teileliste auf- und zuklappen (Listen mit Teileliste) bzw. Großansicht mit BrickLink-Link
@@ -309,7 +337,7 @@ const freshness = computed(() => {
 // ---- Eine Liste mit Reitern statt vieler Listen (Wunsch des Inhabers) ----
 const TABS = [
   { value: 'plan', label: 'Bauplan', hint: 'Gemeinsamer Bauplan: Teile werden reserviert und nie doppelt vergeben. Zuerst zählt der wirtschaftliche Vorteil, dann Figurenwert und Bestandsreserve.' },
-  { value: 'einzeln', label: 'Einzeln baubar', hint: 'Jede Figur für sich gerechnet, so oft wie die Teile reichen. „Fertig gebaut“ gibt es bei Figuren aus dem gemeinsamen Bauplan.' },
+  { value: 'einzeln', label: 'Einzeln baubar', hint: 'Jede Figur für sich gerechnet, so oft wie die Teile reichen. „Fertig gebaut“ nimmt bei Figuren aus dem Bauplan dessen Teile, sonst die eigene Teileliste.' },
   { value: 'fehlt', label: '1 Teil fehlt', hint: 'Figuren, bei denen genau ein Teil fehlt.' },
   { value: 'ergaenzbar', label: 'Gemeinsam ergänzbar', hint: 'Zweite Runde: Die Teile des Bauplans bleiben reserviert. Nur der Rest wird auf Figuren mit genau einem Fehlteil verteilt.' },
   { value: 'blockiert', label: 'Blockiert', hint: 'Einzeln baubar, im gemeinsamen Bauplan aber nicht mehr vollständig, weil Teile schon anderen Figuren zugeordnet sind.' },
@@ -329,6 +357,11 @@ function showTab(t) {
 }
 // Zeile des gemeinsamen Bauplans je Figur: für „Fertig gebaut“ auch in den anderen Reitern (gleiche Lots wie im Bauplan)
 const jointMap = computed(() => new Map((res.value?.joint_buildable ?? []).map((x) => [x.minifig_no, x])))
+// „Fertig gebaut“ auch für Figuren, die einzeln baubar sind, aber nicht im Bauplan stehen (z. B. Minus-Vorteil, Teile im Plan
+// schon für bessere Figuren verplant; Rückmeldung des Inhabers). Dann zählen die Lots der eigenen Teileliste (Restbestand).
+const singleMap = computed(() => new Map((res.value?.buildable ?? []).filter((x) => x.pick_list?.length && x.required_groups)
+  .map((x) => [x.minifig_no, { ...x, buildable_qty: Math.max(1, Math.min(x.buildable_qty || 1, Math.floor(x.pick_list.length / x.required_groups))) }])))
+const buildRow = (r) => jointMap.value.get(r.minifig_no) ?? singleMap.value.get(r.minifig_no) ?? null
 const rankRows = computed(() => {
   const r = res.value
   if (!r) return []
@@ -445,6 +478,12 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
     </PageHead>
     <p v-if="err" class="error">{{ err }}</p>
     <p v-if="msg" class="muted">{{ msg }}</p>
+    <!-- Meldung zusätzlich unten eingeblendet: oben sah man sie beim Klick weiter unten nicht („es passiert nix“, Rückmeldung des Inhabers) -->
+    <Teleport to="body">
+      <div v-if="toast" class="mftoast" :class="{ bad: toast.bad }" role="status" @click="toast = null">
+        <span>{{ toast.text }}</span><button type="button" class="x" aria-label="Schließen"><X :size="16" /></button>
+      </div>
+    </Teleport>
 
     <template v-if="st">
       <section class="panel how">
@@ -493,11 +532,12 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         </div>
       </section>
 
-      <section v-if="builds.length || bd?.export" class="panel good-border">
+      <section v-if="builds.length || bd?.export || pastExports.length" class="panel good-border">
         <div class="panel-head"><h2><PackageCheck :size="18" /> Fertige Figuren</h2><span class="faint small">{{ figs(buildCount) }} gesammelt · für alle gemeinsam</span></div>
         <div class="panel-body stack-s">
           <p class="small muted">Hier landen alle Figuren, die jemand mit „Fertig gebaut“ markiert hat. Ihre Teile sind in der Rechnung schon abgezogen. Am Ende einmal „Sammlung abschließen“: dann kommt eine Datei für BrickLink und, falls Teile aus BSX-Dateien stammen, die geänderten Dateien.</p>
-          <div class="table-wrap">
+          <p v-if="!builds.length && !bd?.export" class="small faint">Gerade sind keine Figuren gesammelt.</p>
+          <div v-else class="table-wrap">
             <table class="table">
               <thead><tr><th class="nr">Nr.</th><th>Minifigur</th><th class="num">Anzahl</th><th class="num">Teile</th><th>Gesammelt von</th><th></th></tr></thead>
               <tbody>
@@ -518,6 +558,17 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
             <button v-perm="'minifig_abschluss'" class="btn btn-primary" :disabled="busy || (!bd.export && (bd.transfer_open || !builds.length))" @click="startExport">
               <PackageCheck :size="16" /> {{ bd.export ? 'Abschluss fortsetzen' : 'Sammlung abschließen' }}</button>
           </div>
+          <details v-if="pastExports.length" class="past">
+            <summary class="small"><strong>Frühere Abschlüsse ({{ pastExports.length }})</strong> · Fenster nochmal ansehen, Dateien nochmal kopieren</summary>
+            <ul class="pastlist">
+              <li v-for="e in pastExports" :key="e.id">
+                <span class="grow"><strong>{{ dateTime(e.finished_at) }}</strong><span v-if="e.user_name" class="small muted"> · {{ e.user_name }}</span>
+                  <span class="small muted"> · {{ (e.figures ?? []).map((f) => `${f.qty}× ${f.minifig_no}`).join(', ') }}</span>
+                  <span v-if="!(e.stored ?? []).length" class="small warnc"> · keine Figuren eingelagert</span></span>
+                <button class="btn btn-sm" @click="past = e; pastCopied = ''">Fenster ansehen</button>
+              </li>
+            </ul>
+          </details>
         </div>
       </section>
 
@@ -730,11 +781,11 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                     <span v-if="tab !== 'plan' && excludedSet.has(r.minifig_no)" class="pill danger">nicht bauen</span>
                     <span v-if="r.completeness !== undefined" class="small faint">{{ r.completeness }} % · Preise Teile {{ r.price_coverage_pct || 0 }} %</span>
                   </div>
-                  <div v-if="jointMap.get(r.minifig_no)" class="built">
-                    <select v-if="(jointMap.get(r.minifig_no).buildable_qty || 1) > 1" :value="qtyOf(jointMap.get(r.minifig_no))" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`" @change="buildQty[r.minifig_no] = Number($event.target.value)">
-                      <option v-for="n in jointMap.get(r.minifig_no).buildable_qty" :key="n" :value="n">{{ n }}×</option>
+                  <div v-if="buildRow(r)" class="built">
+                    <select v-if="(buildRow(r).buildable_qty || 1) > 1" :value="qtyOf(buildRow(r))" class="select select-sm" :aria-label="`Anzahl fertig gebaut ${r.minifig_no}`" @change="buildQty[r.minifig_no] = Number($event.target.value)">
+                      <option v-for="n in buildRow(r).buildable_qty" :key="n" :value="n">{{ n }}×</option>
                     </select>
-                    <button v-perm="'minifig_bauen'" class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(jointMap.get(r.minifig_no))"><PackageCheck :size="14" /> {{ qtyOf(jointMap.get(r.minifig_no)) > 1 ? `${qtyOf(jointMap.get(r.minifig_no))}× fertig gebaut` : 'Fertig gebaut' }}</button>
+                    <button v-perm="'minifig_bauen'" class="btn btn-sm btn-primary" :disabled="busy || !!bd?.export" @click="markBuilt(buildRow(r))"><PackageCheck :size="14" /> {{ qtyOf(buildRow(r)) > 1 ? `${qtyOf(buildRow(r))}× fertig gebaut` : 'Fertig gebaut' }}</button>
                     <button v-perm="'minifig_bauen'" class="btn btn-sm" :disabled="busy" title="Aus dem Bauplan nehmen, die Teile werden für andere Figuren frei" @click="decide(r.minifig_no, 'exclude', 'not_build')">Nicht bauen</button>
                   </div></div></div></td>
                 <td class="num">{{ eur(r.figure_value) }}<div v-if="r.figure_price_source" class="small faint">{{ r.figure_price_source }}</div></td>
@@ -744,7 +795,7 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
                     <div v-for="m in r.missing ?? []" :key="`${m.item_no}|${m.color_id}`" class="small partcell miss"><PartImage :name="m.name ?? m.item_name" :color-name="m.color_name" :no="m.item_no" :color="m.color_id" :size="28" /><span><RouterLink class="mono" :to="`/teil/${encodeURIComponent(m.item_no)}`">{{ m.item_no }}</RouterLink> · Farbe {{ m.color_id }}<br /><span class="faint">vorhanden {{ m.have || 0 }}, benötigt {{ m.quantity }}</span></span></div>
                     <div class="small">Kosten <strong>{{ eur(r.completion_cost) }}</strong></div>
                   </template><template v-else>–</template></td>
-                <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong></td>
+                <td class="num"><strong>{{ eur(r.economic_advantage) }}</strong><div v-if="r.economic_advantage === null || r.economic_advantage === undefined" class="small faint whyno">{{ noAdvantage(r) }}</div></td>
                 <td class="wide" :data-fig="r.minifig_no">
                   <MinifigParts v-if="tab === 'plan'" v-model:open="openFigs[r.minifig_no]" :copies="r.buildable_qty || 1" :row="withLinks(r)" choose :swaps="swaps[r.minifig_no] ?? {}" @swap="setSwap(r.minifig_no, $event)" @missing="openMissing" />
                   <MinifigParts v-else v-model:open="openFigs[r.minifig_no]" :row="withLinks(r)" :up-to="r.rank === 'buildable' ? r.buildable_qty : 0" @missing="openMissing" />
@@ -805,6 +856,31 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
         <button class="btn" @click="dlOpen = false">Abbrechen</button>
         <button class="btn btn-primary" :disabled="dl2.list !== 'zip' && !dlCount" @click="doDownload"><Download :size="16" /> Herunterladen</button>
       </template>
+    </TnDialog>
+
+    <TnDialog v-if="past" :title="`Abschluss vom ${dateTime(past.finished_at)}`" wide @close="past = null">
+      <p class="small muted">Nur zum Ansehen: Im Bestand wird nichts nochmal abgezogen. Brauchst du eine Datei noch einmal (z. B. die Figuren vergessen hochzuladen), kopierst du sie hier.<template v-if="past.user_name"> Abgeschlossen von {{ past.user_name }}.</template></p>
+      <h3 class="pasth">Figuren ({{ (past.figures ?? []).reduce((t, f) => t + f.qty, 0) }})</h3>
+      <div class="table-wrap"><table class="table"><tbody>
+        <tr v-for="(f, i) in (past.stored?.length ? past.stored : past.figures)" :key="i">
+          <td><div class="partcell"><PartImage :no="f.minifig_no" type="MINIFIG" :size="32" :name="f.name" /><div><strong class="mono">{{ f.minifig_no }}</strong><div class="small">{{ htmlText(f.name) }}</div></div></div></td>
+          <td class="num">{{ f.qty }}×</td>
+          <td><template v-if="f.location">{{ f.condition === 'N' ? 'neu' : 'gebraucht' }} · {{ eur(f.price) }} · Kästchen <strong class="mono">{{ f.location }}</strong></template><span v-else class="small warnc">nicht eingelagert</span></td>
+        </tr>
+      </tbody></table></div>
+      <div class="toolbar">
+        <button class="btn btn-primary" @click="copyPast('figuren')"><Copy :size="16" /> Figuren-Datei kopieren und BrickLink öffnen</button>
+        <span v-if="pastCopied === 'figuren'" class="small ok">Kopiert. Bei BrickLink unter „Upload“ einfügen.</span>
+      </div>
+      <p v-if="!past.stored?.length" class="small muted">Beim Abschluss wurde keine Figur eingelagert. Die Datei enthält die Figuren als gebraucht, ohne Preis und ohne Kästchen: vor dem Hochladen bei BrickLink ergänzen.</p>
+      <h3 class="pasth">Teile abziehen ({{ past.bricklink_lots }} Lots)</h3>
+      <div class="toolbar">
+        <button class="btn" :disabled="!past.xml" @click="copyPast('teile')"><Copy :size="16" /> Teile-Datei kopieren und BrickLink öffnen</button>
+        <span v-if="pastCopied === 'teile'" class="small ok">Kopiert. Achtung: nur einfügen, wenn sie damals NICHT eingefügt wurde, sonst wird doppelt abgezogen.</span>
+      </div>
+      <p v-if="past.without_lot?.length" class="small warnc">Von Hand abgezogen: {{ past.without_lot.map((l) => `${l.quantity}× ${l.item_no} ${l.remarks}`).join(', ') }}</p>
+      <p v-if="past.bsx_files?.length" class="small muted">BSX-Dateien: {{ past.bsx_files.map((f) => `${f.name}${f.applied ? ' (übernommen)' : ''}`).join(', ') }}</p>
+      <template #actions><button class="btn" @click="past = null">Schließen</button></template>
     </TnDialog>
 
     <TnDialog v-if="miss" :title="`Fehlt: ${miss.part.item_no}`" @close="miss = null">
@@ -931,7 +1007,22 @@ const importTransfer = () => run('Daten werden übernommen', async () => {
   </div>
 </template>
 
+<style>
+.mftoast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60; width: min(560px, calc(100% - 32px));
+  display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--ok); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); cursor: pointer; line-height: 1.35; }
+.mftoast.bad { border-color: var(--danger); }
+.mftoast span { flex: 1; }
+.mftoast .x { background: none; border: 0; color: var(--text-3); padding: 2px; cursor: pointer; }
+</style>
+
 <style scoped>
+.past { margin-top: 10px; }
+.past summary { cursor: pointer; }
+.pastlist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pastlist li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+.pasth { font-size: 0.95rem; margin: 14px 0 6px; }
+.whyno { font-weight: 400; max-width: 140px; margin-left: auto; line-height: 1.25; }
 .misscheck { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .misscheck input { width: 20px; height: 20px; }
 .lotopt .ownbox { width: 150px; }
