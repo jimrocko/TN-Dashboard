@@ -1,4 +1,5 @@
 <script setup>
+import { DEMO_LOGINS } from '../demo/backend.js'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../stores/auth'
@@ -46,8 +47,7 @@ const fill = (u, p) => { username.value = u; password.value = p }
       <div v-if="IS_DEMO" class="demo">
         <div><strong>Demo-Version.</strong> Läuft ohne Server, alle Daten sind erfunden und bleiben in diesem Browser.</div>
         <div class="accounts">
-          <button type="button" class="btn btn-sm" @click="fill('max', 'max12345')">Teilnehmer: max / max12345</button>
-          <button type="button" class="btn btn-sm" @click="fill('lehrer', 'lehrer123')">Lehrer: lehrer / lehrer123</button>
+          <button v-for="[label, u, pw] in DEMO_LOGINS" :key="u" type="button" class="btn btn-sm" @click="fill(u, pw)">{{ label }}: {{ u }} / {{ pw }}</button>
         </div>
       </div>
     </form>

@@ -33,6 +33,7 @@ const T = {
   bricklink_export_start: (d) => [`hat die Übertragung zu BrickLink gestartet (${n(d.umlagerungen) || 0} Umlagerungen, ${n(d.inventuren) || 0} Inventuren)`, 'bricklink'],
   bricklink_export: (d) => [`hat bestätigt: Änderungen sind bei BrickLink eingefügt${d.aenderungen ? ` (${d.aenderungen})` : ''}`, 'bricklink'],
   bricklink_export_verworfen: () => ['hat die Übertragung zu BrickLink verworfen', 'bricklink'],
+  bricklink_export_entfernt: (d) => [`hat die offene BrickLink-Übertragung ohne Übertragung entfernt (${n(d.umlagerungen) || 0} Umlagerungen, ${n(d.inventuren) || 0} Inventuren)`, 'bricklink'],
   bricklink_import: (d) => [`hat das Lager aus BrickLink übernommen (${n(d.lose)} Lots)`, 'bricklink'],
   bsx_import: (d) => [`hat den Bestand aus einer BrickStore-Datei ersetzt${d.lots ? ` (${d.lots} Lots)` : ''}`, 'inventar'],
   sync_inventory: (d) => [`hat den Bestand vom Shop geholt (${n(d.lose)} Lots)`, 'inventar'],

@@ -29,7 +29,7 @@ export function permForRoute(method, parts) {
   const id = (x) => /^\d+$/.test(x ?? '')
   if (a === 'orders' && id(b) && c === 'status') return 'pick_abschliessen'
   if (a === 'transfers' && parts.length === 1) return 'umlagern_buchen'
-  if (a === 'bricklink' && (b === 'start' || b === 'finish')) return 'bricklink_uebertragen'
+  if (a === 'bricklink' && (b === 'start' || b === 'finish' || b === 'dismiss')) return 'bricklink_uebertragen'
   if (a === 'stocktakes' && parts.length === 1) return 'inventur_zaehlen'
   if (a === 'stocktakes' && id(b) && c === 'count') return 'inventur_zaehlen'
   if (a === 'stocktakes' && id(b) && c === 'close') return 'inventur_abschliessen'

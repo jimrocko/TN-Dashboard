@@ -27,18 +27,27 @@ export const now = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
+// Private Builds können eigene Konten mitbringen (seed.users: id, username, display_name, password, role, dev).
+// Die öffentliche Demo bleibt bei den erfundenen Konten.
+const SEED_USERS = Array.isArray(seed.users) && seed.users.length ? seed.users : null
+/** Anmelde-Hilfen auf der Login-Seite: [Bezeichnung, Benutzer, Passwort] */
+export const DEMO_LOGINS = SEED_USERS
+  ? SEED_USERS.slice(0, 3).map((u) => [u.role === 'lehrer' ? 'Lehrer' : 'Teilnehmer', u.username, u.password])
+  : [['Teilnehmer', 'max', 'max12345'], ['Lehrer', 'lehrer', 'lehrer123']]
+
 function fresh() {
   const t = now()
   return {
-    nextUser: 4,
+    nextUser: SEED_USERS ? Math.max(...SEED_USERS.map((u) => u.id)) + 1 : 4,
     nextLog: 1000,
     session: null,
-    users: [
+    users: SEED_USERS ? SEED_USERS.map((u) => ({ ...u, created_at: t, last_seen: null })) : [
       { id: 1, username: 'lehrer', display_name: 'Herr Lehrer', password: 'lehrer123', role: 'lehrer', created_at: t, last_seen: null },
       { id: 2, username: 'max', display_name: 'Max Mustermann', password: 'max12345', role: 'teilnehmer', created_at: t, last_seen: null },
       { id: 3, username: 'erika', display_name: 'Erika Musterfrau', password: 'erika123', role: 'teilnehmer', created_at: t, last_seen: null },
     ],
-    log: import.meta.env.MODE === 'tutorial' ? [] : sampleHistory(),
+    ...(SEED_USERS ? { dev: { access: SEED_USERS.filter((u) => u.dev).map((u) => u.id) } } : {}),
+    log: import.meta.env.MODE === 'tutorial' || SEED_USERS ? [] : sampleHistory(),
     ...shop.seedData(seed),
     minifig: minifig.seedMinifig(),
   }
@@ -70,10 +79,26 @@ function sampleHistory() {
 }
 
 let memory = null
+// Gespeicherter Stand mit eigenen Konten: Namen, Passwort, Rolle und Dev-Rolle nach den Konten der Datei richten (Verlauf bleibt)
+function withSeedUsers(db) {
+  if (!SEED_USERS) return db
+  // erfundene frühere Arbeit der Beispielkonten gehört nicht zu echten Personen
+  if (db.log?.some((r) => r.details?.beispiel)) db.log = db.log.filter((r) => !r.details?.beispiel)
+  for (const su of SEED_USERS) {
+    const u = db.users.find((x) => x.id === su.id)
+    const { dev: isDev, ...rest } = su
+    if (u) Object.assign(u, rest)
+    else db.users.push({ ...rest, created_at: now(), last_seen: null })
+    db.dev ??= { access: [] }
+    if (isDev && !db.dev.access.includes(su.id)) db.dev.access.push(su.id)
+  }
+  db.nextUser = Math.max(db.nextUser ?? 1, ...db.users.map((x) => x.id + 1))
+  return db
+}
 function load() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) return withSeedUsers(JSON.parse(raw))
   } catch { /* Speicher nicht verfügbar */ }
   return memory ?? (memory = fresh())
 }

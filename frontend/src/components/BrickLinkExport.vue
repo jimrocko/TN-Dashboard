@@ -10,6 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Upload, Check, Copy, X } from 'lucide-vue-next'
 import { api, IS_TUTORIAL } from '../api'
 import { num, dateTime } from '../utils/format'
+import { useAuth } from '../stores/auth'
 import { BRICKLINK_XML_URL, buildChangeFiles, copyText } from '../utils/bricklinkXml'
 
 const pending = ref([])  // offene Umlagerungen aller Nutzer
@@ -21,6 +22,19 @@ const doneMsg = ref('')
 const error = ref('')
 const busy = ref(false)
 const popup = ref(false) // als Pop-up in der Mitte statt unten auf der Seite
+const auth = useAuth()
+// Fehlerhaftes Pop-up ohne Übertragung entfernen: jeder mit dem Recht, bewusst unauffällig (Wunsch des Inhabers, Sitzung 8)
+async function dismiss() {
+  const u = pending.value.length, i = pendingSt.value.length
+  if (!confirm(`Alle offenen Änderungen (${u} Umlagerungen, ${i} Inventuren) als erledigt markieren, OHNE sie zu BrickLink zu übertragen?\n\nBei BrickLink ändert sich nichts. Fehlendes dort von Hand korrigieren.`)) return
+  busy.value = true
+  error.value = ''
+  try {
+    await api.post('bricklink/dismiss')
+    await refresh()
+    close()
+  } catch (e) { error.value = e.message } finally { busy.value = false }
+}
 
 /** Neu laden; mit { popup: true } nach einer Umlagerung als Pop-up öffnen (im Tutorial nie, sonst verdeckt es Klemmi) */
 async function refresh({ popup: show = false } = {}) {
@@ -159,12 +173,14 @@ async function finish(done) {
 
     <button v-if="popup" class="btn later" type="button" @click="close">{{ openCount || exp ? 'Später' : 'Schließen' }}</button>
     <p v-if="error" class="error small">{{ error }}</p>
+    <button v-if="auth.can('bricklink_uebertragen') && (openCount || exp) && !IS_TUTORIAL" class="dismiss" type="button" :disabled="busy" @click="dismiss">Fehlerhaft? Ohne Übertragung entfernen</button>
   </section>
   </div>
   </Teleport>
 </template>
 
 <style scoped>
+.dismiss { align-self: flex-end; background: none; border: 0; padding: 0; font: inherit; font-size: 0.72rem; color: var(--text-3); opacity: 0.55; cursor: pointer; text-decoration: underline; }
 /* Bleibt beim Scrollen unten sichtbar, über der Leiste unten */
 .bl-export { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 5; padding: 14px var(--pad); display: flex; flex-direction: column; gap: 10px; border-color: var(--accent); box-shadow: 0 8px 30px rgba(0, 0, 0, .35); }
 :global([data-tn-style="xp"]) .bl-export { bottom: 8px; }

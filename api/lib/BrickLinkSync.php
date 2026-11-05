@@ -245,6 +245,21 @@ final class BrickLinkSync
     }
 
     /**
+     * Fehlerhaftes Pop-up entfernen (jeder mit Recht bricklink_uebertragen, Wunsch des Inhabers, Sitzung 8): alle offenen Umlagerungen und
+     * Inventur-Korrekturen gelten als erledigt, ohne Übertragung; eine laufende Übertragung wird verworfen. BrickLink bleibt unverändert.
+     * @return array{umlagerungen:int, inventuren:int}
+     */
+    public static function dismiss(): array
+    {
+        self::ensureSchema();
+        $t = now();
+        $tr = q('UPDATE {transfers} SET bl_done_at = ? WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL', [$t])->rowCount();
+        $st = q('UPDATE {stocktakes} SET bl_done_at = ? WHERE bl_done_at IS NULL AND bl_changes IS NOT NULL', [$t])->rowCount();
+        q("UPDATE {bl_exports} SET open_flag = NULL, closed_at = ?, state = 'entfernt' WHERE open_flag = 1", [$t]);
+        return ['umlagerungen' => $tr, 'inventuren' => $st];
+    }
+
+    /**
      * Lager komplett aus dem BrickLink-Shop übernehmen (Lots per Lot-ID abgleichen).
      * Lagerort = Remarks. Lots, die es in BrickLink nicht gibt, werden entfernt.
      * Offene, noch nicht übertragene Umlagerungen werden verworfen, weil BrickLink jetzt der Stand ist.

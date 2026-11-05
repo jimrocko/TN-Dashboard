@@ -247,6 +247,13 @@ switch (true) {
         ActivityLog::log((int) $me['id'], !empty($in['done']) ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', ['aenderungen' => $n]);
         json_response(['done' => $n, 'ollie' => OllieSync::path() !== null]);
 
+    case $route === 'bricklink/dismiss' && $method === 'POST':
+        // Fehlerhaftes Übertragungs-Pop-up entfernen, ohne zu übertragen (jeder mit dem Recht, Wunsch des Inhabers)
+        $staff = require_perm('bricklink_uebertragen');
+        $r = BrickLinkSync::dismiss();
+        ActivityLog::log((int) $staff['id'], 'bricklink_export_entfernt', 'umlagern', $r);
+        json_response($r);
+
     case $route === 'bricklink/import' && $method === 'POST':
         // Lager komplett aus dem BrickLink-Shop übernehmen (nur Lehrer)
         $staff = require_staff();

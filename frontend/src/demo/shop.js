@@ -971,6 +971,18 @@ export function route(db, method, parts, params, body, requireUser, log) {
     log(me.id, body.done ? 'bricklink_export' : 'bricklink_export_verworfen', 'umlagern', { aenderungen: n })
     return { done: n }
   }
+  if (method === 'POST' && a === 'bricklink' && b === 'dismiss') {
+    // wie BrickLinkSync::dismiss: offene Änderungen ohne Übertragung als erledigt, laufende Übertragung entfernt (Recht bricklink_uebertragen)
+    const me = requireUser()
+    const t = now()
+    let tr = 0, st = 0
+    for (const x of db.transfers) if (!x.bl_done_at && x.bl_changes) { x.bl_done_at = t; tr++ }
+    for (const x of db.stocktakes) if (!x.bl_done_at && x.bl_changes) { x.bl_done_at = t; st++ }
+    for (const e of db.blExports ?? []) if (e.open) Object.assign(e, { open: false, closed_at: t, state: 'entfernt' })
+    const r = { umlagerungen: tr, inventuren: st }
+    log(me.id, 'bricklink_export_entfernt', 'umlagern', r)
+    return r
+  }
   // Ollies Dashboard (gleicher Rechner auf dem Schulserver): in der Demo nicht vorhanden
   if (method === 'GET' && a === 'ollie' && b === 'status') {
     requireUser()

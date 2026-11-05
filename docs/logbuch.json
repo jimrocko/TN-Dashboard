@@ -238,6 +238,10 @@
         {
           "titel": "Stand-Backup der Demo-Datei",
           "text": "Die Demo-Datei speichert ihren Stand im Browser. In den Einstellungen gibt es jetzt „Backup speichern“ und „Backup laden“, damit Verlauf, Sammlungen und frühere Abschlüsse in eine neue Datei mitgenommen werden können."
+        },
+        {
+          "titel": "Fehlerhafte Übertragung entfernen",
+          "text": "Nach einem falsch geladenen Bestand blieb das Pop-up zur BrickLink-Übertragung dauerhaft stehen. Unten im Pop-up gibt es jetzt eine unauffällige Zeile „Fehlerhaft? Ohne Übertragung entfernen“. Nach einer Rückfrage gelten alle offenen Änderungen als erledigt, ohne dass etwas zu BrickLink geht; der Verlauf hält fest, wer es war."
         }
       ]
     }

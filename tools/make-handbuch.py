@@ -658,7 +658,8 @@ schritte([
     'Minus, neuer Lagerort in den Remarks, leer gewordene Lots werden gelöscht), und die XML-Seite von BrickLink öffnet sich in einem neuen Tab.',
     'Bei BrickLink unter „Update“ einfügen und bestätigen. Sind beim Umlagern neue Lots entstanden (Teilmenge in ein neues Kästchen), gibt '
     'es zusätzlich eine <b>Upload-Datei</b>, die unter „Upload“ eingefügt wird.',
-    'Zurück in der App <b>Ja, ist eingefügt</b> tippen. Erst dann gelten die Änderungen als übertragen. „Nein, verwerfen“ bricht ab.',
+    'Zurück in der App <b>Ja, ist eingefügt</b> tippen. Erst dann gelten die Änderungen als übertragen. „Nein, verwerfen“ bricht ab. '
+    'Bleibt das Fenster wegen eines Fehlers stehen (z. B. nach einem falsch geladenen Bestand), entfernt die kleine Zeile „Fehlerhaft? Ohne Übertragung entfernen“ ganz unten alle offenen Änderungen, ohne etwas zu BrickLink zu schicken.',
 ])
 hinweis('Es läuft immer nur <b>eine</b> Übertragung. Alle sehen sie, und jede Person kann sie abschließen. Die Dateien enthalten nur die '
         'Änderungen und bleiben deshalb klein; sehr viele Änderungen werden auf mehrere Dateien unter 200 KB (Grenze von BrickLink) verteilt.')
